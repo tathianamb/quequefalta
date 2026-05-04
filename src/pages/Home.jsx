@@ -1,54 +1,42 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { signOut } from 'firebase/auth'
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore'
-import { auth, db } from '../config/firebase'
+import { auth } from '../config/firebase'
 import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
+import { useLista } from '../hooks/useLista'
+import { useCatalogo } from '../hooks/useCatalogo'
 import CategoriaGrupo from '../components/CategoriaGrupo'
-import Catalogo from './Catalogo'
 import { ShoppingCart, BookOpen, LogOut, Search, X } from 'lucide-react'
 
 function Home({ usuario, grupoId }) {
-  const [produtos, setProdutos] = useState([])
-  const [carregando, setCarregando] = useState(true)
+  const { lista, carregando: carregandoLista, adicionarItem, toggleComprado, removerItem } = useLista(grupoId)
+  const { catalogo, carregando: carregandoCatalogo } = useCatalogo()
   const [aba, setAba] = useState('lista')
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
 
-  useEffect(() => {
-    if (!grupoId) return
-    const ref = collection(db, 'grupos', grupoId, 'produtos')
-    const unsub = onSnapshot(ref, (snap) => {
-      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      setProdutos(lista)
-      setCarregando(false)
-    })
-    return () => unsub()
-  }, [grupoId])
-
-  const handleToggle = async (produto) => {
-    const ref = doc(db, 'grupos', grupoId, 'produtos', produto.id)
-    await updateDoc(ref, { temEmCasa: !produto.temEmCasa })
-  }
-
-  const filtrar = (lista) => lista.filter(p => {
+  const filtrar = (arr) => arr.filter(p => {
     const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase())
     const categoriaOk = !categoriaFiltro || p.categoria === categoriaFiltro
     return buscaOk && categoriaOk
   })
 
-  const faltando = busca
-  ? filtrar(produtos)
-  : filtrar(produtos.filter(p => !p.temEmCasa))
-  const todosFiltrados = filtrar(produtos)
-
-  const agrupar = (lista) => ORDEM_CATEGORIAS.reduce((acc, cat) => {
-    const itens = lista.filter(p => p.categoria === cat)
+  const agrupar = (arr) => ORDEM_CATEGORIAS.reduce((acc, cat) => {
+    const itens = arr.filter(p => p.categoria === cat)
     if (itens.length > 0) acc[cat] = itens
     return acc
   }, {})
 
-  const porCategoriaLista = agrupar(faltando)
-  const porCatalogoCatalogo = agrupar(todosFiltrados)
+  // Lista: pendentes e comprados separados
+  const pendentes = filtrar(lista.filter(i => !i.comprado))
+  const comprados = filtrar(lista.filter(i => i.comprado))
+  const porCategoriaPendentes = agrupar(pendentes)
+  const porCategoriaComprados = agrupar(comprados)
+
+  // Catálogo
+  const catalogoFiltrado = filtrar(catalogo)
+  const porCategoriaCatalogo = agrupar(catalogoFiltrado)
+
+  const carregando = carregandoLista || carregandoCatalogo
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '72px' }}>
@@ -61,7 +49,6 @@ function Home({ usuario, grupoId }) {
         top: 0,
         zIndex: 10,
       }}>
-        {/* Título */}
         <div style={{
           padding: '16px 20px 12px',
           display: 'flex',
@@ -75,7 +62,7 @@ function Home({ usuario, grupoId }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {aba === 'lista' && (
               <span style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
-                {faltando.length} itens
+                {pendentes.length} itens
               </span>
             )}
             <LogOut
@@ -101,7 +88,7 @@ function Home({ usuario, grupoId }) {
             <input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar produto..."
+              placeholder={aba === 'lista' ? 'Buscar na lista...' : 'Buscar no mercado...'}
               style={{
                 border: 'none',
                 background: 'transparent',
@@ -123,7 +110,7 @@ function Home({ usuario, grupoId }) {
           </div>
         </div>
 
-        {/* Filtro de categorias */}
+        {/* Filtro categorias */}
         <div style={{
           display: 'flex',
           gap: '8px',
@@ -177,42 +164,72 @@ function Home({ usuario, grupoId }) {
         </div>
       </div>
 
-      {/* Conteúdo Lista */}
+      {/* Aba Lista */}
       {aba === 'lista' && (
         <div style={{ padding: '20px 16px' }}>
           {carregando && (
             <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
           )}
-          {!carregando && faltando.length === 0 && (
+
+          {!carregando && lista.length === 0 && (
             <div style={{ textAlign: 'center', marginTop: '60px' }}>
-              <p style={{ fontSize: '48px' }}>🎉</p>
-              <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px' }}>
-                {busca ? 'Nenhum item encontrado!' : 'Tudo em casa!'}
-              </p>
+              <p style={{ fontSize: '48px' }}>🛒</p>
+              <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px' }}>Lista vazia!</p>
               <p style={{ color: 'var(--text-soft)', marginTop: '4px' }}>
-                {busca ? 'Tente outro termo de busca.' : 'Nenhum item faltando por enquanto.'}
+                Vá ao Mercado e adicione itens à sua lista.
               </p>
             </div>
           )}
-          {Object.entries(porCategoriaLista).map(([categoria, itens]) => (
+
+          {/* Pendentes */}
+          {Object.entries(porCategoriaPendentes).map(([categoria, itens]) => (
             <CategoriaGrupo
               key={categoria}
               categoria={categoria}
               itens={itens}
-              onToggle={handleToggle}
+              onToggle={toggleComprado}
               busca={busca}
+              itensDaLista={lista}
             />
           ))}
+            {/* Comprados — sempre por último, colapsável */}
+            {comprados.length > 0 && (
+            <CategoriaGrupo
+                key="tem-em-casa"
+                categoria="Tem em casa"
+                itens={comprados}
+                onToggle={toggleComprado}
+                busca={busca}
+                itensDaLista={lista}
+                collapsed={true}
+                corOverride="#ADB5BD"
+            />
+            )}
         </div>
       )}
 
-      {/* Conteúdo Catálogo */}
-      {aba === 'catalogo' && (
-        <Catalogo
-          porCategoria={porCatalogoCatalogo}
-          grupoId={grupoId}
-          busca={busca}
-        />
+      {/* Aba Mercado */}
+      {aba === 'mercado' && (
+        <div style={{ padding: '20px 16px' }}>
+          {carregando && (
+            <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
+          )}
+          {!carregando && catalogoFiltrado.length === 0 && (
+            <p style={{ textAlign: 'center', color: 'var(--text-soft)', marginTop: '40px' }}>
+              Nenhum produto encontrado.
+            </p>
+          )}
+          {Object.entries(porCategoriaCatalogo).map(([categoria, itens]) => (
+            <CategoriaGrupo
+              key={categoria}
+              categoria={categoria}
+              itens={itens}
+              onToggle={adicionarItem}
+              busca={busca}
+              itensDaLista={lista}
+            />
+          ))}
+        </div>
       )}
 
       {/* Navegação inferior */}
@@ -229,12 +246,12 @@ function Home({ usuario, grupoId }) {
         zIndex: 20,
       }}>
         {[
-          { id: 'lista', label: 'Lista', icon: ShoppingCart },
-          { id: 'catalogo', label: 'Catálogo', icon: BookOpen },
+          { id: 'lista', label: 'Minha Lista', icon: ShoppingCart },
+          { id: 'mercado', label: 'Mercado', icon: BookOpen },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            onClick={() => setAba(id)}
+            onClick={() => { setAba(id); setBusca(''); setCategoriaFiltro(null) }}
             style={{
               flex: 1,
               padding: '12px 0',

@@ -1,7 +1,7 @@
-import { Check } from 'lucide-react'
+import { Check, Plus, ShoppingCart } from 'lucide-react'
 import { corDaCategoria } from '../utils/categorias'
 
-function ProdutoItem({ produto, onToggle }) {
+function ProdutoItem({ produto, onToggle, onAbrir, naLista, comprado }) {
   const cor = corDaCategoria(produto.categoria)
 
   return (
@@ -15,32 +15,49 @@ function ProdutoItem({ produto, onToggle }) {
         borderRadius: '12px',
         marginBottom: '8px',
         boxShadow: 'var(--shadow)',
-        cursor: 'pointer',
         borderLeft: `4px solid ${cor}`,
+        opacity: comprado ? 0.4 : 1,
         transition: 'opacity 0.2s',
-        opacity: produto.temEmCasa ? 0.4 : 1,
       }}
-      onClick={() => onToggle(produto)}
     >
+      {/* Ação esquerda — checkbox ou adicionar */}
       <div
+        onClick={() => onToggle && onToggle(produto)}
         style={{
           width: '28px',
           height: '28px',
           borderRadius: '8px',
-          border: `2px solid ${cor}`,
-          background: produto.temEmCasa ? cor : 'transparent',
+          border: `2px solid ${naLista || comprado ? cor : '#DEE2E6'}`,
+          background: comprado ? cor : naLista ? cor + '22' : 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           transition: 'all 0.2s',
+          cursor: onToggle ? 'pointer' : 'default',
         }}
       >
-        {produto.temEmCasa && <Check size={16} color="white" strokeWidth={3} />}
+        {comprado && <Check size={16} color="white" strokeWidth={3} />}
+        {naLista && !comprado && <ShoppingCart size={14} color={cor} />}
+        {!naLista && !comprado && onToggle && <Plus size={14} color="#DEE2E6" />}
       </div>
-      <div style={{ flex: 1 }}>
-        <p style={{ fontWeight: 700, fontSize: '15px' }}>{produto.nome}</p>
-        <p style={{ fontSize: '12px', color: 'var(--text-soft)' }}>{produto.subcategoria}</p>
+
+      {/* Nome — abre detalhe */}
+      <div
+        onClick={() => onAbrir && onAbrir(produto)}
+        style={{ flex: 1, cursor: onAbrir ? 'pointer' : 'default' }}
+      >
+        <p style={{
+          fontWeight: 700,
+          fontSize: '15px',
+          textDecoration: comprado ? 'line-through' : 'none',
+          color: comprado ? 'var(--text-soft)' : 'var(--text)',
+        }}>
+          {produto.nome}
+        </p>
+        <p style={{ fontSize: '12px', color: 'var(--text-soft)' }}>
+          {produto.subcategoria !== '-' ? produto.subcategoria : produto.categoria}
+        </p>
       </div>
     </div>
   )

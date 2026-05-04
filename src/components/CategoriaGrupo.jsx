@@ -3,14 +3,14 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { corDaCategoria } from '../utils/categorias'
 import ProdutoItem from './ProdutoItem'
 
-function CategoriaGrupo({ categoria, itens, onToggle, busca }) {
-  const [aberto, setAberto] = useState(true)
+function CategoriaGrupo({ categoria, itens, onToggle, onAbrir, busca, itensDaLista, collapsed, corOverride }) {
+  const [aberto, setAberto] = useState(!collapsed)
 
   useEffect(() => {
     if (busca && busca.length > 0) setAberto(true)
   }, [busca])
 
-  const cor = corDaCategoria(categoria)
+  const cor = corOverride || corDaCategoria(categoria)
 
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -59,7 +59,14 @@ function CategoriaGrupo({ categoria, itens, onToggle, busca }) {
       </div>
 
       {aberto && itens.map(p => (
-        <ProdutoItem key={p.id} produto={p} onToggle={onToggle} />
+        <ProdutoItem
+          key={p.id}
+          produto={p}
+          onToggle={onToggle}
+          onAbrir={onAbrir}
+          naLista={itensDaLista?.some(i => i.produtoId === p.id)}
+          comprado={p.comprado}
+        />
       ))}
     </div>
   )
