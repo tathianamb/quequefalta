@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { corDaCategoria } from '../utils/categorias'
 import ProdutoItem from './ProdutoItem'
 
-function CategoriaGrupo({ categoria, itens, onToggle }) {
+function CategoriaGrupo({ categoria, itens, onToggle, busca }) {
   const [aberto, setAberto] = useState(true)
+
+  useEffect(() => {
+    if (busca && busca.length > 0) setAberto(true)
+  }, [busca])
+
   const cor = corDaCategoria(categoria)
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      {/* Header da categoria */}
       <div
         onClick={() => setAberto(!aberto)}
         style={{
@@ -54,7 +58,6 @@ function CategoriaGrupo({ categoria, itens, onToggle }) {
         }
       </div>
 
-      {/* Itens */}
       {aberto && itens.map(p => (
         <ProdutoItem key={p.id} produto={p} onToggle={onToggle} />
       ))}
