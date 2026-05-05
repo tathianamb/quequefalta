@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Moon, Sun, Lightbulb, Link, Shield } from "lucide-react";
+import { X, Moon, Lightbulb, Link, Shield, LogOut } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
@@ -23,6 +23,7 @@ function Menu({
   const [subcategoria, setSubcategoria] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   const handleSugestao = async () => {
     if (!nome || !categoria) return;
@@ -84,32 +85,34 @@ function Menu({
           }}
         />
 
-        {/* Handle */}
-        <div
-          style={{
-            width: "40px",
-            height: "4px",
-            background: "#DEE2E6",
-            borderRadius: "2px",
-            margin: "0 auto 20px",
-          }}
-        />
-
-        {/* Usuário */}
+        {/* Header */}
         {tela === "menu" && (
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "12px 16px",
-              background: "var(--bg)",
-              borderRadius: "14px",
-              marginBottom: "20px",
-            }}
+            style={{ display: "flex", flexDirection: "column", gap: "24px" }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div>
+            {/* Perfil */}
+            <div>
+              <p
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "var(--text-soft)",
+                  textTransform: "uppercase",
+                  letterSpacing: "1.2px",
+                  marginBottom: "8px",
+                  paddingLeft: "4px",
+                  opacity: 0.6,
+                }}
+              >
+                Perfil
+              </p>
+              <div
+                style={{
+                  padding: "14px 16px",
+                  background: "var(--bg)",
+                  borderRadius: "14px",
+                }}
+              >
                 <p
                   style={{
                     fontWeight: 800,
@@ -124,202 +127,334 @@ function Menu({
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => signOut(auth)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: "10px",
-                border: "none",
-                background: "#FFE3E3",
-                color: "#FA5252",
-                fontFamily: "Nunito, sans-serif",
-                fontWeight: 700,
-                fontSize: "13px",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              Sair
-            </button>
-          </div>
-        )}
 
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "24px",
-          }}
-        >
-          <h2
-            style={{ fontWeight: 900, fontSize: "20px", color: "var(--text)" }}
-          >
-            {tela === "menu" && "Menu"}
-            {tela === "sugestao" && "Sugerir produto"}
-            {tela === "receitas" && "Receitas"}
-          </h2>
-          <X
-            size={22}
-            color="var(--text-soft)"
-            style={{ cursor: "pointer" }}
-            onClick={tela === "menu" ? onFechar : () => setTela("menu")}
-          />
-        </div>
-
-        {/* Tela Menu */}
-        {tela === "menu" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
-            {/* Tema */}
-            <div
-              style={{
-                padding: "16px",
-                background: "var(--bg)",
-                borderRadius: "14px",
-              }}
-            >
-              <div
+            {/* Configurações */}
+            <div>
+              <p
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: "12px",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "var(--text-soft)",
+                  textTransform: "uppercase",
+                  letterSpacing: "1.2px",
+                  marginBottom: "8px",
+                  paddingLeft: "4px",
+                  opacity: 0.6,
                 }}
               >
-                <Moon size={20} color="var(--text-soft)" />
-                <span style={{ fontWeight: 700, color: "var(--text)" }}>
-                  Tema
-                </span>
-              </div>
+                Configurações
+              </p>
               <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: "8px",
-                }}
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
-                {[
-                  { id: "claro", label: "☀️ Claro" },
-                  { id: "escuro", label: "🌙 Escuro" },
-                  { id: "auto", label: "⚙️ Auto" },
-                ].map(({ id, label }) => {
-                  const temaAtual = localStorage.getItem("tema");
-                  const ativo =
-                    (id === "auto" && !temaAtual) ||
-                    (id === "escuro" && temaAtual === "escuro") ||
-                    (id === "claro" && temaAtual === "claro");
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => {
-                        if (id === "auto") seguirSistema();
-                        else if (id === "escuro" && !escuro) toggleTema();
-                        else if (id === "claro" && escuro) toggleTema();
-                      }}
-                      style={{
-                        padding: "10px 8px",
-                        borderRadius: "10px",
-                        border: `2px solid ${ativo ? "#FE5F01" : "#DEE2E6"}`,
-                        background: ativo ? "#FE5F0111" : "var(--card)",
-                        color: ativo ? "#FE5F01" : "var(--text-soft)",
-                        fontFamily: "Nunito, sans-serif",
-                        fontWeight: 700,
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Sugerir produto */}
-            <div
-              onClick={() => setTela("sugestao")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "16px",
-                background: "var(--bg)",
-                borderRadius: "14px",
-                cursor: "pointer",
-              }}
-            >
-              <Lightbulb size={20} color="var(--text-soft)" />
-              <span style={{ fontWeight: 700, color: "var(--text)", flex: 1 }}>
-                Sugerir produto
-              </span>
-              <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
-                ›
-              </span>
-            </div>
-
-            {/* Receitas */}
-            <div
-              onClick={() => setTela("receitas")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "16px",
-                background: "var(--bg)",
-                borderRadius: "14px",
-                cursor: "pointer",
-              }}
-            >
-              <Link size={20} color="var(--text-soft)" />
-              <div style={{ flex: 1 }}>
-                <span style={{ fontWeight: 700, color: "var(--text)" }}>
-                  Receitas
-                </span>
-                <p
+                {/* Tema */}
+                <div
                   style={{
-                    fontSize: "12px",
-                    color: "var(--text-soft)",
-                    marginTop: "2px",
+                    padding: "14px 16px",
+                    background: "var(--bg)",
+                    borderRadius: "14px",
                   }}
                 >
-                  Em breve
-                </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    <Moon size={18} color="var(--text-soft)" />
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: "var(--text)",
+                        fontSize: "15px",
+                      }}
+                    >
+                      Tema
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: "8px",
+                    }}
+                  >
+                    {[
+                      { id: "claro", label: "☀️ Claro" },
+                      { id: "escuro", label: "🌙 Escuro" },
+                      { id: "auto", label: "⚙️ Auto" },
+                    ].map(({ id, label }) => {
+                      const temaAtual = localStorage.getItem("tema");
+                      const ativo =
+                        (id === "auto" && !temaAtual) ||
+                        (id === "escuro" && temaAtual === "escuro") ||
+                        (id === "claro" && temaAtual === "claro");
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => {
+                            if (id === "auto") seguirSistema();
+                            else if (id === "escuro" && !escuro) toggleTema();
+                            else if (id === "claro" && escuro) toggleTema();
+                          }}
+                          style={{
+                            padding: "10px 8px",
+                            borderRadius: "10px",
+                            border: `2px solid ${ativo ? "#FE5F01" : "#DEE2E6"}`,
+                            background: ativo ? "#FE5F0111" : "var(--card)",
+                            color: ativo ? "#FE5F01" : "var(--text-soft)",
+                            fontFamily: "Nunito, sans-serif",
+                            fontWeight: 700,
+                            fontSize: "13px",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
-                ›
-              </span>
             </div>
 
-            {/* Admin — só para admins */}
-            {isAdmin && (
-              <div
-                onClick={() => {
-                  onFechar();
-                  onAbrirAdmin();
-                }}
+            {/* Ações */}
+            <div>
+              <p
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "16px",
-                  background: "var(--bg)",
-                  borderRadius: "14px",
-                  cursor: "pointer",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "var(--text-soft)",
+                  textTransform: "uppercase",
+                  letterSpacing: "1.2px",
+                  marginBottom: "8px",
+                  paddingLeft: "4px",
+                  opacity: 0.6,
                 }}
               >
-                <Shield size={20} color="#FA5252" />
-                <span style={{ fontWeight: 700, color: "#FA5252", flex: 1 }}>
-                  Painel Admin
-                </span>
-                <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
-                  ›
-                </span>
+                Ações
+              </p>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <div
+                  onClick={() => setTela("sugestao")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "14px 16px",
+                    background: "var(--bg)",
+                    borderRadius: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Lightbulb size={18} color="var(--text-soft)" />
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: "var(--text)",
+                      flex: 1,
+                      fontSize: "15px",
+                    }}
+                  >
+                    Sugerir produto
+                  </span>
+                  <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
+                    ›
+                  </span>
+                </div>
+
+                <div
+                  onClick={() => setTela("receitas")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "14px 16px",
+                    background: "var(--bg)",
+                    borderRadius: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Link size={18} color="var(--text-soft)" />
+                  <div style={{ flex: 1 }}>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: "var(--text)",
+                        fontSize: "15px",
+                      }}
+                    >
+                      Receitas
+                    </span>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--text-soft)",
+                        marginTop: "2px",
+                      }}
+                    >
+                      Em breve
+                    </p>
+                  </div>
+                  <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
+                    ›
+                  </span>
+                </div>
+
+                {isAdmin && (
+                  <div
+                    onClick={() => {
+                      onFechar();
+                      onAbrirAdmin();
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      padding: "14px 16px",
+                      background: "var(--bg)",
+                      borderRadius: "14px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Shield size={18} color="#FA5252" />
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: "#FA5252",
+                        flex: 1,
+                        fontSize: "15px",
+                      }}
+                    >
+                      Painel Admin
+                    </span>
+                    <span
+                      style={{ color: "var(--text-soft)", fontSize: "18px" }}
+                    >
+                      ›
+                    </span>
+                  </div>
+                )}
+                <div
+                  onClick={() => setConfirmandoSaida(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "14px 16px",
+                    background: "var(--bg)",
+                    borderRadius: "14px",
+                    cursor: "pointer",
+                    marginTop: "4px",
+                  }}
+                >
+                  <LogOut size={18} color="var(--text-soft)" />
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: "var(--text-soft)",
+                      flex: 1,
+                      fontSize: "15px",
+                    }}
+                  >
+                    Sair da conta
+                  </span>
+                </div>
+
+                {/* Modal confirmação */}
+                {confirmandoSaida && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 200,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "rgba(0,0,0,0.5)",
+                      padding: "20px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: "var(--card)",
+                        borderRadius: "20px",
+                        padding: "28px 24px",
+                        width: "100%",
+                        maxWidth: "320px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <p style={{ fontSize: "36px", marginBottom: "12px" }}>
+                        👋
+                      </p>
+                      <p
+                        style={{
+                          fontWeight: 900,
+                          fontSize: "18px",
+                          color: "var(--text)",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        Sair da conta?
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "14px",
+                          color: "var(--text-soft)",
+                          marginBottom: "24px",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        Você precisará fazer login novamente para acessar sua
+                        lista.
+                      </p>
+                      <div style={{ display: "flex", gap: "12px" }}>
+                        <button
+                          onClick={() => setConfirmandoSaida(false)}
+                          style={{
+                            flex: 1,
+                            padding: "14px",
+                            borderRadius: "12px",
+                            border: "none",
+                            background: "var(--bg)",
+                            color: "var(--text-soft)",
+                            fontFamily: "Nunito, sans-serif",
+                            fontWeight: 700,
+                            fontSize: "15px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => signOut(auth)}
+                          style={{
+                            flex: 1,
+                            padding: "14px",
+                            borderRadius: "12px",
+                            border: "none",
+                            background: "#FA5252",
+                            color: "white",
+                            fontFamily: "Nunito, sans-serif",
+                            fontWeight: 700,
+                            fontSize: "15px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Sair
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
 
