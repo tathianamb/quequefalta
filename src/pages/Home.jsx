@@ -84,6 +84,11 @@ function Home({ usuario, grupoId }) {
     if (produto) setProdutoSelecionado(produto);
   };
 
+  const removerItemPorProdutoId = (produto) => {
+    const item = lista.find((i) => i.produtoId === produto.id);
+    if (item) removerItem(item);
+  };
+
   return (
     <div
       style={{
@@ -431,6 +436,8 @@ function Home({ usuario, grupoId }) {
               onAbrir={setProdutoSelecionado}
               busca={busca}
               itensDaLista={lista}
+              contexto="mercado"
+              onRemover={removerItemPorProdutoId}
             />
           ))}
         </div>

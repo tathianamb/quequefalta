@@ -9,7 +9,7 @@ function ProdutoItem({
   naLista,
   comprado,
   onRemover,
-  contexto 
+  contexto,
 }) {
   const cor = corDaCategoria(produto.categoria);
   const [feedback, setFeedback] = useState(false);
@@ -26,7 +26,12 @@ function ProdutoItem({
       return;
     }
 
-    if (naLista) return;
+    // contexto === 'mercado'
+    if (naLista) {
+      onRemover && onRemover({ ...produto, id: produto.itemId || produto.id });
+      return;
+    }
+
     const adicionado = await onToggle(produto);
     if (adicionado !== false) {
       setFeedback(true);
