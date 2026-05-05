@@ -3,6 +3,7 @@ import { doc, updateDoc, arrayUnion } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { corDaCategoria } from '../utils/categorias'
 import { X, Plus } from 'lucide-react'
+import { TIPOGRAFIA, FONTE, RAIO } from '../utils/estilos'
 
 const MERCADOS = ['Atacadão', 'Max', 'Avenida', 'Superbom']
 
@@ -97,19 +98,19 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
               display: 'inline-block',
               background: cor + '22',
               color: cor,
-              fontSize: '12px',
-              fontWeight: 700,
+              fontSize: FONTE.sm,
+              fontWeight: FONTE.bold,
               padding: '3px 10px',
-              borderRadius: '20px',
+              borderRadius: RAIO.pill,
               marginBottom: '6px',
             }}>
               {produto.categoria}
             </div>
-            <h2 style={{ fontWeight: 900, fontSize: '22px', lineHeight: 1.2 }}>
+            <h2 style={{ ...TIPOGRAFIA.titulo, lineHeight: 1.2 }}>
               {produto.nome}
             </h2>
             {produto.subcategoria && (
-              <p style={{ color: 'var(--text-soft)', fontSize: '14px', marginTop: '2px' }}>
+              <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '2px' }}>
                 {produto.subcategoria}
               </p>
             )}
@@ -127,7 +128,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
           <div style={{
             background: '#EBFBEE',
             border: '1px solid #69DB7C',
-            borderRadius: '12px',
+            borderRadius: RAIO.md,
             padding: '12px 16px',
             marginBottom: '20px',
             display: 'flex',
@@ -135,23 +136,23 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
             justifyContent: 'space-between',
           }}>
             <div>
-              <p style={{ fontSize: '12px', color: '#2F9E44', fontWeight: 700 }}>Melhor preço registrado</p>
-              <p style={{ fontWeight: 900, fontSize: '20px', color: '#2F9E44' }}>
+              <p style={{ fontSize: FONTE.sm, color: '#2F9E44', fontWeight: FONTE.bold }}>Melhor preço registrado</p>
+              <p style={{ fontWeight: FONTE.black, fontSize: FONTE.xxl, color: '#2F9E44' }}>
                 R$ {melhor.preco.toFixed(2).replace('.', ',')}
               </p>
             </div>
-            <p style={{ fontWeight: 700, color: '#2F9E44', fontSize: '15px' }}>{melhor.mercado}</p>
+            <p style={{ fontWeight: FONTE.bold, color: '#2F9E44', fontSize: FONTE.base }}>{melhor.mercado}</p>
           </div>
         )}
 
         {/* Registrar preço */}
         <div style={{
           background: 'var(--bg)',
-          borderRadius: '16px',
+          borderRadius: RAIO.lg,
           padding: '16px',
           marginBottom: '24px',
         }}>
-          <p style={{ fontWeight: 800, fontSize: '15px', marginBottom: '12px' }}>
+          <p style={{ ...TIPOGRAFIA.h3, marginBottom: '12px' }}>
             Registrar preço
           </p>
 
@@ -173,8 +174,8 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
                   background: mercado === m ? cor + '22' : 'var(--card)',
                   color: mercado === m ? '#FE5F01' : 'var(--text)',
                   fontFamily: 'Nunito, sans-serif',
-                  fontWeight: 700,
-                  fontSize: '14px',
+                  fontWeight: FONTE.bold,
+                  fontSize: FONTE.md,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                 }}
@@ -195,7 +196,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
             marginBottom: '12px',
             gap: '8px',
           }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-soft)' }}>R$</span>
+            <span style={{ fontWeight: FONTE.bold, color: 'var(--text-soft)' }}>R$</span>
             <input
               type="number"
               inputMode="decimal"
@@ -206,8 +207,8 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
                 border: 'none',
                 outline: 'none',
                 fontFamily: 'Nunito, sans-serif',
-                fontSize: '16px',
-                fontWeight: 700,
+                fontSize: FONTE.lg,
+                fontWeight: FONTE.bold,
                 flex: 1,
                 color: 'var(--text)',
                 background: 'transparent',
@@ -221,13 +222,13 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
             style={{
               width: '100%',
               padding: '14px',
-              borderRadius: '12px',
+              borderRadius: RAIO.md,
               border: 'none',
               background: !mercado || !preco ? '#DEE2E6' : '#FE5F01',
               color: !mercado || !preco ? 'var(--text-soft)' : 'white',
               fontFamily: 'Nunito, sans-serif',
-              fontWeight: 800,
-              fontSize: '16px',
+              fontWeight: FONTE.extrabold,
+              fontSize: FONTE.lg,
               cursor: !mercado || !preco ? 'default' : 'pointer',
               transition: 'all 0.2s',
               display: 'flex',
@@ -244,7 +245,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
         {/* Histórico */}
         {historico.length > 0 && (
           <div>
-            <p style={{ fontWeight: 800, fontSize: '15px', marginBottom: '12px' }}>
+            <p style={{ ...TIPOGRAFIA.h3, marginBottom: '12px' }}>
               Histórico de preços
             </p>
             {historico.map((h, i) => (
@@ -256,14 +257,14 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
                 borderBottom: i < historico.length - 1 ? '1px solid #F1F3F5' : 'none',
               }}>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: '15px' }}>{h.mercado}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-soft)' }}>
+                  <p style={{ ...TIPOGRAFIA.nomeProduto }}>{h.mercado}</p>
+                  <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)' }}>
                     {h.data?.toDate
                       ? h.data.toDate().toLocaleDateString('pt-BR')
                       : new Date(h.data).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
-                <p style={{ fontWeight: 800, fontSize: '17px' }}>
+                <p style={{ fontWeight: FONTE.extrabold, fontSize: '17px' }}>
                   R$ {h.preco.toFixed(2).replace('.', ',')}
                 </p>
               </div>
@@ -272,7 +273,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
         )}
 
         {historico.length === 0 && (
-          <p style={{ textAlign: 'center', color: 'var(--text-soft)', fontSize: '14px' }}>
+          <p style={{ ...TIPOGRAFIA.corpo, textAlign: 'center', color: 'var(--text-soft)' }}>
             Nenhum preço registrado ainda.
           </p>
         )}

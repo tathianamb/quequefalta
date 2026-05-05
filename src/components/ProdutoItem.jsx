@@ -1,6 +1,7 @@
 import { Check, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef } from "react";
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../utils/estilos'
 
 function ProdutoItem({
   produto,
@@ -164,8 +165,7 @@ function ProdutoItem({
         >
           <p
             style={{
-              fontWeight: 700,
-              fontSize: "15px",
+              ...TIPOGRAFIA.nomeProduto,
               textDecoration: comprado ? "line-through" : "none",
               color: comprado
                 ? "var(--text-soft)"
@@ -177,7 +177,7 @@ function ProdutoItem({
           >
             {produto.nome}
           </p>
-          <p style={{ fontSize: "12px", color: "var(--text-soft)" }}>
+          <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
             {produto.subcategoria !== "-"
               ? produto.subcategoria
               : produto.categoria}
@@ -185,9 +185,8 @@ function ProdutoItem({
           {feedback && (
             <p
               style={{
-                fontSize: "12px",
+                ...TIPOGRAFIA.label,
                 color: "#FE5F01",
-                fontWeight: 700,
                 marginTop: "2px",
               }}
             >

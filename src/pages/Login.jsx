@@ -5,6 +5,7 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
 import { useEffect, useState } from "react";
+import { TIPOGRAFIA, FONTE, RAIO } from "../utils/estilos";
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -61,15 +62,15 @@ function Login() {
       }}
     >
       <p style={{ fontSize: "64px", marginBottom: "8px" }}>🛒</p>
-      <h1 style={{ fontWeight: 900, fontSize: "32px", marginBottom: "4px" }}>
+      <h1 style={{ ...TIPOGRAFIA.display, marginBottom: "4px" }}>
         <span style={{ color: "#FEC601" }}>QueQue</span>
         <span style={{ color: "#FE5F01" }}>Falta</span>
       </h1>
       <p
         style={{
+          ...TIPOGRAFIA.corpo,
           color: "var(--text-soft)",
           marginBottom: "48px",
-          fontSize: "15px",
         }}
       >
         Lista de compras compartilhada
@@ -81,13 +82,13 @@ function Login() {
           alignItems: "center",
           gap: "12px",
           padding: "16px 28px",
-          borderRadius: "16px",
+          borderRadius: RAIO.lg,
           border: "none",
           background: "white",
           boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
           fontFamily: "Nunito, sans-serif",
-          fontWeight: 800,
-          fontSize: "16px",
+          fontWeight: FONTE.extrabold,
+          fontSize: FONTE.lg,
           cursor: "pointer",
           color: "#212529",
         }}

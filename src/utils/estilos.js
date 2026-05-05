@@ -35,8 +35,7 @@ export const TIPOGRAFIA = {
   categoria: { fontSize: '14px', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' },
   nomeProduto: { fontSize: '15px', fontWeight: 600, letterSpacing: '0.5px' },
   subcategoria: { fontSize: '12px', fontWeight: 400, letterSpacing: '0.8px' },
-  botao: { fontSize: '15px', fontWeight: 700, letterSpacing: '0.3px' },
-  botaoSm: { fontSize: '14px', fontWeight: 600, letterSpacing: '0.3px' },
+  corpo: { fontSize: '14px', fontWeight: 400, letterSpacing: '0px' },
   aba: { fontSize: '12px', fontWeight: 700, letterSpacing: '0.3px' },
   abaInativa: { fontSize: '12px', fontWeight: 500, letterSpacing: '0.3px' },
 }

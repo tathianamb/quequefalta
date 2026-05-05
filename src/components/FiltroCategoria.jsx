@@ -1,6 +1,7 @@
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { SlidersHorizontal, X, Check } from "lucide-react";
 import { useState } from "react";
+import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../utils/estilos'
 
 function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
   const [aberto, setAberto] = useState(false);
@@ -54,12 +55,12 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
               alignItems: "center",
               gap: "6px",
               padding: "6px 12px",
-              borderRadius: "20px",
+              borderRadius: RAIO.pill,
               border: "none",
               background: "#FEC601",
               color: "#212529",
               fontFamily: "Nunito, sans-serif",
-              fontWeight: 700,
+              fontWeight: FONTE.bold,
               fontSize: "13px",
               cursor: "pointer",
               flex: 1,
@@ -91,10 +92,10 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
               alignItems: "center",
               gap: "6px",
               padding: "6px 14px",
-              borderRadius: "20px",
+              borderRadius: RAIO.pill,
               border: "none",
               fontFamily: "Nunito, sans-serif",
-              fontWeight: 500,
+              fontWeight: FONTE.medio,
               fontSize: "13px",
               cursor: "pointer",
               background: "var(--bg)",
@@ -125,7 +126,7 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "var(--card)",
-              borderRadius: "24px 24px 0 0",
+              borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
               maxHeight: "85vh",
               display: "flex",
               flexDirection: "column",
@@ -156,8 +157,7 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
             >
               <h2
                 style={{
-                  fontWeight: 700,
-                  fontSize: "18px",
+                  ...TIPOGRAFIA.h2,
                   color: "var(--text)",
                 }}
               >
@@ -193,10 +193,10 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
                       border: `1.5px solid ${selecionado ? "#FEC60155" : "#DEE2E655"}`,
                       background: selecionado ? "#FEC60122" : "var(--card)",
                       color: selecionado ? "var(--text)" : "var(--text-soft)",
-                      borderRadius: "20px",
+                      borderRadius: RAIO.pill,
                       fontFamily: "Nunito, sans-serif",
-                      fontWeight: 500,
-                      fontSize: "14px",
+                      fontWeight: FONTE.medio,
+                      fontSize: FONTE.md,
                       cursor: "pointer",
                       transition: "all 0.2s",
                       display: "flex",
@@ -228,14 +228,9 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
                 style={{
                   flex: 1,
                   padding: "14px",
-                  borderRadius: "15px",
-                  border: "1.5px solid #DEE2E6",
-                  background: "transparent",
-                  color: "var(--text-soft)",
-                  fontFamily: "Nunito, sans-serif",
-                  fontWeight: 600,
-                  fontSize: "15px",
-                  cursor: "pointer",
+                  ...BOTAO_SECUNDARIO,
+                  borderRadius: RAIO.md,
+                  fontSize: FONTE.base,
                 }}
               >
                 Limpar
@@ -245,17 +240,10 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
                 style={{
                   flex: 2,
                   padding: "14px",
-                  borderRadius: "15px",
-                  border: "none",
-                  background:
-                    selecao.length === 0
-                      ? "var(--bg)"
-                      : "linear-gradient(135deg, #FEC601, #FEC601)",
-                  color: selecao.length === 0 ? "var(--text-soft)" : "#212529",
-                  fontFamily: "Nunito, sans-serif",
-                  fontWeight: 700,
-                  fontSize: "15px",
-                  cursor: "pointer",
+                  ...BOTAO_PRIMARIO,
+                  borderRadius: RAIO.md,
+                  background: selecao.length === 0 ? "var(--bg)" : BOTAO_PRIMARIO.background,
+                  color: selecao.length === 0 ? "var(--text-soft)" : BOTAO_PRIMARIO.color,
                   transition: "all 0.2s",
                 }}
               >

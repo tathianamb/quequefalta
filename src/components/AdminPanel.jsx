@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Check, Trash2, Edit2 } from 'lucide-react'
 import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
+import { TIPOGRAFIA, FONTE, RAIO } from '../utils/estilos'
 
 function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualizar, deletar, usuario }) {
   const [editando, setEditando] = useState(null)
@@ -53,7 +54,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
           justifyContent: 'space-between',
           marginBottom: '20px',
         }}>
-          <h2 style={{ fontWeight: 900, fontSize: '20px', color: 'var(--text)' }}>
+          <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)' }}>
             Painel Admin
           </h2>
           <X size={22} color="var(--text-soft)" style={{ cursor: 'pointer' }} onClick={onFechar} />
@@ -74,10 +75,9 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
               onClick={() => setAba(id)}
               style={{
                 padding: '8px 16px',
-                borderRadius: '20px',
+                borderRadius: RAIO.pill,
                 border: 'none',
                 fontFamily: 'Nunito, sans-serif',
-                fontWeight: 700,
                 fontSize: '13px',
                 cursor: 'pointer',
                 background: aba === id ? '#FE5F01' : 'var(--bg)',
@@ -96,7 +96,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
             {pendentes.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0' }}>
                 <p style={{ fontSize: '40px' }}>✅</p>
-                <p style={{ fontWeight: 800, color: 'var(--text)', marginTop: '12px' }}>
+                <p style={{ color: 'var(--text)', marginTop: '12px' }}>
                   Nenhuma sugestão pendente!
                 </p>
               </div>
@@ -120,11 +120,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         onChange={e => setEditando({ ...editando, nome: e.target.value })}
                         style={{
                           padding: '10px',
-                          borderRadius: '8px',
+                          borderRadius: RAIO.sm,
                           border: '2px solid #DEE2E6',
                           background: 'var(--card)',
                           fontFamily: 'Nunito, sans-serif',
-                          fontSize: '14px',
+                          fontSize: FONTE.md,
                           color: 'var(--text)',
                           outline: 'none',
                         }}
@@ -134,11 +134,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         onChange={e => setEditando({ ...editando, categoria: e.target.value })}
                         style={{
                           padding: '10px',
-                          borderRadius: '8px',
+                          borderRadius: RAIO.sm,
                           border: '2px solid #DEE2E6',
                           background: 'var(--card)',
                           fontFamily: 'Nunito, sans-serif',
-                          fontSize: '14px',
+                          fontSize: FONTE.md,
                           color: 'var(--text)',
                           outline: 'none',
                         }}
@@ -156,11 +156,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         placeholder="Subcategoria"
                         style={{
                           padding: '10px',
-                          borderRadius: '8px',
+                          borderRadius: RAIO.sm,
                           border: '2px solid #DEE2E6',
                           background: 'var(--card)',
                           fontFamily: 'Nunito, sans-serif',
-                          fontSize: '14px',
+                          fontSize: FONTE.md,
                           color: 'var(--text)',
                           outline: 'none',
                         }}
@@ -178,12 +178,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                           style={{
                             flex: 1,
                             padding: '10px',
-                            borderRadius: '8px',
+                            borderRadius: RAIO.sm,
                             border: 'none',
                             background: '#51CF66',
                             color: 'white',
                             fontFamily: 'Nunito, sans-serif',
-                            fontWeight: 700,
                             cursor: 'pointer',
                           }}
                         >
@@ -194,12 +193,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                           style={{
                             flex: 1,
                             padding: '10px',
-                            borderRadius: '8px',
+                            borderRadius: RAIO.sm,
                             border: 'none',
                             background: 'var(--bg)',
                             color: 'var(--text-soft)',
                             fontFamily: 'Nunito, sans-serif',
-                            fontWeight: 700,
                             cursor: 'pointer',
                           }}
                         >
@@ -212,7 +210,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                     <>
                       <div style={{ marginBottom: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <p style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text)' }}>{s.nome}</p>
+                          <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)' }}>{s.nome}</p>
                           <Edit2
                             size={16}
                             color="var(--text-soft)"
@@ -223,7 +221,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         <p style={{ fontSize: '13px', color: 'var(--text-soft)', marginTop: '2px' }}>
                           {s.categoria}{s.subcategoria ? ` › ${s.subcategoria}` : ''}
                         </p>
-                        <p style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                        <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '4px' }}>
                           Sugerido por {s.sugeridoPor}
                         </p>
                         {s.status === 'aguardando_segunda_aprovacao' && (
@@ -231,9 +229,8 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                             marginTop: '8px',
                             padding: '6px 10px',
                             background: '#FFF3BF',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            fontWeight: 700,
+                            borderRadius: RAIO.sm,
+                            fontSize: FONTE.sm,
                             color: '#E67700',
                           }}>
                             ⏳ Aguardando segunda aprovação ({s.aprovadores?.length}/2)
@@ -247,12 +244,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                           style={{
                             flex: 1,
                             padding: '10px',
-                            borderRadius: '8px',
+                            borderRadius: RAIO.sm,
                             border: 'none',
                             background: jaAprovou ? '#DEE2E6' : '#FE5F01',
                             color: jaAprovou ? 'var(--text-soft)' : 'white',
                             fontFamily: 'Nunito, sans-serif',
-                            fontWeight: 700,
                             fontSize: '13px',
                             cursor: jaAprovou ? 'default' : 'pointer',
                             display: 'flex',
@@ -269,12 +265,11 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                           style={{
                             flex: 1,
                             padding: '10px',
-                            borderRadius: '8px',
+                            borderRadius: RAIO.sm,
                             border: 'none',
                             background: '#FFE3E3',
                             color: '#FA5252',
                             fontFamily: 'Nunito, sans-serif',
-                            fontWeight: 700,
                             fontSize: '13px',
                             cursor: 'pointer',
                             display: 'flex',
@@ -290,7 +285,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                           onClick={() => deletar(s)}
                           style={{
                             padding: '10px',
-                            borderRadius: '8px',
+                            borderRadius: RAIO.sm,
                             border: 'none',
                             background: 'var(--bg)',
                             color: 'var(--text-soft)',
@@ -327,15 +322,14 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                 justifyContent: 'space-between',
               }}>
                 <div>
-                  <p style={{ fontWeight: 700, color: 'var(--text)' }}>{s.nome}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-soft)' }}>{s.categoria}</p>
+                  <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)' }}>{s.nome}</p>
+                  <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)' }}>{s.categoria}</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
+                    fontSize: FONTE.sm,
                     padding: '4px 10px',
-                    borderRadius: '20px',
+                    borderRadius: RAIO.pill,
                     background: s.status === 'aprovado' ? '#EBFBEE' : '#FFE3E3',
                     color: s.status === 'aprovado' ? '#2F9E44' : '#FA5252',
                   }}>

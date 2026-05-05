@@ -20,6 +20,7 @@ import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import AdminPanel from "../components/AdminPanel";
 import FiltroCategoria from "../components/FiltroCategoria";
+import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO } from "../utils/estilos";
 
 function Home({ usuario, grupoId }) {
   const scrollRef = useRef(null);
@@ -115,7 +116,7 @@ function Home({ usuario, grupoId }) {
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <ShoppingCart size={24} color="var(--text)" />
-            <span style={{ fontWeight: 900, fontSize: "20px" }}>
+            <span style={{ fontWeight: FONTE.black, fontSize: FONTE.xxl }}>
               <span style={{ color: "#FEC601" }}>QueQue</span>
               <span style={{ color: "#FE5F01" }}>Falta</span>
             </span>
@@ -133,11 +134,11 @@ function Home({ usuario, grupoId }) {
                   right: "-6px",
                   background: "#FEC601",
                   color: "#212529",
-                  borderRadius: "50%",
+                  borderRadius: RAIO.full,
                   width: "18px",
                   height: "18px",
-                  fontSize: "11px",
-                  fontWeight: 800,
+                  fontSize: FONTE.xs,
+                  fontWeight: FONTE.extrabold,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -157,7 +158,7 @@ function Home({ usuario, grupoId }) {
               alignItems: "center",
               gap: "10px",
               background: "var(--bg)",
-              borderRadius: "12px",
+              borderRadius: RAIO.md,
               padding: "10px 14px",
             }}
           >
@@ -173,7 +174,7 @@ function Home({ usuario, grupoId }) {
                 background: "transparent",
                 outline: "none",
                 fontFamily: "Nunito, sans-serif",
-                fontSize: "15px",
+                fontSize: FONTE.base,
                 flex: 1,
                 color: "var(--text)",
               }}
@@ -218,8 +219,7 @@ function Home({ usuario, grupoId }) {
                 <p style={{ fontSize: "48px" }}>🔍</p>
                 <p
                   style={{
-                    fontWeight: 800,
-                    fontSize: "20px",
+                    ...TIPOGRAFIA.h2,
                     marginTop: "12px",
                     color: "var(--text)",
                   }}
@@ -228,6 +228,7 @@ function Home({ usuario, grupoId }) {
                 </p>
                 <p
                   style={{
+                    ...TIPOGRAFIA.corpo,
                     color: "var(--text-soft)",
                     marginTop: "8px",
                     lineHeight: 1.5,
@@ -240,14 +241,9 @@ function Home({ usuario, grupoId }) {
                   style={{
                     marginTop: "20px",
                     padding: "14px 24px",
-                    borderRadius: "14px",
-                    border: "none",
-                    background: "linear-gradient(135deg, #FEC601, #FE5F01)",
+                    ...BOTAO_PRIMARIO,
+                    borderRadius: RAIO.md,
                     color: "white",
-                    fontFamily: "Nunito, sans-serif",
-                    fontWeight: 800,
-                    fontSize: "15px",
-                    cursor: "pointer",
                     boxShadow: "0 4px 12px #FE5F0133",
                   }}
                 >
@@ -311,8 +307,7 @@ function Home({ usuario, grupoId }) {
               <p style={{ fontSize: "48px" }}>🔍</p>
               <p
                 style={{
-                  fontWeight: 800,
-                  fontSize: "20px",
+                  ...TIPOGRAFIA.h2,
                   marginTop: "12px",
                   color: "var(--text)",
                 }}
@@ -321,6 +316,7 @@ function Home({ usuario, grupoId }) {
               </p>
               <p
                 style={{
+                  ...TIPOGRAFIA.corpo,
                   color: "var(--text-soft)",
                   marginTop: "8px",
                   lineHeight: 1.5,
@@ -336,14 +332,9 @@ function Home({ usuario, grupoId }) {
                 style={{
                   marginTop: "20px",
                   padding: "14px 24px",
-                  borderRadius: "14px",
-                  border: "none",
-                  background: "linear-gradient(135deg, #FEC601, #FE5F01)",
+                  ...BOTAO_PRIMARIO,
+                  borderRadius: RAIO.md,
                   color: "white",
-                  fontFamily: "Nunito, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "15px",
-                  cursor: "pointer",
                   boxShadow: "0 4px 12px #FE5F0133",
                 }}
               >
@@ -436,8 +427,7 @@ function Home({ usuario, grupoId }) {
               gap: "4px",
               color: aba === id ? "#FE5F01" : "var(--text-soft)",
               fontFamily: "Nunito, sans-serif",
-              fontWeight: aba === id ? 800 : 600,
-              fontSize: "12px",
+              ...(aba === id ? TIPOGRAFIA.aba : TIPOGRAFIA.abaInativa),
               transition: "all 0.2s",
               borderTop:
                 aba === id ? "2px solid #FEC601" : "2px solid transparent",

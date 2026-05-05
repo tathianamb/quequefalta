@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import ProdutoItem from "./ProdutoItem";
+import { TIPOGRAFIA, FONTE, RAIO } from '../utils/estilos'
 
 function CategoriaGrupo({
   categoria,
@@ -40,17 +41,14 @@ function CategoriaGrupo({
           style={{
             width: "12px",
             height: "12px",
-            borderRadius: "50%",
+            borderRadius: RAIO.full,
             background: cor,
             flexShrink: 0,
           }}
         />
         <span
           style={{
-            fontWeight: 800,
-            fontSize: "14px",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
+            ...TIPOGRAFIA.categoria,
             flex: 1,
           }}
         >
@@ -58,12 +56,12 @@ function CategoriaGrupo({
         </span>
         <span
           style={{
-            fontSize: "12px",
+            fontSize: FONTE.sm,
             background: cor + "22",
             color: cor,
             padding: "2px 8px",
-            borderRadius: "20px",
-            fontWeight: 700,
+            borderRadius: RAIO.pill,
+            fontWeight: FONTE.bold,
           }}
         >
           {itens.length}

@@ -5,6 +5,12 @@ import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
+import {
+  TIPOGRAFIA,
+  RAIO,
+  BOTAO_PRIMARIO,
+  BOTAO_SECUNDARIO,
+} from "../utils/estilos";
 
 function Menu({
   onFechar,
@@ -72,8 +78,7 @@ function Menu({
           padding: "24px 20px 40px",
           maxHeight: "85vh",
           overflowY: "auto",
-          fontWeight: 500,
-          letterSpacing: "0.3px",
+          ...TIPOGRAFIA.corpo,
         }}
       >
         {/* Handle */}
@@ -96,11 +101,8 @@ function Menu({
             <div>
               <p
                 style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
+                  ...TIPOGRAFIA.label,
                   color: "var(--text-soft)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1.2px",
                   marginBottom: "8px",
                   paddingLeft: "4px",
                   opacity: 0.6,
@@ -117,14 +119,13 @@ function Menu({
               >
                 <p
                   style={{
-                    fontWeight: 800,
-                    fontSize: "15px",
+                    ...TIPOGRAFIA.titulo,
                     color: "var(--text)",
                   }}
                 >
                   {usuario.displayName}
                 </p>
-                <p style={{ fontSize: "12px", color: "var(--text-soft)" }}>
+                <p style={{ ...TIPOGRAFIA.corpo, color: "var(--text-soft)" }}>
                   {usuario.email}
                 </p>
               </div>
@@ -134,11 +135,8 @@ function Menu({
             <div>
               <p
                 style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
+                  ...TIPOGRAFIA.label,
                   color: "var(--text-soft)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1.2px",
                   marginBottom: "8px",
                   paddingLeft: "4px",
                   opacity: 0.6,
@@ -168,9 +166,8 @@ function Menu({
                     <Moon size={18} color="var(--text-soft)" />
                     <span
                       style={{
-                        fontWeight: 700,
+                        ...TIPOGRAFIA.nomeProduto,
                         color: "var(--text)",
-                        fontSize: "15px",
                       }}
                     >
                       Tema
@@ -203,14 +200,11 @@ function Menu({
                           }}
                           style={{
                             padding: "10px 8px",
+                            ...BOTAO_SECUNDARIO,
                             borderRadius: "10px",
                             border: `2px solid ${ativo ? "#FE5F01" : "#DEE2E6"}`,
                             background: ativo ? "#FE5F0111" : "var(--card)",
                             color: ativo ? "#FE5F01" : "var(--text-soft)",
-                            fontFamily: "Nunito, sans-serif",
-                            fontWeight: 700,
-                            fontSize: "13px",
-                            cursor: "pointer",
                             transition: "all 0.2s",
                           }}
                         >
@@ -227,11 +221,8 @@ function Menu({
             <div>
               <p
                 style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
+                  ...TIPOGRAFIA.label,
                   color: "var(--text-soft)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1.2px",
                   marginBottom: "8px",
                   paddingLeft: "4px",
                   opacity: 0.6,
@@ -257,17 +248,14 @@ function Menu({
                   <Lightbulb size={18} color="var(--text-soft)" />
                   <span
                     style={{
-                      fontWeight: 700,
+                      ...TIPOGRAFIA.nomeProduto,
                       color: "var(--text)",
                       flex: 1,
-                      fontSize: "15px",
                     }}
                   >
                     Sugerir produto
                   </span>
-                  <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
-                    ›
-                  </span>
+                  <span style={{ color: "var(--text-soft)" }}>›</span>
                 </div>
 
                 <div
@@ -286,16 +274,15 @@ function Menu({
                   <div style={{ flex: 1 }}>
                     <span
                       style={{
-                        fontWeight: 700,
+                        ...TIPOGRAFIA.nomeProduto,
                         color: "var(--text)",
-                        fontSize: "15px",
                       }}
                     >
                       Receitas
                     </span>
                     <p
                       style={{
-                        fontSize: "12px",
+                        ...TIPOGRAFIA.corpo,
                         color: "var(--text-soft)",
                         marginTop: "2px",
                       }}
@@ -303,9 +290,7 @@ function Menu({
                       Em breve
                     </p>
                   </div>
-                  <span style={{ color: "var(--text-soft)", fontSize: "18px" }}>
-                    ›
-                  </span>
+                  <span style={{ color: "var(--text-soft)" }}>›</span>
                 </div>
 
                 {isAdmin && (
@@ -327,19 +312,14 @@ function Menu({
                     <Shield size={18} color="#FA5252" />
                     <span
                       style={{
-                        fontWeight: 700,
+                        ...TIPOGRAFIA.nomeProduto,
                         color: "#FA5252",
                         flex: 1,
-                        fontSize: "15px",
                       }}
                     >
                       Painel Admin
                     </span>
-                    <span
-                      style={{ color: "var(--text-soft)", fontSize: "18px" }}
-                    >
-                      ›
-                    </span>
+                    <span style={{ color: "var(--text-soft)" }}>›</span>
                   </div>
                 )}
                 <div
@@ -358,10 +338,9 @@ function Menu({
                   <LogOut size={18} color="var(--text-soft)" />
                   <span
                     style={{
-                      fontWeight: 700,
+                      ...TIPOGRAFIA.nomeProduto,
                       color: "var(--text-soft)",
                       flex: 1,
-                      fontSize: "15px",
                     }}
                   >
                     Sair da conta
@@ -392,13 +371,12 @@ function Menu({
                         textAlign: "center",
                       }}
                     >
-                      <p style={{ fontSize: "36px", marginBottom: "12px" }}>
+                      <p style={{ ...TIPOGRAFIA.titulo, marginBottom: "12px" }}>
                         👋
                       </p>
                       <p
                         style={{
-                          fontWeight: 900,
-                          fontSize: "18px",
+                          ...TIPOGRAFIA.titulo,
                           color: "var(--text)",
                           marginBottom: "8px",
                         }}
@@ -407,7 +385,7 @@ function Menu({
                       </p>
                       <p
                         style={{
-                          fontSize: "14px",
+                          ...TIPOGRAFIA.corpo,
                           color: "var(--text-soft)",
                           marginBottom: "24px",
                           lineHeight: 1.5,
@@ -422,13 +400,7 @@ function Menu({
                           style={{
                             flex: 1,
                             padding: "14px",
-                            borderRadius: "12px",
-                            border: "none",
-                            background: "var(--bg)",
-                            color: "var(--text-soft)",
-                            fontFamily: "Nunito, sans-serif",
-                            fontWeight: 700,
-                            fontSize: "15px",
+                            ...BOTAO_PRIMARIO,
                             cursor: "pointer",
                           }}
                         >
@@ -439,13 +411,7 @@ function Menu({
                           style={{
                             flex: 1,
                             padding: "14px",
-                            borderRadius: "12px",
-                            border: "none",
-                            background: "#FA5252",
-                            color: "white",
-                            fontFamily: "Nunito, sans-serif",
-                            fontWeight: 700,
-                            fontSize: "15px",
+                            ...BOTAO_SECUNDARIO,
                             cursor: "pointer",
                           }}
                         >
@@ -468,7 +434,7 @@ function Menu({
             <p
               style={{
                 color: "var(--text-soft)",
-                fontSize: "14px",
+                ...TIPOGRAFIA.corpo,
                 marginBottom: "4px",
               }}
             >
@@ -486,7 +452,7 @@ function Menu({
                 border: "2px solid #DEE2E6",
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
-                fontSize: "15px",
+                ...TIPOGRAFIA.corpo,
                 color: "var(--text)",
                 outline: "none",
               }}
@@ -501,7 +467,7 @@ function Menu({
                 border: "2px solid #DEE2E6",
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
-                fontSize: "15px",
+                ...TIPOGRAFIA.corpo,
                 color: categoria ? "var(--text)" : "var(--text-soft)",
                 outline: "none",
               }}
@@ -527,7 +493,7 @@ function Menu({
                 border: "2px solid #DEE2E6",
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
-                fontSize: "15px",
+                ...TIPOGRAFIA.corpo,
                 color: "var(--text)",
                 outline: "none",
               }}
@@ -538,13 +504,7 @@ function Menu({
               disabled={!nome || !categoria || enviando}
               style={{
                 padding: "14px",
-                borderRadius: "12px",
-                border: "none",
-                background: !nome || !categoria ? "#DEE2E6" : "#FE5F01",
-                color: !nome || !categoria ? "var(--text-soft)" : "white",
-                fontFamily: "Nunito, sans-serif",
-                fontWeight: 800,
-                fontSize: "16px",
+                ...BOTAO_PRIMARIO,
                 cursor: !nome || !categoria ? "default" : "pointer",
                 marginTop: "4px",
               }}
@@ -561,11 +521,10 @@ function Menu({
         {/* Tela Receitas */}
         {tela === "receitas" && (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <p style={{ fontSize: "48px" }}>👨‍🍳</p>
+            <p style={{ ...TIPOGRAFIA.titulo }}>👨‍🍳</p>
             <p
               style={{
-                fontWeight: 800,
-                fontSize: "20px",
+                ...TIPOGRAFIA.titulo,
                 marginTop: "16px",
                 color: "var(--text)",
               }}
