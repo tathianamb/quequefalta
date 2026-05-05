@@ -66,7 +66,7 @@ function CategoriaGrupo({ categoria, itens, onToggle, onAbrir, busca, itensDaLis
           onAbrir={onAbrir}
           naLista={itensDaLista?.some(i => i.produtoId === p.id)}
           comprado={p.comprado}
-          onRemover={onRemover}
+          onRemover={onRemover || null}
         />
       ))}
     </div>

@@ -19,26 +19,31 @@ function ProdutoItem({ produto, onToggle, onAbrir, naLista, comprado, onRemover 
     }
   }
 
+  const podeSwipe = typeof onRemover === 'function'
+
   const onTouchStart = (e) => {
+    if (!podeSwipe) return
     startX.current = e.touches[0].clientX
     setSwipando(true)
   }
 
   const onTouchMove = (e) => {
-    if (!swipando) return
+    if (!swipando || !podeSwipe) return
     const diff = e.touches[0].clientX - startX.current
-    if (diff < 0) setSwipeX(Math.max(diff, -threshold))
+    const novoX = swipeX + diff
+    if (novoX <= 0) setSwipeX(Math.max(novoX, -threshold))
+    startX.current = e.touches[0].clientX
   }
 
   const onTouchEnd = () => {
+    if (!podeSwipe) return
     setSwipando(false)
-    if (swipeX <= -threshold) {
+    if (swipeX < -threshold / 2) {
       setSwipeX(-threshold)
     } else {
       setSwipeX(0)
     }
   }
-
   const handleRemover = () => {
     setSwipeX(0)
     onRemover && onRemover(produto)
@@ -48,23 +53,25 @@ function ProdutoItem({ produto, onToggle, onAbrir, naLista, comprado, onRemover 
     <div style={{ position: 'relative', marginBottom: '8px', borderRadius: '12px', overflow: 'hidden', isolation: 'isolate' }}>
 
       {/* Fundo vermelho com lixeira */}
-      <div style={{
-        position: 'absolute',
-        right: 0,
-        top: 0,
-        bottom: 0,
-        width: `${threshold}px`,
-        background: '#FA5252',
-        display: swipeX < 0 ? 'flex' : 'none',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '0 12px 12px 0',
-        cursor: 'pointer',
-      }}
-        onClick={handleRemover}
-      >
-        <Trash2 size={20} color="white" />
-      </div>
+      {podeSwipe && swipeX < 0 && (
+        <div style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: `${threshold}px`,
+          background: '#FA5252',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '0 12px 12px 0',
+          cursor: 'pointer',
+        }}
+          onClick={handleRemover}
+        >
+          <Trash2 size={20} color="white" />
+        </div>
+      )}
 
       {/* Card deslizável */}
       <div
