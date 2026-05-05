@@ -4,17 +4,21 @@ import { auth } from '../config/firebase'
 import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
 import { useLista } from '../hooks/useLista'
 import { useCatalogo } from '../hooks/useCatalogo'
+import { useTema } from '../hooks/useTema'
 import CategoriaGrupo from '../components/CategoriaGrupo'
 import DetalhesProduto from '../components/DetalhesProduto'
-import { ShoppingCart, BookOpen, LogOut, Search, X } from 'lucide-react'
+import Menu from '../components/Menu'
+import { ShoppingCart, BookOpen, LogOut, Search, X, Menu as MenuIcon } from 'lucide-react'
 
 function Home({ usuario, grupoId }) {
   const { lista, carregando: carregandoLista, adicionarItem, toggleComprado } = useLista(grupoId)
   const { catalogo, carregando: carregandoCatalogo } = useCatalogo()
+  const { escuro, toggleTema } = useTema()
   const [aba, setAba] = useState('lista')
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
   const [produtoSelecionado, setProdutoSelecionado] = useState(null)
+  const [menuAberto, setMenuAberto] = useState(false)
 
   const filtrar = (arr) => arr.filter(p => {
     const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase())
@@ -37,16 +41,16 @@ function Home({ usuario, grupoId }) {
   const carregando = carregandoLista || carregandoCatalogo
 
   const abrirProduto = (item) => {
-  const produto = catalogo.find(p => p.id === item.produtoId) || catalogo.find(p => p.nome === item.nome)
-  if (produto) setProdutoSelecionado(produto)
+    const produto = catalogo.find(p => p.id === item.produtoId) || catalogo.find(p => p.nome === item.nome)
+    if (produto) setProdutoSelecionado(produto)
   }
 
   return (
-    <div style={{ minHeight: '100vh', paddingBottom: '72px' }}>
+    <div style={{ minHeight: '100vh', paddingBottom: '72px', background: 'var(--bg)' }}>
 
       {/* Header */}
       <div style={{
-        background: 'white',
+        background: 'var(--card)',
         boxShadow: 'var(--shadow)',
         position: 'sticky',
         top: 0,
@@ -59,20 +63,20 @@ function Home({ usuario, grupoId }) {
           justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShoppingCart size={24} color="#212529" />
-            <span style={{ fontWeight: 900, fontSize: '20px' }}>QueQueFalta</span>
+            <ShoppingCart size={24} color="var(--text)" />
+            <span style={{ fontWeight: 900, fontSize: '20px', color: 'var(--text)' }}>QueQueFalta</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {aba === 'lista' && (
               <span style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
                 {pendentes.length} itens
               </span>
             )}
-            <LogOut
-              size={20}
+            <MenuIcon
+              size={22}
               color="var(--text-soft)"
               style={{ cursor: 'pointer' }}
-              onClick={() => signOut(auth)}
+              onClick={() => setMenuAberto(true)}
             />
           </div>
         </div>
@@ -127,8 +131,8 @@ function Home({ usuario, grupoId }) {
               fontWeight: 700,
               fontSize: '13px',
               cursor: 'pointer',
-              background: !categoriaFiltro ? '#212529' : 'var(--bg)',
-              color: !categoriaFiltro ? 'white' : 'var(--text-soft)',
+              background: !categoriaFiltro ? 'var(--text)' : 'var(--bg)',
+              color: !categoriaFiltro ? 'var(--card)' : 'var(--text-soft)',
               transition: 'all 0.2s',
             }}
           >
@@ -168,17 +172,15 @@ function Home({ usuario, grupoId }) {
           {carregando && (
             <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
           )}
-
           {!carregando && lista.length === 0 && (
             <div style={{ textAlign: 'center', marginTop: '60px' }}>
               <p style={{ fontSize: '48px' }}>🛒</p>
-              <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px' }}>Lista vazia!</p>
+              <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px', color: 'var(--text)' }}>Lista vazia!</p>
               <p style={{ color: 'var(--text-soft)', marginTop: '4px' }}>
                 Vá ao Mercado e adicione itens à sua lista.
               </p>
             </div>
           )}
-
           {Object.entries(porCategoriaPendentes).map(([categoria, itens]) => (
             <CategoriaGrupo
               key={categoria}
@@ -190,7 +192,6 @@ function Home({ usuario, grupoId }) {
               itensDaLista={lista}
             />
           ))}
-
           {comprados.length > 0 && (
             <div style={{ marginTop: '24px', borderTop: '1px dashed #DEE2E6', paddingTop: '16px' }}>
               <CategoriaGrupo
@@ -237,12 +238,23 @@ function Home({ usuario, grupoId }) {
       {/* Modal detalhes */}
       {produtoSelecionado && (
         <DetalhesProduto
-            produto={catalogo.find(p => p.id === produtoSelecionado.id) || produtoSelecionado}
-            onFechar={() => setProdutoSelecionado(null)}
-            grupoId={grupoId}
-            itemDaLista={lista.find(i => i.produtoId === produtoSelecionado.id)}
+          produto={catalogo.find(p => p.id === produtoSelecionado.id) || produtoSelecionado}
+          onFechar={() => setProdutoSelecionado(null)}
+          grupoId={grupoId}
+          itemDaLista={lista.find(i => i.produtoId === produtoSelecionado.id)}
         />
-        )}
+      )}
+
+      {/* Menu */}
+      {menuAberto && (
+        <Menu
+          onFechar={() => setMenuAberto(false)}
+          escuro={escuro}
+          toggleTema={toggleTema}
+          grupoId={grupoId}
+          usuario={usuario}
+        />
+      )}
 
       {/* Navegação inferior */}
       <div style={{
@@ -252,7 +264,7 @@ function Home({ usuario, grupoId }) {
         transform: 'translateX(-50%)',
         width: '100%',
         maxWidth: '480px',
-        background: 'white',
+        background: 'var(--card)',
         borderTop: '1px solid #F1F3F5',
         display: 'flex',
         zIndex: 20,
@@ -274,12 +286,12 @@ function Home({ usuario, grupoId }) {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '4px',
-              color: aba === id ? '#212529' : 'var(--text-soft)',
+              color: aba === id ? 'var(--text)' : 'var(--text-soft)',
               fontFamily: 'Nunito, sans-serif',
               fontWeight: aba === id ? 800 : 600,
               fontSize: '12px',
               transition: 'all 0.2s',
-              borderTop: aba === id ? '2px solid #212529' : '2px solid transparent',
+              borderTop: aba === id ? '2px solid var(--text)' : '2px solid transparent',
             }}
           >
             <Icon size={20} />
