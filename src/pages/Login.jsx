@@ -1,10 +1,20 @@
 import { signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { auth, googleProvider } from '../config/firebase'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 function Login() {
+  const [carregando, setCarregando] = useState(true)
+
   useEffect(() => {
-    getRedirectResult(auth).catch(console.error)
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          // login bem sucedido — o onAuthStateChanged no App.jsx vai capturar
+          console.log('Login via redirect bem sucedido')
+        }
+      })
+      .catch(console.error)
+      .finally(() => setCarregando(false))
   }, [])
 
   const handleLogin = async () => {
@@ -14,6 +24,18 @@ function Login() {
       console.error('Erro no login:', error)
     }
   }
+
+  if (carregando) return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg)',
+    }}>
+      <p style={{ color: 'var(--text-soft)' }}>Carregando...</p>
+    </div>
+  )
 
   return (
     <div style={{
