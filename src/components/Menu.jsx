@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { X, Moon, Sun, Lightbulb, Link } from 'lucide-react'
+import { X, Moon, Sun, Lightbulb, Link, Shield } from 'lucide-react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { ORDEM_CATEGORIAS } from '../utils/categorias'
 
-function Menu({ onFechar, escuro, toggleTema, grupoId, usuario }) {
+function Menu({ onFechar, escuro, toggleTema, grupoId, usuario, isAdmin, onAbrirAdmin }) {
   const [tela, setTela] = useState('menu') // 'menu' | 'sugestao' | 'receitas'
   const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('')
@@ -175,6 +175,28 @@ function Menu({ onFechar, escuro, toggleTema, grupoId, usuario }) {
               </div>
               <span style={{ color: 'var(--text-soft)', fontSize: '18px' }}>›</span>
             </div>
+
+            {/* Admin — só para admins */}
+            {isAdmin && (
+            <div
+                onClick={() => { onFechar(); onAbrirAdmin() }}
+                style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px',
+                background: 'var(--bg)',
+                borderRadius: '14px',
+                cursor: 'pointer',
+                }}
+            >
+                <Shield size={20} color="#FA5252" />
+                <span style={{ fontWeight: 700, color: '#FA5252', flex: 1 }}>
+                Painel Admin
+                </span>
+                <span style={{ color: 'var(--text-soft)', fontSize: '18px' }}>›</span>
+            </div>
+            )}
           </div>
         )}
 

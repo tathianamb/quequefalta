@@ -9,6 +9,9 @@ import CategoriaGrupo from '../components/CategoriaGrupo'
 import DetalhesProduto from '../components/DetalhesProduto'
 import Menu from '../components/Menu'
 import { ShoppingCart, BookOpen, LogOut, Search, X, Menu as MenuIcon } from 'lucide-react'
+import { isAdmin } from '../config/admins'
+import { useSugestoes } from '../hooks/useSugestoes'
+import AdminPanel from '../components/AdminPanel'
 
 function Home({ usuario, grupoId }) {
   const { lista, carregando: carregandoLista, adicionarItem, toggleComprado } = useLista(grupoId)
@@ -19,6 +22,9 @@ function Home({ usuario, grupoId }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
   const [produtoSelecionado, setProdutoSelecionado] = useState(null)
   const [menuAberto, setMenuAberto] = useState(false)
+const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, deletar } = useSugestoes(usuario)
+  const [adminAberto, setAdminAberto] = useState(false)
+  const admin = isAdmin(usuario.email)
 
   const filtrar = (arr) => arr.filter(p => {
     const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase())
@@ -66,18 +72,27 @@ function Home({ usuario, grupoId }) {
             <ShoppingCart size={24} color="var(--text)" />
             <span style={{ fontWeight: 900, fontSize: '20px', color: 'var(--text)' }}>QueQueFalta</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {aba === 'lista' && (
-              <span style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
-                {pendentes.length} itens
-              </span>
-            )}
-            <MenuIcon
-              size={22}
-              color="var(--text-soft)"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setMenuAberto(true)}
-            />
+          <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setMenuAberto(true)}>
+          <MenuIcon size={22} color="var(--text-soft)" />
+          {admin && pendentes.length > 0 && (
+              <div style={{
+              position: 'absolute',
+              top: '-6px',
+              right: '-6px',
+              background: '#FA5252',
+              color: 'white',
+              borderRadius: '50%',
+              width: '18px',
+              height: '18px',
+              fontSize: '11px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              }}>
+              {pendentes.length}
+              </div>
+          )}
           </div>
         </div>
 
@@ -247,13 +262,15 @@ function Home({ usuario, grupoId }) {
 
       {/* Menu */}
       {menuAberto && (
-        <Menu
+      <Menu
           onFechar={() => setMenuAberto(false)}
           escuro={escuro}
           toggleTema={toggleTema}
           grupoId={grupoId}
           usuario={usuario}
-        />
+          isAdmin={admin}
+          onAbrirAdmin={() => setAdminAberto(true)}
+      />
       )}
 
       {/* Navegação inferior */}
@@ -299,6 +316,20 @@ function Home({ usuario, grupoId }) {
           </button>
         ))}
       </div>
+
+      {adminAberto && (
+      <AdminPanel
+          onFechar={() => setAdminAberto(false)}
+          sugestoes={sugestoes}
+          pendentes={sugestoesPendentes}
+          aprovar={aprovar}
+          rejeitar={rejeitar}
+          atualizar={atualizar}
+          deletar={deletar}
+          usuario={usuario}
+      />
+      )}
+
     </div>
   )
 }
