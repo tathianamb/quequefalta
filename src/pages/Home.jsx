@@ -5,14 +5,16 @@ import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
 import { useLista } from '../hooks/useLista'
 import { useCatalogo } from '../hooks/useCatalogo'
 import CategoriaGrupo from '../components/CategoriaGrupo'
+import DetalhesProduto from '../components/DetalhesProduto'
 import { ShoppingCart, BookOpen, LogOut, Search, X } from 'lucide-react'
 
 function Home({ usuario, grupoId }) {
-  const { lista, carregando: carregandoLista, adicionarItem, toggleComprado, removerItem } = useLista(grupoId)
+  const { lista, carregando: carregandoLista, adicionarItem, toggleComprado } = useLista(grupoId)
   const { catalogo, carregando: carregandoCatalogo } = useCatalogo()
   const [aba, setAba] = useState('lista')
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null)
 
   const filtrar = (arr) => arr.filter(p => {
     const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase())
@@ -26,17 +28,18 @@ function Home({ usuario, grupoId }) {
     return acc
   }, {})
 
-  // Lista: pendentes e comprados separados
   const pendentes = filtrar(lista.filter(i => !i.comprado))
   const comprados = filtrar(lista.filter(i => i.comprado))
   const porCategoriaPendentes = agrupar(pendentes)
   const porCategoriaComprados = agrupar(comprados)
-
-  // Catálogo
   const catalogoFiltrado = filtrar(catalogo)
   const porCategoriaCatalogo = agrupar(catalogoFiltrado)
-
   const carregando = carregandoLista || carregandoCatalogo
+
+  const abrirProduto = (item) => {
+  const produto = catalogo.find(p => p.id === item.produtoId) || catalogo.find(p => p.nome === item.nome)
+  if (produto) setProdutoSelecionado(produto)
+  }
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '72px' }}>
@@ -100,12 +103,7 @@ function Home({ usuario, grupoId }) {
               }}
             />
             {busca && (
-              <X
-                size={16}
-                color="var(--text-soft)"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setBusca('')}
-              />
+              <X size={16} color="var(--text-soft)" style={{ cursor: 'pointer' }} onClick={() => setBusca('')} />
             )}
           </div>
         </div>
@@ -181,30 +179,33 @@ function Home({ usuario, grupoId }) {
             </div>
           )}
 
-          {/* Pendentes */}
           {Object.entries(porCategoriaPendentes).map(([categoria, itens]) => (
             <CategoriaGrupo
               key={categoria}
               categoria={categoria}
               itens={itens}
               onToggle={toggleComprado}
+              onAbrir={abrirProduto}
               busca={busca}
               itensDaLista={lista}
             />
           ))}
-            {/* Comprados — sempre por último, colapsável */}
-            {comprados.length > 0 && (
-            <CategoriaGrupo
+
+          {comprados.length > 0 && (
+            <div style={{ marginTop: '24px', borderTop: '1px dashed #DEE2E6', paddingTop: '16px' }}>
+              <CategoriaGrupo
                 key="tem-em-casa"
                 categoria="Tem em casa"
                 itens={comprados}
                 onToggle={toggleComprado}
+                onAbrir={abrirProduto}
                 busca={busca}
                 itensDaLista={lista}
                 collapsed={true}
                 corOverride="#ADB5BD"
-            />
-            )}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -225,12 +226,23 @@ function Home({ usuario, grupoId }) {
               categoria={categoria}
               itens={itens}
               onToggle={adicionarItem}
+              onAbrir={setProdutoSelecionado}
               busca={busca}
               itensDaLista={lista}
             />
           ))}
         </div>
       )}
+
+      {/* Modal detalhes */}
+      {produtoSelecionado && (
+        <DetalhesProduto
+            produto={catalogo.find(p => p.id === produtoSelecionado.id) || produtoSelecionado}
+            onFechar={() => setProdutoSelecionado(null)}
+            grupoId={grupoId}
+            itemDaLista={lista.find(i => i.produtoId === produtoSelecionado.id)}
+        />
+        )}
 
       {/* Navegação inferior */}
       <div style={{
