@@ -72,6 +72,8 @@ function Menu({
           padding: "24px 20px 40px",
           maxHeight: "85vh",
           overflowY: "auto",
+          fontWeight: 500,
+          letterSpacing: "0.3px",
         }}
       >
         {/* Handle */}

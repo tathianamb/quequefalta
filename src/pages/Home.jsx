@@ -1,11 +1,7 @@
 import { useState, useRef } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
-import {
-  ORDEM_CATEGORIAS,
-  corDaCategoria,
-  textoParaCor,
-} from "../utils/categorias";
+import { ORDEM_CATEGORIAS, textoParaCor } from "../utils/categorias";
 import { useLista } from "../hooks/useLista";
 import { useCatalogo } from "../hooks/useCatalogo";
 import { useTema } from "../hooks/useTema";
@@ -23,6 +19,7 @@ import {
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import AdminPanel from "../components/AdminPanel";
+import FiltroCategoria from "../components/FiltroCategoria";
 
 function Home({ usuario, grupoId }) {
   const scrollRef = useRef(null);
@@ -40,7 +37,7 @@ function Home({ usuario, grupoId }) {
   const { escuro, toggleTema, seguirSistema } = useTema();
   const [aba, setAba] = useState("lista");
   const [busca, setBusca] = useState("");
-  const [categoriaFiltro, setCategoriaFiltro] = useState(null);
+  const [categoriasFiltro, setCategoriasFiltro] = useState([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const {
@@ -58,7 +55,8 @@ function Home({ usuario, grupoId }) {
   const filtrar = (arr) =>
     arr.filter((p) => {
       const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase());
-      const categoriaOk = !categoriaFiltro || p.categoria === categoriaFiltro;
+      const categoriaOk =
+        categoriasFiltro.length === 0 || categoriasFiltro.includes(p.categoria);
       return buscaOk && categoriaOk;
     });
 
@@ -192,84 +190,10 @@ function Home({ usuario, grupoId }) {
         </div>
 
         {/* Filtro categorias */}
-        <div
-          className="categorias-scroll"
-          ref={scrollRef}
-          onMouseDown={(e) => {
-            isDragging.current = true;
-            startX.current = e.pageX - scrollRef.current.offsetLeft;
-            scrollLeft.current = scrollRef.current.scrollLeft;
-          }}
-          onMouseMove={(e) => {
-            if (!isDragging.current) return;
-            e.preventDefault();
-            const x = e.pageX - scrollRef.current.offsetLeft;
-            scrollRef.current.scrollLeft =
-              scrollLeft.current - (x - startX.current);
-          }}
-          onMouseUp={() => {
-            isDragging.current = false;
-          }}
-          onMouseLeave={() => {
-            isDragging.current = false;
-          }}
-          style={{
-            display: "flex",
-            gap: "8px",
-            overflowX: "auto",
-            padding: "0 16px 12px",
-            scrollbarWidth: "none",
-            WebkitOverflowScrolling: "touch",
-            msOverflowStyle: "none",
-            cursor: "grab",
-            userSelect: "none",
-          }}
-        >
-          <button
-            onClick={() => setCategoriaFiltro(null)}
-            style={{
-              flexShrink: 0,
-              padding: "6px 14px",
-              borderRadius: "20px",
-              border: "none",
-              fontFamily: "Nunito, sans-serif",
-              fontWeight: 700,
-              fontSize: "13px",
-              cursor: "pointer",
-              background: !categoriaFiltro ? "#FE5F01" : "var(--bg)",
-              color: !categoriaFiltro ? "white" : "var(--text-soft)",
-              transition: "all 0.2s",
-            }}
-          >
-            Todas
-          </button>
-          {ORDEM_CATEGORIAS.map((cat) => {
-            const cor = corDaCategoria(cat);
-            const ativo = categoriaFiltro === cat;
-            const textoCor = textoParaCor(cor);
-            return (
-              <button
-                key={cat}
-                onClick={() => setCategoriaFiltro(ativo ? null : cat)}
-                style={{
-                  flexShrink: 0,
-                  padding: "6px 14px",
-                  borderRadius: "20px",
-                  border: "none",
-                  fontFamily: "Nunito, sans-serif",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  background: ativo ? cor : cor + "22",
-                  color: ativo ? textoCor : cor,
-                  transition: "all 0.2s",
-                }}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
+        <FiltroCategoria
+          categoriasFiltro={categoriasFiltro}
+          setCategoriasFiltro={setCategoriasFiltro}
+        />
       </div>
 
       {/* Aba Lista */}
@@ -498,7 +422,7 @@ function Home({ usuario, grupoId }) {
             onClick={() => {
               setAba(id);
               setBusca("");
-              setCategoriaFiltro(null);
+              setCategoriasFiltro([]);
             }}
             style={{
               flex: 1,
