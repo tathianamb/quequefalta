@@ -69,7 +69,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--card)',
           borderRadius: '24px 24px 0 0',
           padding: '24px 20px 40px',
           maxHeight: '85vh',
@@ -169,9 +169,9 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
                 style={{
                   padding: '10px',
                   borderRadius: '10px',
-                  border: `2px solid ${mercado === m ? cor : '#DEE2E6'}`,
-                  background: mercado === m ? cor + '22' : 'white',
-                  color: mercado === m ? cor : 'var(--text)',
+                  border: `2px solid ${mercado === m ? '#FE5F01' : '#DEE2E6'}`,
+                  background: mercado === m ? cor + '22' : 'var(--card)',
+                  color: mercado === m ? '#FE5F01' : 'var(--text)',
                   fontFamily: 'Nunito, sans-serif',
                   fontWeight: 700,
                   fontSize: '14px',
@@ -188,7 +188,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            background: 'white',
+            background: 'var(--card)',
             borderRadius: '10px',
             border: '2px solid #DEE2E6',
             padding: '10px 14px',
@@ -210,6 +210,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
                 fontWeight: 700,
                 flex: 1,
                 color: 'var(--text)',
+                background: 'transparent',
               }}
             />
           </div>
@@ -222,7 +223,7 @@ function DetalhesProduto({ produto, onFechar, grupoId, itemDaLista }) {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              background: !mercado || !preco ? '#DEE2E6' : cor,
+              background: !mercado || !preco ? '#DEE2E6' : '#FE5F01',
               color: !mercado || !preco ? 'var(--text-soft)' : 'white',
               fontFamily: 'Nunito, sans-serif',
               fontWeight: 800,

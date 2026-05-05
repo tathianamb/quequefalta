@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../config/firebase'
-import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
+import { ORDEM_CATEGORIAS, corDaCategoria, textoParaCor } from '../utils/categorias'
 import { useLista } from '../hooks/useLista'
 import { useCatalogo } from '../hooks/useCatalogo'
 import { useTema } from '../hooks/useTema'
@@ -14,7 +14,11 @@ import { useSugestoes } from '../hooks/useSugestoes'
 import AdminPanel from '../components/AdminPanel'
 
 function Home({ usuario, grupoId }) {
-  const { lista, carregando: carregandoLista, adicionarItem, toggleComprado } = useLista(grupoId)
+  const scrollRef = useRef(null)
+  const isDragging = useRef(false)
+  const startX = useRef(0)
+  const scrollLeft = useRef(0)
+  const { lista, carregando: carregandoLista, adicionarItem, toggleComprado, removerItem } = useLista(grupoId)
   const { catalogo, carregando: carregandoCatalogo } = useCatalogo()
   const { escuro, toggleTema } = useTema()
   const [aba, setAba] = useState('lista')
@@ -22,9 +26,10 @@ function Home({ usuario, grupoId }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState(null)
   const [produtoSelecionado, setProdutoSelecionado] = useState(null)
   const [menuAberto, setMenuAberto] = useState(false)
-const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, deletar } = useSugestoes(usuario)
+  const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, deletar } = useSugestoes(usuario)
   const [adminAberto, setAdminAberto] = useState(false)
   const admin = isAdmin(usuario.email)
+  const [telaMenu, setTelaMenu] = useState('menu')
 
   const filtrar = (arr) => arr.filter(p => {
     const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase())
@@ -70,17 +75,20 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ShoppingCart size={24} color="var(--text)" />
-            <span style={{ fontWeight: 900, fontSize: '20px', color: 'var(--text)' }}>QueQueFalta</span>
+            <span style={{ fontWeight: 900, fontSize: '20px' }}>
+            <span style={{ color: '#FEC601' }}>QueQue</span>
+            <span style={{ color: '#FE5F01' }}>Falta</span>
+            </span>
           </div>
           <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setMenuAberto(true)}>
           <MenuIcon size={22} color="var(--text-soft)" />
-          {admin && pendentes.length > 0 && (
+          {admin && sugestoesPendentes.length > 0 && (
               <div style={{
               position: 'absolute',
               top: '-6px',
               right: '-6px',
-              background: '#FA5252',
-              color: 'white',
+              background: '#FEC601',
+              color: '#212529',
               borderRadius: '50%',
               width: '18px',
               height: '18px',
@@ -90,7 +98,7 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
               alignItems: 'center',
               justifyContent: 'center',
               }}>
-              {pendentes.length}
+              {sugestoesPendentes.length}
               </div>
           )}
           </div>
@@ -128,13 +136,34 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
         </div>
 
         {/* Filtro categorias */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          overflowX: 'auto',
-          padding: '0 16px 12px',
-          scrollbarWidth: 'none',
-        }}>
+        <div
+        className="categorias-scroll"
+        ref={scrollRef}
+        onMouseDown={e => {
+            isDragging.current = true
+            startX.current = e.pageX - scrollRef.current.offsetLeft
+            scrollLeft.current = scrollRef.current.scrollLeft
+        }}
+        onMouseMove={e => {
+            if (!isDragging.current) return
+            e.preventDefault()
+            const x = e.pageX - scrollRef.current.offsetLeft
+            scrollRef.current.scrollLeft = scrollLeft.current - (x - startX.current)
+        }}
+        onMouseUp={() => { isDragging.current = false }}
+        onMouseLeave={() => { isDragging.current = false }}
+        style={{
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            padding: '0 16px 12px',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+            msOverflowStyle: 'none',
+            cursor: 'grab',
+            userSelect: 'none',
+        }}
+        >
           <button
             onClick={() => setCategoriaFiltro(null)}
             style={{
@@ -146,8 +175,8 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
               fontWeight: 700,
               fontSize: '13px',
               cursor: 'pointer',
-              background: !categoriaFiltro ? 'var(--text)' : 'var(--bg)',
-              color: !categoriaFiltro ? 'var(--card)' : 'var(--text-soft)',
+              background: !categoriaFiltro ? '#FE5F01' : 'var(--bg)',
+              color: !categoriaFiltro ? 'white' : 'var(--text-soft)',
               transition: 'all 0.2s',
             }}
           >
@@ -156,28 +185,29 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
           {ORDEM_CATEGORIAS.map(cat => {
             const cor = corDaCategoria(cat)
             const ativo = categoriaFiltro === cat
+            const textoCor = textoParaCor(cor)
             return (
-              <button
+                <button
                 key={cat}
                 onClick={() => setCategoriaFiltro(ativo ? null : cat)}
                 style={{
-                  flexShrink: 0,
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  border: 'none',
-                  fontFamily: 'Nunito, sans-serif',
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  background: ativo ? cor : cor + '22',
-                  color: ativo ? 'white' : cor,
-                  transition: 'all 0.2s',
+                    flexShrink: 0,
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: 'none',
+                    fontFamily: 'Nunito, sans-serif',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    background: ativo ? cor : cor + '22',
+                    color: ativo ? textoCor : cor,
+                    transition: 'all 0.2s',
                 }}
-              >
+                >
                 {cat}
-              </button>
+                </button>
             )
-          })}
+            })}
         </div>
       </div>
 
@@ -187,15 +217,35 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
           {carregando && (
             <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
           )}
-          {!carregando && lista.length === 0 && (
-            <div style={{ textAlign: 'center', marginTop: '60px' }}>
-              <p style={{ fontSize: '48px' }}>🛒</p>
-              <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px', color: 'var(--text)' }}>Lista vazia!</p>
-              <p style={{ color: 'var(--text-soft)', marginTop: '4px' }}>
-                Vá ao Mercado e adicione itens à sua lista.
-              </p>
-            </div>
-          )}
+        {!carregando && busca && pendentes.length === 0 && comprados.length === 0 && (
+        <div style={{ textAlign: 'center', marginTop: '60px', padding: '0 20px' }}>
+            <p style={{ fontSize: '48px' }}>🔍</p>
+            <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px', color: 'var(--text)' }}>
+            "{busca}" não está na sua lista
+            </p>
+            <p style={{ color: 'var(--text-soft)', marginTop: '8px', lineHeight: 1.5 }}>
+            Quer procurar no Mercado?
+            </p>
+            <button
+            onClick={() => setAba('mercado')}
+            style={{
+                marginTop: '20px',
+                padding: '14px 24px',
+                borderRadius: '14px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #FEC601, #FE5F01)',
+                color: 'white',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: 800,
+                fontSize: '15px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px #FE5F0133',
+            }}
+            >
+            🛍️ Buscar no Mercado
+            </button>
+        </div>
+        )}
           {Object.entries(porCategoriaPendentes).map(([categoria, itens]) => (
             <CategoriaGrupo
               key={categoria}
@@ -205,6 +255,7 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
               onAbrir={abrirProduto}
               busca={busca}
               itensDaLista={lista}
+              onRemover={removerItem}
             />
           ))}
           {comprados.length > 0 && (
@@ -219,6 +270,7 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
                 itensDaLista={lista}
                 collapsed={true}
                 corOverride="#ADB5BD"
+                onRemover={removerItem}
               />
             </div>
           )}
@@ -231,11 +283,35 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
           {carregando && (
             <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
           )}
-          {!carregando && catalogoFiltrado.length === 0 && (
-            <p style={{ textAlign: 'center', color: 'var(--text-soft)', marginTop: '40px' }}>
-              Nenhum produto encontrado.
+        {!carregando && catalogoFiltrado.length === 0 && (
+        <div style={{ textAlign: 'center', marginTop: '60px', padding: '0 20px' }}>
+            <p style={{ fontSize: '48px' }}>🔍</p>
+            <p style={{ fontWeight: 800, fontSize: '20px', marginTop: '12px', color: 'var(--text)' }}>
+            Não encontramos "{busca}"
             </p>
-          )}
+            <p style={{ color: 'var(--text-soft)', marginTop: '8px', lineHeight: 1.5 }}>
+            Esse produto ainda não está no catálogo.
+            </p>
+            <button
+            onClick={() => { setMenuAberto(true); setTelaMenu('sugestao') }}
+            style={{
+                marginTop: '20px',
+                padding: '14px 24px',
+                borderRadius: '14px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #FEC601, #FE5F01)',
+                color: 'white',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: 800,
+                fontSize: '15px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px #FE5F0133',
+            }}
+            >
+            💡 Sugerir produto
+            </button>
+        </div>
+        )}
           {Object.entries(porCategoriaCatalogo).map(([categoria, itens]) => (
             <CategoriaGrupo
               key={categoria}
@@ -263,13 +339,14 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
       {/* Menu */}
       {menuAberto && (
       <Menu
-          onFechar={() => setMenuAberto(false)}
+          onFechar={() => { setMenuAberto(false); setTelaMenu('menu') }}
           escuro={escuro}
           toggleTema={toggleTema}
           grupoId={grupoId}
           usuario={usuario}
           isAdmin={admin}
           onAbrirAdmin={() => setAdminAberto(true)}
+          telaInicial={telaMenu}
       />
       )}
 
@@ -303,12 +380,12 @@ const { sugestoes, pendentes: sugestoesPendentes, aprovar, rejeitar, atualizar, 
               flexDirection: 'column',
               alignItems: 'center',
               gap: '4px',
-              color: aba === id ? 'var(--text)' : 'var(--text-soft)',
+              color: aba === id ? '#FE5F01' : 'var(--text-soft)',
               fontFamily: 'Nunito, sans-serif',
               fontWeight: aba === id ? 800 : 600,
               fontSize: '12px',
               transition: 'all 0.2s',
-              borderTop: aba === id ? '2px solid var(--text)' : '2px solid transparent',
+              borderTop: aba === id ? '2px solid #FEC601' : '2px solid transparent'
             }}
           >
             <Icon size={20} />

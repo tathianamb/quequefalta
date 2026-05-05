@@ -1,19 +1,64 @@
-import { signInWithPopup } from 'firebase/auth'
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth'
 import { auth, googleProvider } from '../config/firebase'
+import { useEffect } from 'react'
 
 function Login() {
+  useEffect(() => {
+    getRedirectResult(auth).catch(console.error)
+  }, [])
+
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider)
+      await signInWithRedirect(auth, googleProvider)
     } catch (error) {
       console.error('Erro no login:', error)
     }
   }
 
   return (
-    <div>
-      <h1>QueQueFalta</h1>
-      <button onClick={handleLogin}>Entrar com Google</button>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg)',
+      padding: '20px',
+    }}>
+      <p style={{ fontSize: '64px', marginBottom: '8px' }}>🛒</p>
+      <h1 style={{ fontWeight: 900, fontSize: '32px', marginBottom: '4px' }}>
+        <span style={{ color: '#FEC601' }}>QueQue</span>
+        <span style={{ color: '#FE5F01' }}>Falta</span>
+      </h1>
+      <p style={{ color: 'var(--text-soft)', marginBottom: '48px', fontSize: '15px' }}>
+        Lista de compras compartilhada
+      </p>
+      <button
+        onClick={handleLogin}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '16px 28px',
+          borderRadius: '16px',
+          border: 'none',
+          background: 'white',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
+          fontFamily: 'Nunito, sans-serif',
+          fontWeight: 800,
+          fontSize: '16px',
+          cursor: 'pointer',
+          color: '#212529',
+        }}
+      >
+        <img
+          src="https://www.google.com/favicon.ico"
+          width="20"
+          height="20"
+          alt="Google"
+        />
+        Entrar com Google
+      </button>
     </div>
   )
 }

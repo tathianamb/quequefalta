@@ -23,6 +23,9 @@
   --higiene: #F783AC;
   --default: #ADB5BD;
 
+  --amarelo: #FEC601;
+  --laranja: #FE5F01;
+
   --bg: #F8F9FA;
   --card: #FFFFFF;
   --text: #212529;
@@ -38,4 +41,8 @@ body {
   min-height: 100vh;
   max-width: 480px;
   margin: 0 auto;
+}
+
+.categorias-scroll::-webkit-scrollbar {
+  display: none;
 }

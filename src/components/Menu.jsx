@@ -4,8 +4,8 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { ORDEM_CATEGORIAS } from '../utils/categorias'
 
-function Menu({ onFechar, escuro, toggleTema, grupoId, usuario, isAdmin, onAbrirAdmin }) {
-  const [tela, setTela] = useState('menu') // 'menu' | 'sugestao' | 'receitas'
+function Menu({ onFechar, escuro, toggleTema, grupoId, usuario, isAdmin, onAbrirAdmin, telaInicial }) {
+  const [tela, setTela] = useState(telaInicial || 'menu')
   const [nome, setNome] = useState('')
   const [categoria, setCategoria] = useState('')
   const [subcategoria, setSubcategoria] = useState('')
@@ -270,7 +270,7 @@ function Menu({ onFechar, escuro, toggleTema, grupoId, usuario, isAdmin, onAbrir
                 padding: '14px',
                 borderRadius: '12px',
                 border: 'none',
-                background: !nome || !categoria ? '#DEE2E6' : '#4DABF7',
+                background: !nome || !categoria ? '#DEE2E6' : '#FE5F01',
                 color: !nome || !categoria ? 'var(--text-soft)' : 'white',
                 fontFamily: 'Nunito, sans-serif',
                 fontWeight: 800,

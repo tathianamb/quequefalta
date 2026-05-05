@@ -19,19 +19,20 @@ export function useLista(grupoId) {
     return () => unsub()
   }, [grupoId])
 
-  const adicionarItem = async (produto) => {
+    const adicionarItem = async (produto) => {
     const jaExiste = lista.some(i => i.produtoId === produto.id)
-    if (jaExiste) return
+    if (jaExiste) return false
     await addDoc(collection(db, 'grupos', grupoId, 'lista'), {
-      produtoId: produto.id,
-      nome: produto.nome,
-      categoria: produto.categoria,
-      subcategoria: produto.subcategoria,
-      comprado: false,
-      compradoEm: null,
-      adicionadoEm: serverTimestamp(),
+        produtoId: produto.id,
+        nome: produto.nome,
+        categoria: produto.categoria,
+        subcategoria: produto.subcategoria,
+        comprado: false,
+        compradoEm: null,
+        adicionadoEm: serverTimestamp(),
     })
-  }
+    return true
+    }
 
   const toggleComprado = async (item) => {
     const ref = doc(db, 'grupos', grupoId, 'lista', item.id)

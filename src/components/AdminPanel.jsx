@@ -80,8 +80,8 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                 fontWeight: 700,
                 fontSize: '13px',
                 cursor: 'pointer',
-                background: aba === id ? 'var(--text)' : 'var(--bg)',
-                color: aba === id ? 'var(--card)' : 'var(--text-soft)',
+                background: aba === id ? '#FE5F01' : 'var(--bg)',
+                color: aba === id ? 'white' : 'var(--text-soft)',
                 transition: 'all 0.2s',
               }}
             >
@@ -249,7 +249,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                             padding: '10px',
                             borderRadius: '8px',
                             border: 'none',
-                            background: jaAprovou ? '#DEE2E6' : '#51CF66',
+                            background: jaAprovou ? '#DEE2E6' : '#FE5F01',
                             color: jaAprovou ? 'var(--text-soft)' : 'white',
                             fontFamily: 'Nunito, sans-serif',
                             fontWeight: 700,

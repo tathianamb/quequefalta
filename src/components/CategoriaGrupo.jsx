@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { corDaCategoria } from '../utils/categorias'
 import ProdutoItem from './ProdutoItem'
 
-function CategoriaGrupo({ categoria, itens, onToggle, onAbrir, busca, itensDaLista, collapsed, corOverride }) {
+function CategoriaGrupo({ categoria, itens, onToggle, onAbrir, busca, itensDaLista, collapsed, corOverride, onRemover }) {
   const [aberto, setAberto] = useState(!collapsed)
 
   useEffect(() => {
@@ -66,6 +66,7 @@ function CategoriaGrupo({ categoria, itens, onToggle, onAbrir, busca, itensDaLis
           onAbrir={onAbrir}
           naLista={itensDaLista?.some(i => i.produtoId === p.id)}
           comprado={p.comprado}
+          onRemover={onRemover}
         />
       ))}
     </div>
