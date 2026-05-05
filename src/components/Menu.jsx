@@ -3,13 +3,14 @@ import { X, Moon, Sun, Lightbulb, Link, Shield } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
-import { signOut } from 'firebase/auth'
-import { auth } from '../config/firebase'
+import { signOut } from "firebase/auth";
+import { auth } from "../config/firebase";
 
 function Menu({
   onFechar,
   escuro,
   toggleTema,
+  seguirSistema,
   grupoId,
   usuario,
   isAdmin,
@@ -172,54 +173,69 @@ function Menu({
           <div
             style={{ display: "flex", flexDirection: "column", gap: "12px" }}
           >
-            {/* Modo escuro */}
+            {/* Tema */}
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
                 padding: "16px",
                 background: "var(--bg)",
                 borderRadius: "14px",
               }}
             >
               <div
-                style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginBottom: "12px",
+                }}
               >
-                {escuro ? (
-                  <Sun size={20} color="var(--text-soft)" />
-                ) : (
-                  <Moon size={20} color="var(--text-soft)" />
-                )}
+                <Moon size={20} color="var(--text-soft)" />
                 <span style={{ fontWeight: 700, color: "var(--text)" }}>
-                  {escuro ? "Modo claro" : "Modo escuro"}
+                  Tema
                 </span>
               </div>
               <div
-                onClick={toggleTema}
                 style={{
-                  width: "48px",
-                  height: "28px",
-                  borderRadius: "14px",
-                  background: escuro ? "#4DABF7" : "#DEE2E6",
-                  position: "relative",
-                  cursor: "pointer",
-                  transition: "background 0.2s",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: "8px",
                 }}
               >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "4px",
-                    left: escuro ? "24px" : "4px",
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    background: "white",
-                    transition: "left 0.2s",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
-                  }}
-                />
+                {[
+                  { id: "claro", label: "☀️ Claro" },
+                  { id: "escuro", label: "🌙 Escuro" },
+                  { id: "auto", label: "⚙️ Auto" },
+                ].map(({ id, label }) => {
+                  const temaAtual = localStorage.getItem("tema");
+                  const ativo =
+                    (id === "auto" && !temaAtual) ||
+                    (id === "escuro" && temaAtual === "escuro") ||
+                    (id === "claro" && temaAtual === "claro");
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => {
+                        if (id === "auto") seguirSistema();
+                        else if (id === "escuro" && !escuro) toggleTema();
+                        else if (id === "claro" && escuro) toggleTema();
+                      }}
+                      style={{
+                        padding: "10px 8px",
+                        borderRadius: "10px",
+                        border: `2px solid ${ativo ? "#FE5F01" : "#DEE2E6"}`,
+                        background: ativo ? "#FE5F0111" : "var(--card)",
+                        color: ativo ? "#FE5F01" : "var(--text-soft)",
+                        fontFamily: "Nunito, sans-serif",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
