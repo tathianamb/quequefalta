@@ -84,9 +84,6 @@ function Home({ usuario, grupoId }) {
     if (produto) setProdutoSelecionado(produto);
   };
 
-  console.log('pendentes:', pendentes.map(i => i.id))
-  console.log('porCategoriaPendentes:', JSON.stringify(Object.entries(porCategoriaPendentes).map(([cat, itens]) => ({ cat, ids: itens.map(i => i.id) }))))
-
   return (
     <div
       style={{
