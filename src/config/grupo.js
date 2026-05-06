@@ -1,5 +1,27 @@
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "./firebase";
+import { deleteField } from "firebase/firestore";
+
+export async function sairDoGrupo(usuario) {
+  const userRef = doc(db, "usuarios", usuario.uid);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) return;
+
+  const { grupoId } = userSnap.data();
+
+  if (grupoId) {
+    const grupoRef = doc(db, "grupos", grupoId);
+    const grupoSnap = await getDoc(grupoRef);
+    if (grupoSnap.exists()) {
+      const membros = grupoSnap
+        .data()
+        .membros.filter((uid) => uid !== usuario.uid);
+      await updateDoc(grupoRef, { membros });
+    }
+  }
+
+  await updateDoc(userRef, { grupoId: deleteField() });
+}
 
 export async function sairDoGrupo(usuario) {
   const userRef = doc(db, "usuarios", usuario.uid);
