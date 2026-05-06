@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import ProdutoItem from "./ProdutoItem";
-import { TIPOGRAFIA, FONTE, RAIO } from '../utils/estilos'
+import { TIPOGRAFIA, FONTE, RAIO } from "../utils/estilos";
 
 function CategoriaGrupo({
   categoria,
@@ -14,6 +14,7 @@ function CategoriaGrupo({
   collapsed,
   corOverride,
   onRemover,
+  forcarAberto,
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
@@ -21,6 +22,10 @@ function CategoriaGrupo({
     if (busca && busca.length > 0) setAberto(true);
   }, [busca]);
 
+  useEffect(() => {
+    if (forcarAberto !== undefined) setAberto(forcarAberto);
+  }, [forcarAberto]);
+  
   const cor = corOverride || corDaCategoria(categoria);
 
   return (

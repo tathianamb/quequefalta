@@ -1,9 +1,19 @@
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { SlidersHorizontal, X, Check } from "lucide-react";
 import { useState } from "react";
-import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../utils/estilos'
+import {
+  TIPOGRAFIA,
+  FONTE,
+  RAIO,
+  BOTAO_PRIMARIO,
+  BOTAO_SECUNDARIO,
+} from "../utils/estilos";
 
-function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
+function FiltroCategoria({
+  categoriasFiltro,
+  setCategoriasFiltro,
+  botoesExtras,
+}) {
   const [aberto, setAberto] = useState(false);
   const [selecao, setSelecao] = useState(categoriasFiltro);
 
@@ -84,27 +94,31 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
 
       {/* Botão filtrar quando não há filtro */}
       {categoriasFiltro.length === 0 && (
-        <div style={{ padding: "0 16px 12px" }}>
+        <div
+          style={{
+            padding: "0 16px 12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <button
             onClick={abrirModal}
             style={{
+              ...BOTAO_SECUNDARIO,
+              padding: "6px 14px",
+              fontSize: "13px",
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              padding: "6px 14px",
-              borderRadius: RAIO.pill,
-              border: "none",
-              fontFamily: "Nunito, sans-serif",
-              fontWeight: FONTE.medio,
-              fontSize: "13px",
-              cursor: "pointer",
-              background: "var(--bg)",
-              color: "var(--text-soft)",
             }}
           >
             <SlidersHorizontal size={14} />
             Filtrar
           </button>
+
+          {/* Botão expandir/recolher — passado como prop */}
+          {botoesExtras}
         </div>
       )}
 
@@ -242,8 +256,14 @@ function FiltroCategoria({ categoriasFiltro, setCategoriasFiltro }) {
                   padding: "14px",
                   ...BOTAO_PRIMARIO,
                   borderRadius: RAIO.md,
-                  background: selecao.length === 0 ? "var(--bg)" : BOTAO_PRIMARIO.background,
-                  color: selecao.length === 0 ? "var(--text-soft)" : BOTAO_PRIMARIO.color,
+                  background:
+                    selecao.length === 0
+                      ? "var(--bg)"
+                      : BOTAO_PRIMARIO.background,
+                  color:
+                    selecao.length === 0
+                      ? "var(--text-soft)"
+                      : BOTAO_PRIMARIO.color,
                   transition: "all 0.2s",
                 }}
               >

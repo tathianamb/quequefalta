@@ -9,6 +9,8 @@ import CategoriaGrupo from "../components/CategoriaGrupo";
 import DetalhesProduto from "../components/DetalhesProduto";
 import Menu from "../components/Menu";
 import {
+  ChevronsUp,
+  ChevronsDown,
   ShoppingCart,
   BookOpen,
   LogOut,
@@ -20,7 +22,13 @@ import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import AdminPanel from "../components/AdminPanel";
 import FiltroCategoria from "../components/FiltroCategoria";
-import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO } from "../utils/estilos";
+import {
+  TIPOGRAFIA,
+  FONTE,
+  RAIO,
+  BOTAO_PRIMARIO,
+  BOTAO_SECUNDARIO,
+} from "../utils/estilos";
 
 function Home({
   usuario,
@@ -93,6 +101,8 @@ function Home({
     const item = lista.find((i) => i.produtoId === produto.id);
     if (item) removerItem(item);
   };
+
+  const [todasExpandidas, setTodasExpandidas] = useState(true);
 
   return (
     <div
@@ -200,6 +210,31 @@ function Home({
         <FiltroCategoria
           categoriasFiltro={categoriasFiltro}
           setCategoriasFiltro={setCategoriasFiltro}
+          botoesExtras={
+            aba === "mercado" ? (
+              <button
+                onClick={() => setTodasExpandidas((e) => !e)}
+                style={{
+                  ...BOTAO_SECUNDARIO,
+                  padding: "6px 14px",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                {todasExpandidas ? (
+                  <>
+                    <ChevronsUp size={14} /> Recolher
+                  </>
+                ) : (
+                  <>
+                    <ChevronsDown size={14} /> Expandir
+                  </>
+                )}
+              </button>
+            ) : null
+          }
         />
       </div>
 
@@ -272,9 +307,9 @@ function Home({
           {comprados.length > 0 && (
             <div
               style={{
-                marginTop: "24px",
-                borderTop: "1px dashed #DEE2E6",
-                paddingTop: "16px",
+                marginTop: pendentes.length > 0 ? "24px" : "0",
+                borderTop: pendentes.length > 0 ? "1px dashed #DEE2E6" : "none",
+                paddingTop: pendentes.length > 0 ? "16px" : "0",
               }}
             >
               <CategoriaGrupo
@@ -294,7 +329,7 @@ function Home({
         </div>
       )}
 
-      {/* Aba Mercado */}
+      {/* Aba Catálogo */}
       {aba === "mercado" && (
         <div style={{ padding: "20px 16px" }}>
           {carregando && (
@@ -359,6 +394,7 @@ function Home({
               itensDaLista={lista}
               contexto="mercado"
               onRemover={removerItemPorProdutoId}
+              forcarAberto={todasExpandidas}
             />
           ))}
         </div>
@@ -414,8 +450,8 @@ function Home({
         }}
       >
         {[
-          { id: "lista", label: "Minha Lista", icon: ShoppingCart },
-          { id: "mercado", label: "Mercado", icon: BookOpen },
+          { id: "lista", label: "Lista de compras", icon: ShoppingCart },
+          { id: "mercado", label: "Catálogo", icon: BookOpen },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
