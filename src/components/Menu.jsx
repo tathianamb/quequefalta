@@ -293,7 +293,7 @@ function Menu({
                           gap: "8px",
                         }}
                       >
-                        {ativa && (
+                        {propria && ativa && (
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
