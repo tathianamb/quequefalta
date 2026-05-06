@@ -1,24 +1,30 @@
 import { useState } from "react";
-import { Moon, Lightbulb, Link, Shield, LogOut, Users } from "lucide-react";
+import {
+  Moon,
+  Lightbulb,
+  Link,
+  Shield,
+  LogOut,
+  Users,
+  Share2,
+} from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
-import { sairDoGrupo } from "../config/grupo";
-import {
-  TIPOGRAFIA,
-  RAIO,
-  BOTAO_PRIMARIO,
-  BOTAO_SECUNDARIO,
-} from "../utils/estilos";
+import { alternarLista, sairDaLista } from "../config/lista";
+import { TIPOGRAFIA, BOTAO_SECUNDARIO } from "../utils/estilos";
 
 function Menu({
   onFechar,
   escuro,
   toggleTema,
   seguirSistema,
-  grupoId,
+  listaAtiva,
+  todasListas,
+  setListaAtiva,
+  setTodasListas,
   usuario,
   isAdmin,
   onAbrirAdmin,
@@ -41,7 +47,7 @@ function Menu({
         categoria,
         subcategoria,
         sugeridoPor: usuario.email,
-        grupoId,
+        listaAtiva,
         criadoEm: serverTimestamp(),
         status: "pendente",
       });
@@ -218,34 +224,138 @@ function Menu({
               </div>
             </div>
 
-            {/* Ações */}
-            <div
-              onClick={async () => {
-                await sairDoGrupo(usuario);
-                window.location.reload();
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "14px 16px",
-                background: "var(--bg)",
-                borderRadius: "14px",
-                cursor: "pointer",
-              }}
-            >
-              <Users size={18} color="var(--text-soft)" />
-              <span
+            {/* Minhas Listas */}
+            <div>
+              <p
                 style={{
-                  fontWeight: 600,
+                  ...TIPOGRAFIA.label,
                   color: "var(--text-soft)",
-                  flex: 1,
-                  fontSize: "15px",
+                  marginBottom: "8px",
+                  paddingLeft: "4px",
+                  opacity: 0.6,
                 }}
               >
-                Trocar de grupo
-              </span>
+                Minhas Listas
+              </p>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                {todasListas.map((lista) => {
+                  const ativa = lista.id === listaAtiva;
+                  const propria = lista.id === usuario.uid;
+                  return (
+                    <div
+                      key={lista.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "14px 16px",
+                        background: ativa ? "#FEC60122" : "var(--bg)",
+                        borderRadius: "14px",
+                        border: `1.5px solid ${ativa ? "#FEC601" : "transparent"}`,
+                        cursor: ativa ? "default" : "pointer",
+                      }}
+                      onClick={async () => {
+                        if (!ativa) {
+                          await alternarLista(usuario, lista.id);
+                          setListaAtiva(lista.id);
+                          onFechar();
+                        }
+                      }}
+                    >
+                      <div>
+                        <p
+                          style={{
+                            ...TIPOGRAFIA.nomeProduto,
+                            color: "var(--text)",
+                          }}
+                        >
+                          {propria
+                            ? "Minha lista"
+                            : `Lista de ${lista.criadaPor}`}
+                        </p>
+                        {ativa && (
+                          <p
+                            style={{
+                              ...TIPOGRAFIA.subcategoria,
+                              color: "#FEC601",
+                            }}
+                          >
+                            ativa
+                          </p>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        {ativa && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/quequefalta/?lista=${lista.id}`;
+                              if (navigator.share) {
+                                await navigator.share({
+                                  title: "QueQueFalta",
+                                  text: "Acesse minha lista de compras!",
+                                  url,
+                                });
+                              } else {
+                                await navigator.clipboard.writeText(url);
+                                alert("Link copiado!");
+                              }
+                            }}
+                            style={{
+                              ...BOTAO_SECUNDARIO,
+                              padding: "6px 12px",
+                              fontSize: "12px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            <Share2 size={14} />
+                            Compartilhar
+                          </button>
+                        )}
+                        {!propria && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await sairDaLista(usuario, lista.id);
+                              setTodasListas((prev) =>
+                                prev.filter((l) => l.id !== lista.id),
+                              );
+                              if (ativa) setListaAtiva(usuario.uid);
+                              onFechar();
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: "8px",
+                              border: "none",
+                              background: "#FFE3E3",
+                              color: "#FA5252",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              fontFamily: "Nunito, sans-serif",
+                            }}
+                          >
+                            Sair
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Ações */}
             <div>
               <p
                 style={{

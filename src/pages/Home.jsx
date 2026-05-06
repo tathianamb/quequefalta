@@ -22,18 +22,24 @@ import AdminPanel from "../components/AdminPanel";
 import FiltroCategoria from "../components/FiltroCategoria";
 import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO } from "../utils/estilos";
 
-function Home({ usuario, grupoId }) {
-  const scrollRef = useRef(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollLeft = useRef(0);
+function Home({
+  usuario,
+  listaAtiva,
+  todasListas,
+  setListaAtiva,
+  setTodasListas,
+}) {
   const {
     lista,
     carregando: carregandoLista,
     adicionarItem,
     toggleComprado,
     removerItem,
-  } = useLista(grupoId);
+  } = useLista(listaAtiva);
+  const scrollRef = useRef(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
   const { catalogo, carregando: carregandoCatalogo } = useCatalogo();
   const { escuro, toggleTema, seguirSistema } = useTema();
   const [aba, setAba] = useState("lista");
@@ -366,7 +372,7 @@ function Home({ usuario, grupoId }) {
             produtoSelecionado
           }
           onFechar={() => setProdutoSelecionado(null)}
-          grupoId={grupoId}
+          listaAtiva={listaAtiva}
           itemDaLista={lista.find((i) => i.produtoId === produtoSelecionado.id)}
         />
       )}
@@ -381,7 +387,10 @@ function Home({ usuario, grupoId }) {
           escuro={escuro}
           toggleTema={toggleTema}
           seguirSistema={seguirSistema}
-          grupoId={grupoId}
+          listaAtiva={listaAtiva}
+          todasListas={todasListas}
+          setListaAtiva={setListaAtiva}
+          setTodasListas={setTodasListas}
           usuario={usuario}
           isAdmin={admin}
           onAbrirAdmin={() => setAdminAberto(true)}
