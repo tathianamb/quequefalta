@@ -34,15 +34,37 @@ export async function obterOuCriarGrupo(usuario) {
   return null; // primeiro acesso, ainda sem grupo
 }
 
+function gerarCodigo() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem caracteres ambíguos (0,O,1,I)
+  let codigo = "";
+  for (let i = 0; i < 6; i++) {
+    codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return codigo;
+}
+
 export async function criarGrupo(usuario) {
   const grupoId = usuario.uid;
   const grupoRef = doc(db, "grupos", grupoId);
   const userRef = doc(db, "usuarios", usuario.uid);
 
+  // Garante código único
+  let codigo = gerarCodigo();
+  const { collection, query, where, getDocs } =
+    await import("firebase/firestore");
+  let tentativas = 0;
+  while (tentativas < 10) {
+    const q = query(collection(db, "grupos"), where("codigo", "==", codigo));
+    const snap = await getDocs(q);
+    if (snap.empty) break;
+    codigo = gerarCodigo();
+    tentativas++;
+  }
+
   await setDoc(grupoRef, {
     criadoEm: new Date(),
     membros: [usuario.uid],
-    codigo: grupoId, // usa o uid completo como código
+    codigo,
   });
 
   await setDoc(userRef, {
