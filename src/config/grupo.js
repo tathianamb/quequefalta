@@ -1,57 +1,83 @@
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore'
-import { db } from './firebase'
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { db } from "./firebase";
 
-export async function obterOuCriarGrupo(usuario) {
-  const userRef = doc(db, 'usuarios', usuario.uid)
-  const userSnap = await getDoc(userRef)
+export async function sairDoGrupo(usuario) {
+  const userRef = doc(db, "usuarios", usuario.uid);
+  const userSnap = await getDoc(userRef);
 
-  if (userSnap.exists()) {
-    return userSnap.data().grupoId
+  if (!userSnap.exists()) return;
+
+  const { grupoId } = userSnap.data();
+
+  // Remove o usuário da lista de membros do grupo
+  const grupoRef = doc(db, "grupos", grupoId);
+  const grupoSnap = await getDoc(grupoRef);
+
+  if (grupoSnap.exists()) {
+    const membros = grupoSnap
+      .data()
+      .membros.filter((uid) => uid !== usuario.uid);
+    await updateDoc(grupoRef, { membros });
   }
 
-  return null // primeiro acesso, ainda sem grupo
+  // Remove o grupoId do documento do usuário
+  await updateDoc(userRef, { grupoId: null });
+}
+export async function obterOuCriarGrupo(usuario) {
+  const userRef = doc(db, "usuarios", usuario.uid);
+  const userSnap = await getDoc(userRef);
+
+  if (userSnap.exists()) {
+    return userSnap.data().grupoId;
+  }
+
+  return null; // primeiro acesso, ainda sem grupo
 }
 
 export async function criarGrupo(usuario) {
-  const grupoId = usuario.uid
-  const grupoRef = doc(db, 'grupos', grupoId)
-  const userRef = doc(db, 'usuarios', usuario.uid)
+  const grupoId = usuario.uid;
+  const grupoRef = doc(db, "grupos", grupoId);
+  const userRef = doc(db, "usuarios", usuario.uid);
 
   await setDoc(grupoRef, {
     criadoEm: new Date(),
     membros: [usuario.uid],
-    codigo: grupoId.slice(0, 6).toUpperCase() // código curto de 6 caracteres
-  })
+    codigo: grupoId.slice(0, 6).toUpperCase(), // código curto de 6 caracteres
+  });
 
   await setDoc(userRef, {
     nome: usuario.displayName,
     email: usuario.email,
-    grupoId
-  })
+    grupoId,
+  });
 
-  return grupoId
+  return grupoId;
 }
 
 export async function entrarNoGrupo(usuario, codigo) {
   // busca grupo pelo código
-  const { collection, query, where, getDocs } = await import('firebase/firestore')
-  const q = query(collection(db, 'grupos'), where('codigo', '==', codigo.toUpperCase()))
-  const snap = await getDocs(q)
+  const { collection, query, where, getDocs } =
+    await import("firebase/firestore");
+  const q = query(
+    collection(db, "grupos"),
+    where("codigo", "==", codigo.toUpperCase()),
+  );
+  const snap = await getDocs(q);
 
-  if (snap.empty) throw new Error('Código inválido')
+  if (snap.empty) throw new Error("Código inválido");
 
-  const grupoDoc = snap.docs[0]
-  const grupoId = grupoDoc.id
+  const grupoDoc = snap.docs[0];
+  const grupoId = grupoDoc.id;
 
   await updateDoc(grupoDoc.ref, {
-    membros: arrayUnion(usuario.uid)
-  })
+    membros: arrayUnion(usuario.uid),
+  });
 
-  await setDoc(doc(db, 'usuarios', usuario.uid), {
+  await setDoc(doc(db, "usuarios", usuario.uid), {
     nome: usuario.displayName,
     email: usuario.email,
-    grupoId
-  })
+    grupoId,
+  });
 
-  return grupoId
+  return grupoId;
 }

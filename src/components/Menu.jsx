@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { X, Moon, Lightbulb, Link, Shield, LogOut } from "lucide-react";
+import { Moon, Lightbulb, Link, Shield, LogOut, Users } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { sairDoGrupo } from "../config/grupo";
 import {
   TIPOGRAFIA,
   RAIO,
@@ -218,6 +219,33 @@ function Menu({
             </div>
 
             {/* Ações */}
+            <div
+              onClick={async () => {
+                await sairDoGrupo(usuario);
+                window.location.reload();
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "14px 16px",
+                background: "var(--bg)",
+                borderRadius: "14px",
+                cursor: "pointer",
+              }}
+            >
+              <Users size={18} color="var(--text-soft)" />
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: "var(--text-soft)",
+                  flex: 1,
+                  fontSize: "15px",
+                }}
+              >
+                Trocar de grupo
+              </span>
+            </div>
             <div>
               <p
                 style={{

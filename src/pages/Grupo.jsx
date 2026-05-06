@@ -1,167 +1,174 @@
-import { useState } from 'react'
-import { criarGrupo, entrarNoGrupo } from '../config/grupo'
-import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../utils/estilos'
+import { useState } from "react";
+import { signOut } from "firebase/auth";
+import { criarGrupo, entrarNoGrupo } from "../config/grupo";
+import { auth } from "../config/firebase";
 
 function Grupo({ usuario, onGrupoDefinido }) {
-  const [codigo, setCodigo] = useState('')
-  const [erro, setErro] = useState('')
-  const [carregando, setCarregando] = useState(false)
+  const [codigo, setCodigo] = useState("");
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
   const handleCriar = async () => {
-    setCarregando(true)
-    setErro('')
+    setCarregando(true);
     try {
-      const id = await criarGrupo(usuario)
-      onGrupoDefinido(id)
+      const id = await criarGrupo(usuario);
+      onGrupoDefinido(id);
     } catch (e) {
-      setErro('Erro ao criar grupo.')
+      setErro("Erro ao criar grupo.");
     } finally {
-      setCarregando(false)
+      setCarregando(false);
     }
-  }
+  };
 
   const handleEntrar = async () => {
-    if (codigo.length < 6) return setErro('Código deve ter 6 caracteres.')
-    setCarregando(true)
-    setErro('')
+    if (codigo.length < 6) return setErro("Código deve ter 6 caracteres.");
+    setCarregando(true);
     try {
-      const id = await entrarNoGrupo(usuario, codigo)
-      onGrupoDefinido(id)
+      const id = await entrarNoGrupo(usuario, codigo);
+      onGrupoDefinido(id);
     } catch (e) {
-      setErro(e.message)
+      setErro(e.message);
     } finally {
-      setCarregando(false)
+      setCarregando(false);
     }
-  }
-
-  const codigoCompleto = codigo.length === 6
+  };
 
   return (
     <div
       style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg)',
-        padding: '20px',
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg)",
+        padding: "20px",
       }}
     >
-      {/* Logo */}
-      <p style={{ fontSize: '64px', marginBottom: '8px' }}>🛒</p>
-      <h1 style={{ ...TIPOGRAFIA.display, marginBottom: '4px' }}>
-        <span style={{ color: '#FEC601' }}>QueQue</span>
-        <span style={{ color: '#FE5F01' }}>Falta</span>
+      <p style={{ fontSize: "64px", marginBottom: "8px" }}>🛒</p>
+      <h1 style={{ fontWeight: 900, fontSize: "32px", marginBottom: "4px" }}>
+        <span style={{ color: "#FEC601" }}>QueQue</span>
+        <span style={{ color: "#FE5F01" }}>Falta</span>
       </h1>
-      <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--text-soft)', marginBottom: '32px' }}>
-        Olá, {usuario.displayName}! Configure seu grupo.
+
+      <p
+        style={{
+          color: "var(--text-soft)",
+          fontSize: "14px",
+          marginBottom: "32px",
+        }}
+      >
+        Logado como <strong>{usuario.email}</strong>
       </p>
 
       <div
         style={{
-          width: '100%',
-          maxWidth: '360px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
+          width: "100%",
+          maxWidth: "320px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
         }}
       >
-        {/* Criar grupo */}
-        <div
+        <button
+          onClick={handleCriar}
+          disabled={carregando}
           style={{
-            background: 'var(--card)',
-            borderRadius: RAIO.lg,
-            padding: '20px',
-            boxShadow: 'var(--shadow)',
+            padding: "16px",
+            borderRadius: "14px",
+            border: "none",
+            background: "linear-gradient(135deg, #FEC601, #FE5F01)",
+            color: "#212529",
+            fontFamily: "Nunito, sans-serif",
+            fontWeight: 700,
+            fontSize: "15px",
+            cursor: "pointer",
           }}
         >
-          <p style={{ ...TIPOGRAFIA.h3, color: 'var(--text)', marginBottom: '6px' }}>
-            Criar novo grupo
-          </p>
-          <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--text-soft)', marginBottom: '16px' }}>
-            Inicie uma lista compartilhada para sua família.
-          </p>
-          <button
-            onClick={handleCriar}
-            disabled={carregando}
-            style={{ width: '100%', padding: '14px', ...BOTAO_PRIMARIO }}
-          >
-            {carregando ? 'Criando...' : 'Criar novo grupo'}
-          </button>
-        </div>
+          Criar novo grupo
+        </button>
 
-        {/* Divisor */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ flex: 1, height: '1px', background: '#DEE2E6' }} />
-          <span style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)' }}>ou</span>
-          <div style={{ flex: 1, height: '1px', background: '#DEE2E6' }} />
-        </div>
-
-        {/* Entrar em grupo */}
         <div
           style={{
-            background: 'var(--card)',
-            borderRadius: RAIO.lg,
-            padding: '20px',
-            boxShadow: 'var(--shadow)',
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            margin: "4px 0",
           }}
         >
-          <p style={{ ...TIPOGRAFIA.h3, color: 'var(--text)', marginBottom: '6px' }}>
-            Entrar em grupo existente
-          </p>
-          <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--text-soft)', marginBottom: '16px' }}>
-            Informe o código compartilhado por um familiar.
-          </p>
-          <input
-            value={codigo}
-            onChange={e => setCodigo(e.target.value.toUpperCase())}
-            placeholder="CÓDIGO"
-            maxLength={6}
-            style={{
-              width: '100%',
-              padding: '14px',
-              borderRadius: RAIO.md,
-              border: `2px solid ${codigoCompleto ? '#FE5F01' : '#DEE2E6'}`,
-              background: 'var(--bg)',
-              fontFamily: 'Nunito, sans-serif',
-              fontSize: FONTE.xl,
-              fontWeight: FONTE.bold,
-              color: 'var(--text)',
-              outline: 'none',
-              marginBottom: '12px',
-              boxSizing: 'border-box',
-              letterSpacing: '6px',
-              textAlign: 'center',
-              textTransform: 'uppercase',
-              transition: 'border-color 0.2s',
-            }}
-          />
-          <button
-            onClick={handleEntrar}
-            disabled={carregando || !codigoCompleto}
-            style={{
-              width: '100%',
-              padding: '14px',
-              ...BOTAO_PRIMARIO,
-              background: codigoCompleto ? BOTAO_PRIMARIO.background : '#DEE2E6',
-              color: codigoCompleto ? BOTAO_PRIMARIO.color : 'var(--text-soft)',
-              cursor: codigoCompleto ? 'pointer' : 'default',
-            }}
-          >
-            {carregando ? 'Entrando...' : 'Entrar no grupo'}
-          </button>
+          <div style={{ flex: 1, height: "1px", background: "#DEE2E6" }} />
+          <span style={{ color: "var(--text-soft)", fontSize: "13px" }}>
+            ou
+          </span>
+          <div style={{ flex: 1, height: "1px", background: "#DEE2E6" }} />
         </div>
 
-        {/* Erro */}
+        <input
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+          placeholder="Código do grupo (6 caracteres)"
+          maxLength={6}
+          style={{
+            padding: "14px",
+            borderRadius: "12px",
+            border: "2px solid #DEE2E6",
+            background: "var(--card)",
+            fontFamily: "Nunito, sans-serif",
+            fontSize: "15px",
+            color: "var(--text)",
+            outline: "none",
+            textAlign: "center",
+            letterSpacing: "4px",
+            fontWeight: 700,
+          }}
+        />
+
+        <button
+          onClick={handleEntrar}
+          disabled={carregando || codigo.length < 6}
+          style={{
+            padding: "16px",
+            borderRadius: "14px",
+            border: "none",
+            background: codigo.length === 6 ? "var(--text)" : "#DEE2E6",
+            color: codigo.length === 6 ? "var(--card)" : "var(--text-soft)",
+            fontFamily: "Nunito, sans-serif",
+            fontWeight: 700,
+            fontSize: "15px",
+            cursor: codigo.length === 6 ? "pointer" : "default",
+          }}
+        >
+          Entrar no grupo
+        </button>
+
         {erro && (
-          <p style={{ ...TIPOGRAFIA.corpo, color: '#FA5252', textAlign: 'center' }}>
+          <p
+            style={{ color: "#FA5252", fontSize: "13px", textAlign: "center" }}
+          >
             {erro}
           </p>
         )}
+
+        <button
+          onClick={() => signOut(auth)}
+          style={{
+            padding: "12px",
+            borderRadius: "12px",
+            border: "1.5px solid #DEE2E6",
+            background: "transparent",
+            color: "var(--text-soft)",
+            fontFamily: "Nunito, sans-serif",
+            fontWeight: 600,
+            fontSize: "14px",
+            cursor: "pointer",
+            marginTop: "8px",
+          }}
+        >
+          Usar outra conta
+        </button>
       </div>
     </div>
-  )
+  );
 }
 
-export default Grupo
+export default Grupo;
