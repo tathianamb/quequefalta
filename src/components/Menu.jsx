@@ -14,7 +14,7 @@ import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
-import { TIPOGRAFIA, BOTAO_SECUNDARIO } from "../utils/estilos";
+import { TIPOGRAFIA, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from "../utils/estilos";
 
 function Menu({
   onFechar,
