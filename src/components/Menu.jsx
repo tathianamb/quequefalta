@@ -7,6 +7,7 @@ import {
   LogOut,
   Users,
   Share2,
+  X,
 } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
@@ -88,17 +89,6 @@ function Menu({
           ...TIPOGRAFIA.corpo,
         }}
       >
-        {/* Handle */}
-        <div
-          style={{
-            width: "40px",
-            height: "4px",
-            background: "#DEE2E6",
-            borderRadius: "2px",
-            margin: "0 auto 20px",
-          }}
-        />
-
         {/* Header */}
         {tela === "menu" && (
           <div
@@ -106,17 +96,31 @@ function Menu({
           >
             {/* Perfil */}
             <div>
-              <p
+              <div
                 style={{
-                  ...TIPOGRAFIA.label,
-                  color: "var(--text-soft)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   marginBottom: "8px",
                   paddingLeft: "4px",
-                  opacity: 0.6,
                 }}
               >
-                Perfil
-              </p>
+                <p
+                  style={{
+                    ...TIPOGRAFIA.label,
+                    color: "var(--text-soft)",
+                    opacity: 0.6,
+                  }}
+                >
+                  Perfil
+                </p>
+                <X
+                  size={22}
+                  color="var(--text-soft)"
+                  style={{ cursor: "pointer" }}
+                  onClick={onFechar}
+                />
+              </div>
               <div
                 style={{
                   padding: "14px 16px",
@@ -124,12 +128,7 @@ function Menu({
                   borderRadius: "14px",
                 }}
               >
-                <p
-                  style={{
-                    ...TIPOGRAFIA.titulo,
-                    color: "var(--text)",
-                  }}
-                >
+                <p style={{ ...TIPOGRAFIA.titulo, color: "var(--text)" }}>
                   {usuario.displayName}
                 </p>
                 <p style={{ ...TIPOGRAFIA.corpo, color: "var(--text-soft)" }}>
@@ -569,6 +568,26 @@ function Menu({
           <div
             style={{ display: "flex", flexDirection: "column", gap: "12px" }}
           >
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "4px",
+              }}
+            >
+              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
+                Sugerir produto
+              </p>
+              <X
+                size={22}
+                color="var(--text-soft)"
+                style={{ cursor: "pointer" }}
+                onClick={() => setTela("menu")}
+              />
+            </div>
+
             <p
               style={{
                 color: "var(--text-soft)",
@@ -656,29 +675,51 @@ function Menu({
           </div>
         )}
 
-        {/* Tela Receitas */}
         {tela === "receitas" && (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <p style={{ ...TIPOGRAFIA.titulo }}>👨‍🍳</p>
-            <p
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {/* Header */}
+            <div
               style={{
-                ...TIPOGRAFIA.titulo,
-                marginTop: "16px",
-                color: "var(--text)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "4px",
               }}
             >
-              Em breve!
-            </p>
-            <p
-              style={{
-                color: "var(--text-soft)",
-                marginTop: "8px",
-                lineHeight: 1.5,
-              }}
-            >
-              Em breve você poderá vincular receitas aos produtos e adicionar os
-              ingredientes faltantes à lista com um toque.
-            </p>
+              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>Receitas</p>
+              <X
+                size={22}
+                color="var(--text-soft)"
+                style={{ cursor: "pointer" }}
+                onClick={() => setTela("menu")}
+              />
+            </div>
+
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <p style={{ fontSize: "48px" }}>👨‍🍳</p>
+              <p
+                style={{
+                  ...TIPOGRAFIA.titulo,
+                  marginTop: "16px",
+                  color: "var(--text)",
+                }}
+              >
+                Em breve!
+              </p>
+              <p
+                style={{
+                  ...TIPOGRAFIA.corpo,
+                  color: "var(--text-soft)",
+                  marginTop: "8px",
+                  lineHeight: 1.5,
+                }}
+              >
+                Em breve você poderá vincular receitas aos produtos e adicionar
+                os ingredientes faltantes à lista com um toque.
+              </p>
+            </div>
           </div>
         )}
       </div>

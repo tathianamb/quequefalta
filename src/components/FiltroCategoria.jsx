@@ -146,18 +146,6 @@ function FiltroCategoria({
               flexDirection: "column",
             }}
           >
-            {/* Handle */}
-            <div
-              style={{
-                width: "40px",
-                height: "4px",
-                background: "#DEE2E6",
-                borderRadius: "2px",
-                margin: "16px auto 0",
-                flexShrink: 0,
-              }}
-            />
-
             {/* Header fixo */}
             <div
               style={{

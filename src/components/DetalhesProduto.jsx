@@ -78,17 +78,6 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista }) {
           overflowY: "auto",
         }}
       >
-        {/* Handle */}
-        <div
-          style={{
-            width: "40px",
-            height: "4px",
-            background: "#DEE2E6",
-            borderRadius: "2px",
-            margin: "0 auto 20px",
-          }}
-        />
-
         {/* Header */}
         <div
           style={{
