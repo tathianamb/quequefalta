@@ -37,7 +37,14 @@ function App() {
       </p>
     );
   if (!usuario) return <Login />;
-  if (!grupoId) return <Grupo usuario={usuario} onGrupoDefinido={setGrupoId} />;
+  if (!grupoId)
+    return (
+      <Grupo
+        usuario={usuario}
+        onGrupoDefinido={setGrupoId}
+        onVoltar={usuario ? () => window.location.reload() : null}
+      />
+    );
   return <Home usuario={usuario} grupoId={grupoId} />;
 }
 

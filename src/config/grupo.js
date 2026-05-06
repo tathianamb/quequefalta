@@ -42,7 +42,7 @@ export async function criarGrupo(usuario) {
   await setDoc(grupoRef, {
     criadoEm: new Date(),
     membros: [usuario.uid],
-    codigo: grupoId.slice(0, 6).toUpperCase(), // código curto de 6 caracteres
+    codigo: grupoId, // usa o uid completo como código
   });
 
   await setDoc(userRef, {
@@ -55,9 +55,10 @@ export async function criarGrupo(usuario) {
 }
 
 export async function entrarNoGrupo(usuario, codigo) {
-  // busca grupo pelo código
   const { collection, query, where, getDocs } =
     await import("firebase/firestore");
+
+  // Busca o grupo pelo campo 'codigo'
   const q = query(
     collection(db, "grupos"),
     where("codigo", "==", codigo.toUpperCase()),
