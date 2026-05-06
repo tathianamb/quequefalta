@@ -23,28 +23,6 @@ export async function sairDoGrupo(usuario) {
   await updateDoc(userRef, { grupoId: deleteField() });
 }
 
-export async function sairDoGrupo(usuario) {
-  const userRef = doc(db, "usuarios", usuario.uid);
-  const userSnap = await getDoc(userRef);
-
-  if (!userSnap.exists()) return;
-
-  const { grupoId } = userSnap.data();
-
-  // Remove o usuário da lista de membros do grupo
-  const grupoRef = doc(db, "grupos", grupoId);
-  const grupoSnap = await getDoc(grupoRef);
-
-  if (grupoSnap.exists()) {
-    const membros = grupoSnap
-      .data()
-      .membros.filter((uid) => uid !== usuario.uid);
-    await updateDoc(grupoRef, { membros });
-  }
-
-  // Remove o grupoId do documento do usuário
-  await updateDoc(userRef, { grupoId: null });
-}
 export async function obterOuCriarGrupo(usuario) {
   const userRef = doc(db, "usuarios", usuario.uid);
   const userSnap = await getDoc(userRef);
