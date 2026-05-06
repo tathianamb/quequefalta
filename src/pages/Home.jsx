@@ -132,7 +132,13 @@ function Home({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <ShoppingCart size={24} color="var(--text)" />
-            <span style={{ fontWeight: FONTE.black, fontSize: FONTE.xxl }}>
+            <span
+              style={{
+                fontFamily: "Comfortaa, sans-serif",
+                fontWeight: 700,
+                fontSize: "20px",
+              }}
+            >
               <span style={{ color: "#FEC601" }}>QueQue</span>
               <span style={{ color: "#FE5F01" }}>Falta</span>
             </span>

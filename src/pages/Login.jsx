@@ -38,7 +38,14 @@ function Login() {
       }}
     >
       <p style={{ fontSize: "64px", marginBottom: "8px" }}>🛒</p>
-      <h1 style={{ fontWeight: 900, fontSize: "32px", marginBottom: "4px" }}>
+      <h1
+        style={{
+          fontFamily: "Comfortaa, sans-serif",
+          fontWeight: 700,
+          fontSize: "32px",
+          marginBottom: "4px",
+        }}
+      >
         <span style={{ color: "#FEC601" }}>QueQue</span>
         <span style={{ color: "#FE5F01" }}>Falta</span>
       </h1>
