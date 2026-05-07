@@ -188,7 +188,7 @@ function Home({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={
-                aba === "lista" ? "Buscar na lista..." : "Buscar no mercado..."
+                aba === "lista" ? "Buscar na lista..." : "Buscar no catálogo..."
               }
               style={{
                 border: "none",
@@ -216,7 +216,7 @@ function Home({
           categoriasFiltro={categoriasFiltro}
           setCategoriasFiltro={setCategoriasFiltro}
           botoesExtras={
-            aba === "mercado" ? (
+            aba === "catalogo" ? (
               <button
                 onClick={() => setTodasExpandidas((e) => !e)}
                 style={{
@@ -280,10 +280,10 @@ function Home({
                     lineHeight: 1.5,
                   }}
                 >
-                  Quer procurar no Mercado?
+                  Quer procurar no Catálogo?
                 </p>
                 <button
-                  onClick={() => setAba("mercado")}
+                  onClick={() => setAba("catalogo")}
                   style={{
                     marginTop: "20px",
                     padding: "14px 24px",
@@ -293,7 +293,7 @@ function Home({
                     boxShadow: "0 4px 12px #FE5F0133",
                   }}
                 >
-                  🛍️ Buscar no Mercado
+                  🛍️ Buscar no Catálogo
                 </button>
               </div>
             )}
@@ -335,7 +335,7 @@ function Home({
       )}
 
       {/* Aba Catálogo */}
-      {aba === "mercado" && (
+      {aba === "catalogo" && (
         <div style={{ padding: "20px 16px" }}>
           {carregando && (
             <p style={{ textAlign: "center", color: "var(--text-soft)" }}>
@@ -397,7 +397,7 @@ function Home({
               onAbrir={setProdutoSelecionado}
               busca={busca}
               itensDaLista={lista}
-              contexto="mercado"
+              contexto="catalogo"
               onRemover={removerItemPorProdutoId}
               forcarAberto={todasExpandidas}
             />
@@ -456,7 +456,7 @@ function Home({
       >
         {[
           { id: "lista", label: "Lista de compras", icon: ShoppingCart },
-          { id: "mercado", label: "Catálogo", icon: BookOpen },
+          { id: "catalogo", label: "Catálogo", icon: BookOpen },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}

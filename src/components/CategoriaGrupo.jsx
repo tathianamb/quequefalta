@@ -15,6 +15,7 @@ function CategoriaGrupo({
   corOverride,
   onRemover,
   forcarAberto,
+  contexto,
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
@@ -88,6 +89,7 @@ function CategoriaGrupo({
             naLista={itensDaLista?.some((i) => i.produtoId === p.id)}
             comprado={p.comprado}
             onRemover={onRemover || null}
+            contexto={contexto}
           />
         ))}
     </div>

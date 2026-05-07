@@ -27,7 +27,7 @@ function ProdutoItem({
       return;
     }
 
-    // contexto === 'mercado'
+    // contexto === 'catalogo'
     if (naLista) {
       onRemover && onRemover({ ...produto, id: produto.itemId || produto.id });
       return;
@@ -40,7 +40,7 @@ function ProdutoItem({
     }
   };
 
-  const podeSwipe = typeof onRemover === "function";
+  const podeSwipe = typeof onRemover === "function" && contexto !== "catalogo";
 
   const onTouchStart = (e) => {
     if (!podeSwipe) return;
