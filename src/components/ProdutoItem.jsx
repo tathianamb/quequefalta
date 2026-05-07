@@ -1,6 +1,6 @@
-import { Check, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Check, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { TIPOGRAFIA } from '../utils/estilos'
 
 function ProdutoItem({
@@ -14,12 +14,25 @@ function ProdutoItem({
 }) {
   const cor = corDaCategoria(produto.categoria);
   const [feedback, setFeedback] = useState(false);
-  const [swipeX, setSwipeX] = useState(0);
-  const [swipando, setSwipando] = useState(false);
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const direcao = useRef(null);
-  const threshold = 80;
+  const [menuAberto, setMenuAberto] = useState(false);
+  const menuRef = useRef(null);
+
+  const mostraOpcoes = typeof onRemover === "function" && contexto !== "catalogo";
+
+  useEffect(() => {
+    if (!menuAberto) return;
+    const fechar = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", fechar);
+    document.addEventListener("touchstart", fechar, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", fechar);
+      document.removeEventListener("touchstart", fechar);
+    };
+  }, [menuAberto]);
 
   const handleToggle = async () => {
     if (!onToggle) return;
@@ -42,86 +55,14 @@ function ProdutoItem({
     }
   };
 
-  const podeSwipe = typeof onRemover === "function" && contexto !== "catalogo";
-
-  const onTouchStart = (e) => {
-    if (!podeSwipe) return;
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    direcao.current = null;
-    setSwipando(true);
-  };
-
-  const onTouchMove = (e) => {
-    if (!swipando || !podeSwipe) return;
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
-
-    if (!direcao.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      direcao.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
-    }
-
-    if (direcao.current !== "horizontal") return;
-
-    const novoX = swipeX + dx;
-    if (novoX <= 0) setSwipeX(Math.max(novoX, -threshold));
-    startX.current = e.touches[0].clientX;
-  };
-
-  const onTouchEnd = () => {
-    if (!podeSwipe) return;
-    setSwipando(false);
-    direcao.current = null;
-    if (swipeX < -threshold / 2) {
-      setSwipeX(-threshold);
-    } else {
-      setSwipeX(0);
-    }
-  };
-
   const handleRemover = () => {
-    setSwipeX(0);
+    setMenuAberto(false);
     onRemover && onRemover(produto);
   };
 
   return (
-    <div
-      style={{
-        position: "relative",
-        marginBottom: "8px",
-        borderRadius: "12px",
-        overflow: "hidden",
-        isolation: "isolate",
-      }}
-    >
-      {/* Fundo vermelho com lixeira */}
-      {podeSwipe && swipeX < 0 && (
-        <div
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: `${threshold}px`,
-            background: "#FA5252",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "0 12px 12px 0",
-            cursor: "pointer",
-          }}
-          onClick={handleRemover}
-        >
-          <Trash2 size={20} color="white" />
-        </div>
-      )}
-
-      {/* Card deslizável */}
+    <div style={{ marginBottom: "8px" }}>
       <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
         style={{
           display: "flex",
           alignItems: "center",
@@ -132,14 +73,8 @@ function ProdutoItem({
           boxShadow: "var(--shadow)",
           borderLeft: `4px solid ${feedback ? "var(--laranja)" : comprado ? "var(--laranja)" : cor}`,
           opacity: comprado ? 0.4 : 1,
-          transform: `translateX(${swipeX}px)`,
-          transition: swipando
-            ? "none"
-            : "transform 0.3s ease, background 0.3s, opacity 0.2s",
-          cursor: "grab",
-          userSelect: "none",
+          transition: "background 0.3s, opacity 0.2s",
           position: "relative",
-          zIndex: 1,
         }}
       >
         <div
@@ -161,7 +96,7 @@ function ProdutoItem({
             justifyContent: "center",
             flexShrink: 0,
             transition: "all 0.2s",
-            cursor: onToggle && !naLista ? "pointer" : "default",
+            cursor: onToggle ? "pointer" : "default",
           }}
         >
           {comprado && <Check size={16} color="white" strokeWidth={3} />}
@@ -175,7 +110,7 @@ function ProdutoItem({
         </div>
 
         <div
-          onClick={() => swipeX === 0 && onAbrir && onAbrir(produto)}
+          onClick={() => onAbrir && onAbrir(produto)}
           style={{ flex: 1, cursor: onAbrir ? "pointer" : "default" }}
         >
           <p
@@ -209,6 +144,64 @@ function ProdutoItem({
             </p>
           )}
         </div>
+
+        {mostraOpcoes && (
+          <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuAberto((v) => !v); }}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "4px",
+                cursor: "pointer",
+                color: "var(--text-soft)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <MoreVertical size={18} />
+            </button>
+
+            {menuAberto && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 4px)",
+                  background: "var(--card)",
+                  borderRadius: "10px",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                  minWidth: "170px",
+                  zIndex: 50,
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  onClick={handleRemover}
+                  style={{
+                    width: "100%",
+                    padding: "13px 16px",
+                    background: "none",
+                    border: "none",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    color: "#FA5252",
+                    fontFamily: "Nunito, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                  }}
+                >
+                  <Trash2 size={15} />
+                  Remover da lista
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
