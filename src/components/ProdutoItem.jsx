@@ -136,7 +136,6 @@ function ProdutoItem({
           alignItems: "center",
           gap: "12px",
           padding: "14px 16px",
-          touchAction: podeSwipe ? "pan-y" : "auto",
           background: feedback ? "var(--laranja)11" : "var(--card)",
           borderRadius: "12px",
           boxShadow: "var(--shadow)",
