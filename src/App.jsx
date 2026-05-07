@@ -165,7 +165,7 @@ function App() {
                   padding: "14px",
                   borderRadius: "12px",
                   border: "none",
-                  background: "linear-gradient(135deg, #FEC601, #FE5F01)",
+                  background: "linear-gradient(135deg, var(--amarelo), var(--laranja))",
                   color: "#212529",
                   fontFamily: "Nunito, sans-serif",
                   fontWeight: 700,

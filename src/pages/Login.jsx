@@ -33,29 +33,22 @@ function Login() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--bg)",
+        background: "var(--verde)",
         padding: "20px",
       }}
     >
-      <p style={{ fontSize: "64px", marginBottom: "8px" }}>🛒</p>
       <h1
         style={{
           fontFamily: "Comfortaa, sans-serif",
-          fontWeight: 700,
-          fontSize: "32px",
-          marginBottom: "4px",
+          fontWeight: 800,
+          fontSize: "36px",
+          marginBottom: "8px",
         }}
       >
-        <span style={{ color: "#FEC601" }}>QueQue</span>
-        <span style={{ color: "#FE5F01" }}>Falta</span>
+        <span style={{ color: "var(--amarelo)" }}>QueQue</span>
+        <span style={{ color: "var(--laranja)" }}>Falta</span>
       </h1>
-      <p
-        style={{
-          color: "var(--text-soft)",
-          marginBottom: "48px",
-          fontSize: "15px",
-        }}
-      >
+      <p style={{ color: "var(--verde-sage)", marginBottom: "48px", fontSize: "15px" }}>
         Lista de compras compartilhada
       </p>
       <button
@@ -74,7 +67,7 @@ function Login() {
           fontWeight: 800,
           fontSize: "16px",
           cursor: carregando ? "default" : "pointer",
-          color: "#212529",
+          color: "var(--verde)",
           opacity: carregando ? 0.7 : 1,
         }}
       >
@@ -89,7 +82,7 @@ function Login() {
       {erro && (
         <p
           style={{
-            color: "#FA5252",
+            color: "var(--laranja)",
             marginTop: "16px",
             fontSize: "14px",
             textAlign: "center",

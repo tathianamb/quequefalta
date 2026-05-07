@@ -41,7 +41,7 @@ export const TIPOGRAFIA = {
 }
 
 export const BOTAO_PRIMARIO = {
-  background: 'linear-gradient(135deg, #FEC601, #FE5F01)',
+  background: 'linear-gradient(135deg, var(--amarelo), var(--laranja))',
   color: '#212529',
   borderRadius: '12px',
   border: 'none',

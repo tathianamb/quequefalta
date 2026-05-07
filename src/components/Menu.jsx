@@ -208,9 +208,9 @@ function Menu({
                             padding: "10px 8px",
                             ...BOTAO_SECUNDARIO,
                             borderRadius: "10px",
-                            border: `2px solid ${ativo ? "#FE5F01" : "#DEE2E6"}`,
-                            background: ativo ? "#FE5F0111" : "var(--card)",
-                            color: ativo ? "#FE5F01" : "var(--text-soft)",
+                            border: `2px solid ${ativo ? "var(--laranja)" : "#DEE2E6"}`,
+                            background: ativo ? "var(--laranja)11" : "var(--card)",
+                            color: ativo ? "var(--laranja)" : "var(--text-soft)",
                             transition: "all 0.2s",
                           }}
                         >
@@ -252,7 +252,7 @@ function Menu({
                         padding: "14px 16px",
                         background: ativa ? "#FEC60122" : "var(--bg)",
                         borderRadius: "14px",
-                        border: `1.5px solid ${ativa ? "#FEC601" : "transparent"}`,
+                        border: `1.5px solid ${ativa ? "var(--amarelo)" : "transparent"}`,
                         cursor: ativa ? "default" : "pointer",
                       }}
                       onClick={async () => {
@@ -278,7 +278,7 @@ function Menu({
                           <p
                             style={{
                               ...TIPOGRAFIA.subcategoria,
-                              color: "#FEC601",
+                              color: "var(--amarelo)",
                             }}
                           >
                             ativa

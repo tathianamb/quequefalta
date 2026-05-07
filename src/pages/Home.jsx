@@ -131,7 +131,6 @@ function Home({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <ShoppingCart size={24} color="var(--text)" />
             <span
               style={{
                 fontFamily: "Comfortaa, sans-serif",
@@ -139,8 +138,8 @@ function Home({
                 fontSize: "20px",
               }}
             >
-              <span style={{ color: "#FEC601" }}>QueQue</span>
-              <span style={{ color: "#FE5F01" }}>Falta</span>
+              <span style={{ color: "var(--amarelo)" }}>QueQue</span>
+              <span style={{ color: "var(--laranja)" }}>Falta</span>
             </span>
           </div>
           <div
@@ -154,8 +153,8 @@ function Home({
                   position: "absolute",
                   top: "-6px",
                   right: "-6px",
-                  background: "#FEC601",
-                  color: "#212529",
+                  background: "var(--amarelo)",
+                  color: "var(--text)",
                   borderRadius: RAIO.full,
                   width: "18px",
                   height: "18px",
@@ -476,12 +475,12 @@ function Home({
               flexDirection: "column",
               alignItems: "center",
               gap: "4px",
-              color: aba === id ? "#FE5F01" : "var(--text-soft)",
+              color: aba === id ? "#var(--laranja)" : "var(--text-soft)",
               fontFamily: "Nunito, sans-serif",
               ...(aba === id ? TIPOGRAFIA.aba : TIPOGRAFIA.abaInativa),
               transition: "all 0.2s",
               borderTop:
-                aba === id ? "2px solid #FEC601" : "2px solid transparent",
+                aba === id ? "2px solid var(--amarelo)" : "2px solid transparent",
             }}
           >
             <Icon size={20} />

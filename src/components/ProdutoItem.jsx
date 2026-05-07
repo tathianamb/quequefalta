@@ -112,10 +112,10 @@ function ProdutoItem({
           alignItems: "center",
           gap: "12px",
           padding: "14px 16px",
-          background: feedback ? "#FE5F0111" : "var(--card)",
+          background: feedback ? "var(--laranja)11" : "var(--card)",
           borderRadius: "12px",
           boxShadow: "var(--shadow)",
-          borderLeft: `4px solid ${feedback ? "#FE5F01" : comprado ? "#FE5F01" : cor}`,
+          borderLeft: `4px solid ${feedback ? "var(--laranja)" : comprado ? "var(--laranja)" : cor}`,
           opacity: comprado ? 0.4 : 1,
           transform: `translateX(${swipeX}px)`,
           transition: swipando
@@ -133,9 +133,9 @@ function ProdutoItem({
             width: "28px",
             height: "28px",
             borderRadius: "8px",
-            border: `2px solid ${comprado || naLista || feedback ? "#FE5F01" : "#DEE2E6"}`,
+            border: `2px solid ${comprado || naLista || feedback ? "var(--laranja)" : "#DEE2E6"}`,
             background: comprado
-              ? "#FE5F01"
+              ? "var(--laranja)"
               : naLista
                 ? "#FE5F0122"
                 : feedback
@@ -150,9 +150,9 @@ function ProdutoItem({
           }}
         >
           {comprado && <Check size={16} color="white" strokeWidth={3} />}
-          {naLista && !comprado && <ShoppingCart size={14} color="#FE5F01" />}
+          {naLista && !comprado && <ShoppingCart size={14} color="var(--laranja)" />}
           {!naLista && !comprado && feedback && (
-            <Check size={14} color="#FE5F01" />
+            <Check size={14} color="var(--laranja)" />
           )}
           {!naLista && !comprado && !feedback && onToggle && (
             <Plus size={14} color="#DEE2E6" />
@@ -170,7 +170,7 @@ function ProdutoItem({
               color: comprado
                 ? "var(--text-soft)"
                 : feedback
-                  ? "#FE5F01"
+                  ? "var(--laranja)"
                   : "var(--text)",
               transition: "color 0.3s",
             }}
@@ -186,7 +186,7 @@ function ProdutoItem({
             <p
               style={{
                 ...TIPOGRAFIA.label,
-                color: "#FE5F01",
+                color: "var(--laranja)",
                 marginTop: "2px",
               }}
             >

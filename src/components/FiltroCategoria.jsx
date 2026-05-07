@@ -67,7 +67,7 @@ function FiltroCategoria({
               padding: "6px 12px",
               borderRadius: RAIO.pill,
               border: "none",
-              background: "#FEC601",
+              background: "var(--amarelo)",
               color: "#212529",
               fontFamily: "Nunito, sans-serif",
               fontWeight: FONTE.bold,
@@ -207,7 +207,7 @@ function FiltroCategoria({
                       letterSpacing: "0.5px",
                     }}
                   >
-                    {selecionado && <Check size={14} color="#FE5F01" />}
+                    {selecionado && <Check size={14} color="var(--laranja)" />}
                     {cat}
                   </button>
                 );
