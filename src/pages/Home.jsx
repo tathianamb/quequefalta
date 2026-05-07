@@ -475,7 +475,7 @@ function Home({
               flexDirection: "column",
               alignItems: "center",
               gap: "4px",
-              color: aba === id ? "#var(--laranja)" : "var(--text-soft)",
+              color: aba === id ? "var(--laranja)" : "var(--text-soft)",
               fontFamily: "Nunito, sans-serif",
               ...(aba === id ? TIPOGRAFIA.aba : TIPOGRAFIA.abaInativa),
               transition: "all 0.2s",
