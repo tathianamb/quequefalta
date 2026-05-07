@@ -16,6 +16,7 @@ function ProdutoItem({
   const [feedback, setFeedback] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
   const [swipando, setSwipando] = useState(false);
+  const swipeXRef = useRef(0);
   const startX = useRef(0);
   const startY = useRef(0);
   const direcao = useRef(null);
@@ -49,42 +50,46 @@ function ProdutoItem({
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
     direcao.current = null;
-    setSwipando(true);
+    // sem setState: nenhum re-render no toque inicial
   };
 
   const onTouchMove = (e) => {
-    if (!swipando || !podeSwipe) return;
+    if (!podeSwipe) return;
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
 
     if (!direcao.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       if (Math.abs(dx) > Math.abs(dy)) {
         direcao.current = "horizontal";
+        setSwipando(true);
       } else {
         direcao.current = "vertical";
-        setSwipando(false);
         return;
       }
     }
 
     if (direcao.current !== "horizontal") return;
 
-    const novoX = swipeX + dx;
-    if (novoX <= 0) setSwipeX(Math.max(novoX, -threshold));
+    const novoX = swipeXRef.current + dx;
+    if (novoX <= 0) {
+      const clampado = Math.max(novoX, -threshold);
+      swipeXRef.current = clampado;
+      setSwipeX(clampado);
+    }
     startX.current = e.touches[0].clientX;
   };
 
   const onTouchEnd = () => {
     if (!podeSwipe) return;
-    setSwipando(false);
     direcao.current = null;
-    if (swipeX < -threshold / 2) {
-      setSwipeX(-threshold);
-    } else {
-      setSwipeX(0);
-    }
+    setSwipando(false);
+    const finalX = swipeXRef.current < -threshold / 2 ? -threshold : 0;
+    swipeXRef.current = finalX;
+    setSwipeX(finalX);
   };
   const handleRemover = () => {
+    swipeXRef.current = 0;
     setSwipeX(0);
     onRemover && onRemover(produto);
   };
