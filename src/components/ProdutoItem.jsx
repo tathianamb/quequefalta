@@ -17,6 +17,8 @@ function ProdutoItem({
   const [swipeX, setSwipeX] = useState(0);
   const [swipando, setSwipando] = useState(false);
   const startX = useRef(0);
+  const startY = useRef(0);
+  const direcao = useRef(null);
   const threshold = 80;
 
   const handleToggle = async () => {
@@ -45,13 +47,29 @@ function ProdutoItem({
   const onTouchStart = (e) => {
     if (!podeSwipe) return;
     startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    direcao.current = null;
     setSwipando(true);
   };
 
   const onTouchMove = (e) => {
     if (!swipando || !podeSwipe) return;
-    const diff = e.touches[0].clientX - startX.current;
-    const novoX = swipeX + diff;
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+
+    if (!direcao.current) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        direcao.current = "horizontal";
+      } else {
+        direcao.current = "vertical";
+        setSwipando(false);
+        return;
+      }
+    }
+
+    if (direcao.current !== "horizontal") return;
+
+    const novoX = swipeX + dx;
     if (novoX <= 0) setSwipeX(Math.max(novoX, -threshold));
     startX.current = e.touches[0].clientX;
   };
@@ -59,6 +77,7 @@ function ProdutoItem({
   const onTouchEnd = () => {
     if (!podeSwipe) return;
     setSwipando(false);
+    direcao.current = null;
     if (swipeX < -threshold / 2) {
       setSwipeX(-threshold);
     } else {
@@ -112,6 +131,7 @@ function ProdutoItem({
           alignItems: "center",
           gap: "12px",
           padding: "14px 16px",
+          touchAction: podeSwipe ? "pan-y" : "auto",
           background: feedback ? "var(--laranja)11" : "var(--card)",
           borderRadius: "12px",
           boxShadow: "var(--shadow)",
