@@ -1,7 +1,7 @@
 import { Check, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
-import { useState, useRef } from "react";
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../utils/estilos'
+import { useState, useRef, useEffect } from "react";
+import { TIPOGRAFIA } from '../utils/estilos'
 
 function ProdutoItem({
   produto,
@@ -20,6 +20,7 @@ function ProdutoItem({
   const startX = useRef(0);
   const startY = useRef(0);
   const direcao = useRef(null);
+  const cardRef = useRef(null);
   const threshold = 80;
 
   const handleToggle = async () => {
@@ -45,49 +46,61 @@ function ProdutoItem({
 
   const podeSwipe = typeof onRemover === "function" && contexto !== "catalogo";
 
-  const onTouchStart = (e) => {
-    if (!podeSwipe) return;
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    direcao.current = null;
-    // sem setState: nenhum re-render no toque inicial
-  };
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !podeSwipe) return;
 
-  const onTouchMove = (e) => {
-    if (!podeSwipe) return;
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
+    const onTouchStart = (e) => {
+      startX.current = e.touches[0].clientX;
+      startY.current = e.touches[0].clientY;
+      direcao.current = null;
+    };
 
-    if (!direcao.current) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        direcao.current = "horizontal";
-        setSwipando(true);
-      } else {
-        direcao.current = "vertical";
-        return;
+    const onTouchMove = (e) => {
+      const dx = e.touches[0].clientX - startX.current;
+      const dy = e.touches[0].clientY - startY.current;
+
+      if (!direcao.current) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          direcao.current = "horizontal";
+          setSwipando(true);
+        } else {
+          direcao.current = "vertical";
+          return;
+        }
       }
-    }
 
-    if (direcao.current !== "horizontal") return;
+      if (direcao.current !== "horizontal") return;
 
-    const novoX = swipeXRef.current + dx;
-    if (novoX <= 0) {
-      const clampado = Math.max(novoX, -threshold);
-      swipeXRef.current = clampado;
-      setSwipeX(clampado);
-    }
-    startX.current = e.touches[0].clientX;
-  };
+      const novoX = swipeXRef.current + dx;
+      if (novoX <= 0) {
+        const clampado = Math.max(novoX, -threshold);
+        swipeXRef.current = clampado;
+        setSwipeX(clampado);
+      }
+      startX.current = e.touches[0].clientX;
+    };
 
-  const onTouchEnd = () => {
-    if (!podeSwipe) return;
-    direcao.current = null;
-    setSwipando(false);
-    const finalX = swipeXRef.current < -threshold / 2 ? -threshold : 0;
-    swipeXRef.current = finalX;
-    setSwipeX(finalX);
-  };
+    const onTouchEnd = () => {
+      direcao.current = null;
+      setSwipando(false);
+      const finalX = swipeXRef.current < -threshold / 2 ? -threshold : 0;
+      swipeXRef.current = finalX;
+      setSwipeX(finalX);
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [podeSwipe]);
+
   const handleRemover = () => {
     swipeXRef.current = 0;
     setSwipeX(0);
@@ -128,9 +141,7 @@ function ProdutoItem({
 
       {/* Card deslizável */}
       <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        ref={cardRef}
         style={{
           display: "flex",
           alignItems: "center",
