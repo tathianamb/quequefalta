@@ -24,7 +24,6 @@ export function useSugestoes(usuario) {
     const novosAprovadores = [...(sugestao.aprovadores || []), usuario.uid]
 
     if (novosAprovadores.length >= 2) {
-      // Segunda aprovação — vai para o catálogo
       await addDoc(collection(db, 'catalogo'), {
         nome: sugestao.nome,
         categoria: sugestao.categoria,
@@ -40,7 +39,6 @@ export function useSugestoes(usuario) {
         aprovadoEm: serverTimestamp(),
       })
     } else {
-      // Primeira aprovação
       await updateDoc(doc(db, 'sugestoes', sugestao.id), {
         status: 'aguardando_segunda_aprovacao',
         aprovadores: novosAprovadores,

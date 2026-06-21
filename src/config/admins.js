@@ -1,5 +1,5 @@
 export const ADMINS = [
-  'tm_barchi@hotmail.com', // substitui pelo seu email real
+  'tm_barchi@hotmail.com',
   'guiicamargo98@gmail.com'
 ]
 

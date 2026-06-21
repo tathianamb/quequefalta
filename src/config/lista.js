@@ -9,7 +9,6 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-// Cria a lista própria do usuário no primeiro login
 export async function inicializarLista(usuario) {
   const listaRef = doc(db, "listas", usuario.uid);
   const listaSnap = await getDoc(listaRef);
@@ -38,7 +37,6 @@ export async function inicializarLista(usuario) {
   return usuario.uid;
 }
 
-// Obtém a lista ativa do usuário
 export async function obterListaAtiva(usuario) {
   const userRef = doc(db, "usuarios", usuario.uid);
   const userSnap = await getDoc(userRef);
@@ -47,7 +45,6 @@ export async function obterListaAtiva(usuario) {
 
   const { listaAtiva, listas } = userSnap.data();
 
-  // Busca detalhes de todas as listas
   const detalhes = await Promise.all(
     (listas || []).map(async (listaId) => {
       const snap = await getDoc(doc(db, "listas", listaId));
@@ -61,7 +58,6 @@ export async function obterListaAtiva(usuario) {
   };
 }
 
-// Entra em uma lista compartilhada
 export async function entrarNaLista(usuario, listaId) {
   const listaRef = doc(db, "listas", listaId);
   const listaSnap = await getDoc(listaRef);
@@ -70,12 +66,10 @@ export async function entrarNaLista(usuario, listaId) {
 
   const lista = { id: listaId, ...listaSnap.data() };
 
-  // Adiciona usuário como participante
   await updateDoc(listaRef, {
     participantes: arrayUnion(usuario.uid),
   });
 
-  // Adiciona lista ao usuário mas não muda a lista ativa ainda
   await updateDoc(doc(db, "usuarios", usuario.uid), {
     listas: arrayUnion(listaId),
   });
@@ -83,14 +77,12 @@ export async function entrarNaLista(usuario, listaId) {
   return lista;
 }
 
-// Alterna a lista ativa
 export async function alternarLista(usuario, listaId) {
   await updateDoc(doc(db, "usuarios", usuario.uid), {
     listaAtiva: listaId,
   });
 }
 
-// Sai de uma lista compartilhada (nunca da própria)
 export async function sairDaLista(usuario, listaId) {
   if (listaId === usuario.uid)
     throw new Error("Não é possível sair da sua própria lista");
@@ -105,7 +97,6 @@ export async function sairDaLista(usuario, listaId) {
 
   await updateDoc(userRef, {
     listas: arrayRemove(listaId),
-    // Se estava nessa lista, volta para a própria
     listaAtiva: listaAtiva === listaId ? usuario.uid : listaAtiva,
   });
 }

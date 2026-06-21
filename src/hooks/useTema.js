@@ -9,7 +9,7 @@ export function useTema() {
     const salvo = localStorage.getItem("tema");
     if (salvo === "escuro") return true;
     if (salvo === "claro") return false;
-    return sistemaEscuro; // sem preferência salva, segue o sistema
+    return sistemaEscuro;
   });
 
   useEffect(() => {
