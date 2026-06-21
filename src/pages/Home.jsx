@@ -28,6 +28,7 @@ import {
   RAIO,
   BOTAO_PRIMARIO,
   BOTAO_SECUNDARIO,
+  COR,
 } from "../utils/estilos";
 
 function Home({
@@ -313,7 +314,7 @@ function Home({
             <div
               style={{
                 marginTop: pendentes.length > 0 ? "24px" : "0",
-                borderTop: pendentes.length > 0 ? "1px dashed #DEE2E6" : "none",
+                borderTop: pendentes.length > 0 ? `1px dashed ${COR.borda}` : "none",
                 paddingTop: pendentes.length > 0 ? "16px" : "0",
               }}
             >
@@ -326,7 +327,7 @@ function Home({
                 busca={busca}
                 itensDaLista={lista}
                 collapsed={true}
-                corOverride="#ADB5BD"
+                corOverride={COR.neutro}
                 onRemover={removerItem}
               />
             </div>
@@ -415,6 +416,7 @@ function Home({
           onFechar={() => setProdutoSelecionado(null)}
           listaAtiva={listaAtiva}
           itemDaLista={lista.find((i) => i.produtoId === produtoSelecionado.id)}
+          catalogo={catalogo}
         />
       )}
 
@@ -449,7 +451,7 @@ function Home({
           width: "100%",
           maxWidth: "480px",
           background: "var(--card)",
-          borderTop: "1px solid #F1F3F5",
+          borderTop: `1px solid ${COR.divisoria}`,
           display: "flex",
           zIndex: 20,
         }}
