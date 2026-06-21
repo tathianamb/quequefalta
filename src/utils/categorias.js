@@ -1,3 +1,5 @@
+import { COR } from './estilos'
+
 export const COR_CATEGORIA = {
   'Proteínas': '#d32f2f',
   'Hortifrúti': '#4caf50',
@@ -43,7 +45,7 @@ export const ORDEM_CATEGORIAS = [
 ]
 
 export function corDaCategoria(categoria) {
-  return COR_CATEGORIA[categoria] || '#ADB5BD'
+  return COR_CATEGORIA[categoria] || COR.neutro
 }
 
 export function textoParaCor(hex) {

@@ -26,6 +26,21 @@ export const RAIO = {
   full: '50%',
 }
 
+export const COR = {
+  borda: '#DEE2E6',
+  divisoria: '#F1F3F5',
+  neutro: '#ADB5BD',
+
+  erro: '#FA5252',
+  erroBg: '#FFE3E3',
+
+  sucesso: '#2F9E44',
+  sucessoBg: '#EBFBEE',
+  sucessoBorda: '#69DB7C',
+}
+
+export const BORDA = `1.5px solid ${COR.borda}`
+
 export const TIPOGRAFIA = {
   display: { fontSize: '32px', fontWeight: 900, letterSpacing: '-0.5px' },
   h2: { fontSize: '20px', fontWeight: 800, letterSpacing: '0px' },
@@ -43,7 +58,7 @@ export const TIPOGRAFIA = {
 export const BOTAO_PRIMARIO = {
   background: 'linear-gradient(135deg, var(--amarelo), var(--laranja))',
   color: '#212529',
-  borderRadius: '12px',
+  borderRadius: RAIO.md,
   border: 'none',
   fontFamily: 'Nunito, sans-serif',
   fontWeight: 700,
@@ -55,8 +70,8 @@ export const BOTAO_PRIMARIO = {
 export const BOTAO_SECUNDARIO = {
   background: 'transparent',
   color: 'var(--text-soft)',
-  borderRadius: '12px',
-  border: '1.5px solid #DEE2E6',
+  borderRadius: RAIO.md,
+  border: BORDA,
   fontFamily: 'Nunito, sans-serif',
   fontWeight: 600,
   fontSize: '14px',

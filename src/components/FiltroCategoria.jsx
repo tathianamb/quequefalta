@@ -7,6 +7,7 @@ import {
   RAIO,
   BOTAO_PRIMARIO,
   BOTAO_SECUNDARIO,
+  COR,
 } from "../utils/estilos";
 
 function FiltroCategoria({
@@ -154,7 +155,7 @@ function FiltroCategoria({
                 justifyContent: "space-between",
                 padding: "16px 20px",
                 flexShrink: 0,
-                borderBottom: "1px solid #F1F3F5",
+                borderBottom: `1px solid ${COR.divisoria}`,
               }}
             >
               <h2
@@ -192,7 +193,7 @@ function FiltroCategoria({
                     onClick={() => toggleCategoria(cat)}
                     style={{
                       padding: "8px 10px",
-                      border: `1.5px solid ${selecionado ? "#FEC60155" : "#DEE2E655"}`,
+                      border: `1.5px solid ${selecionado ? "#FEC60155" : COR.borda + "55"}`,
                       background: selecionado ? "#FEC60122" : "var(--card)",
                       color: selecionado ? "var(--text)" : "var(--text-soft)",
                       borderRadius: RAIO.pill,
@@ -220,7 +221,7 @@ function FiltroCategoria({
                 display: "flex",
                 gap: "12px",
                 padding: "16px 20px 80px",
-                borderTop: "1px solid #F1F3F5",
+                borderTop: `1px solid ${COR.divisoria}`,
                 flexShrink: 0,
                 background: "var(--card)",
               }}

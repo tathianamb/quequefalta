@@ -1,7 +1,7 @@
 import { Check, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
-import { TIPOGRAFIA } from '../utils/estilos'
+import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
 
 function ProdutoItem({
   produto,
@@ -42,7 +42,6 @@ function ProdutoItem({
       return;
     }
 
-    // contexto === 'catalogo'
     if (naLista) {
       onRemover && onRemover({ ...produto, id: produto.itemId || produto.id });
       return;
@@ -69,7 +68,7 @@ function ProdutoItem({
           gap: "12px",
           padding: "14px 16px",
           background: feedback ? "var(--laranja)11" : "var(--card)",
-          borderRadius: "12px",
+          borderRadius: RAIO.md,
           boxShadow: "var(--shadow)",
           borderLeft: `4px solid ${feedback ? "var(--laranja)" : comprado ? "var(--laranja)" : cor}`,
           opacity: comprado ? 0.4 : 1,
@@ -82,8 +81,8 @@ function ProdutoItem({
           style={{
             width: "28px",
             height: "28px",
-            borderRadius: "8px",
-            border: `2px solid ${comprado || naLista || feedback ? "var(--laranja)" : "#DEE2E6"}`,
+            borderRadius: RAIO.sm,
+            border: `1.5px solid ${comprado || naLista || feedback ? "var(--laranja)" : COR.borda}`,
             background: comprado
               ? "var(--laranja)"
               : naLista
@@ -105,7 +104,7 @@ function ProdutoItem({
             <Check size={14} color="var(--laranja)" />
           )}
           {!naLista && !comprado && !feedback && onToggle && (
-            <Plus size={14} color="#DEE2E6" />
+            <Plus size={14} color={COR.borda} />
           )}
         </div>
 
@@ -170,7 +169,7 @@ function ProdutoItem({
                   right: 0,
                   top: "calc(100% + 4px)",
                   background: "var(--card)",
-                  borderRadius: "10px",
+                  borderRadius: RAIO.sm,
                   boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
                   minWidth: "170px",
                   zIndex: 50,
@@ -189,7 +188,7 @@ function ProdutoItem({
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
-                    color: "#FA5252",
+                    color: COR.erro,
                     fontFamily: "Nunito, sans-serif",
                     fontSize: "14px",
                     fontWeight: 600,

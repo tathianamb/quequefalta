@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, Check, Trash2, Edit2 } from 'lucide-react'
 import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
-import { TIPOGRAFIA, FONTE, RAIO } from '../utils/estilos'
+import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from '../utils/estilos'
 
 function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualizar, deletar, usuario }) {
   const [editando, setEditando] = useState(null)
@@ -32,7 +32,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--card)',
-          borderRadius: '24px 24px 0 0',
+          borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
           padding: '24px 20px 40px',
           maxHeight: '90vh',
           overflowY: 'auto',
@@ -98,7 +98,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
               return (
                 <div key={s.id} style={{
                   background: 'var(--bg)',
-                  borderRadius: '14px',
+                  borderRadius: RAIO.md,
                   padding: '16px',
                   marginBottom: '12px',
                   borderLeft: `4px solid ${cor}`,
@@ -112,7 +112,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         style={{
                           padding: '10px',
                           borderRadius: RAIO.sm,
-                          border: '2px solid #DEE2E6',
+                          border: BORDA,
                           background: 'var(--card)',
                           fontFamily: 'Nunito, sans-serif',
                           fontSize: FONTE.md,
@@ -126,7 +126,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         style={{
                           padding: '10px',
                           borderRadius: RAIO.sm,
-                          border: '2px solid #DEE2E6',
+                          border: BORDA,
                           background: 'var(--card)',
                           fontFamily: 'Nunito, sans-serif',
                           fontSize: FONTE.md,
@@ -148,7 +148,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                         style={{
                           padding: '10px',
                           borderRadius: RAIO.sm,
-                          border: '2px solid #DEE2E6',
+                          border: BORDA,
                           background: 'var(--card)',
                           fontFamily: 'Nunito, sans-serif',
                           fontSize: FONTE.md,
@@ -237,7 +237,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                             padding: '10px',
                             borderRadius: RAIO.sm,
                             border: 'none',
-                            background: jaAprovou ? '#DEE2E6' : 'var(--laranja)',
+                            background: jaAprovou ? COR.borda : 'var(--laranja)',
                             color: jaAprovou ? 'var(--text-soft)' : 'white',
                             fontFamily: 'Nunito, sans-serif',
                             fontSize: '13px',
@@ -258,8 +258,8 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                             padding: '10px',
                             borderRadius: RAIO.sm,
                             border: 'none',
-                            background: '#FFE3E3',
-                            color: '#FA5252',
+                            background: COR.erroBg,
+                            color: COR.erro,
                             fontFamily: 'Nunito, sans-serif',
                             fontSize: '13px',
                             cursor: 'pointer',
@@ -305,7 +305,7 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
             {todas.map(s => (
               <div key={s.id} style={{
                 background: 'var(--bg)',
-                borderRadius: '14px',
+                borderRadius: RAIO.md,
                 padding: '14px 16px',
                 marginBottom: '10px',
                 display: 'flex',
@@ -321,8 +321,8 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
                     fontSize: FONTE.sm,
                     padding: '4px 10px',
                     borderRadius: RAIO.pill,
-                    background: s.status === 'aprovado' ? '#EBFBEE' : '#FFE3E3',
-                    color: s.status === 'aprovado' ? '#2F9E44' : '#FA5252',
+                    background: s.status === 'aprovado' ? COR.sucessoBg : COR.erroBg,
+                    color: s.status === 'aprovado' ? COR.sucesso : COR.erro,
                   }}>
                     {s.status === 'aprovado' ? '✓ Aprovado' : '✗ Rejeitado'}
                   </span>

@@ -1,6 +1,7 @@
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
 import { useState } from "react";
+import { RAIO } from "../utils/estilos";
 
 function Login() {
   const [carregando, setCarregando] = useState(false);
@@ -59,7 +60,7 @@ function Login() {
           alignItems: "center",
           gap: "12px",
           padding: "16px 28px",
-          borderRadius: "16px",
+          borderRadius: RAIO.lg,
           border: "none",
           background: "white",
           boxShadow: "0 2px 16px rgba(0,0,0,0.12)",

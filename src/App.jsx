@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { RAIO } from "./utils/estilos";
 import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { auth } from "./config/firebase";
 import {
@@ -13,11 +14,10 @@ function App() {
   const [usuario, setUsuario] = useState(undefined);
   const [listaAtiva, setListaAtiva] = useState(null);
   const [todasListas, setTodasListas] = useState([]);
-  const [listaPendente, setListaPendente] = useState(null); // link recebido
-  const [confirmandoLista, setConfirmandoLista] = useState(null); // lista para confirmar
+  const [listaPendente, setListaPendente] = useState(null);
+  const [confirmandoLista, setConfirmandoLista] = useState(null);
 
   useEffect(() => {
-    // Verifica se tem ?lista= na URL
     const params = new URLSearchParams(window.location.search);
     const listaParam = params.get("lista");
     if (listaParam) setListaPendente(listaParam);
@@ -31,11 +31,10 @@ function App() {
         setListaAtiva(ativa);
         setTodasListas(listas);
 
-        // Se veio com link, verifica se já participa
         if (listaParam) {
           const jaParticipa = listas.some((l) => l.id === listaParam);
           if (!jaParticipa) {
-            // Busca detalhes da lista para mostrar no modal
+
             try {
               const lista = await entrarNaLista(user, listaParam);
               setConfirmandoLista(lista);
@@ -43,10 +42,10 @@ function App() {
               console.error("Lista não encontrada:", e);
             }
           } else if (ativa !== listaParam) {
-            // Já participa mas não está ativa
+
             setConfirmandoLista(listas.find((l) => l.id === listaParam));
           }
-          // Limpa o parâmetro da URL sem recarregar
+
           window.history.replaceState({}, "", window.location.pathname);
         }
       }
@@ -112,7 +111,7 @@ function App() {
           <div
             style={{
               background: "var(--card)",
-              borderRadius: "20px",
+              borderRadius: RAIO.pill,
               padding: "28px 24px",
               width: "100%",
               maxWidth: "320px",
@@ -146,7 +145,7 @@ function App() {
                 style={{
                   flex: 1,
                   padding: "14px",
-                  borderRadius: "12px",
+                  borderRadius: RAIO.md,
                   border: "none",
                   background: "var(--bg)",
                   color: "var(--text-soft)",
@@ -163,7 +162,7 @@ function App() {
                 style={{
                   flex: 1,
                   padding: "14px",
-                  borderRadius: "12px",
+                  borderRadius: RAIO.md,
                   border: "none",
                   background: "linear-gradient(135deg, var(--amarelo), var(--laranja))",
                   color: "#212529",

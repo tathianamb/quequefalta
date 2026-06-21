@@ -15,7 +15,7 @@ import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
-import { TIPOGRAFIA, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from "../utils/estilos";
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
 
 function Menu({
   onFechar,
@@ -82,7 +82,7 @@ function Menu({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--card)",
-          borderRadius: "24px 24px 0 0",
+          borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
           padding: "24px 20px 40px",
           maxHeight: "85vh",
           overflowY: "auto",
@@ -125,7 +125,7 @@ function Menu({
                 style={{
                   padding: "14px 16px",
                   background: "var(--bg)",
-                  borderRadius: "14px",
+                  borderRadius: RAIO.md,
                 }}
               >
                 <p style={{ ...TIPOGRAFIA.titulo, color: "var(--text)" }}>
@@ -158,7 +158,7 @@ function Menu({
                   style={{
                     padding: "14px 16px",
                     background: "var(--bg)",
-                    borderRadius: "14px",
+                    borderRadius: RAIO.md,
                   }}
                 >
                   <div
@@ -207,8 +207,8 @@ function Menu({
                           style={{
                             padding: "10px 8px",
                             ...BOTAO_SECUNDARIO,
-                            borderRadius: "10px",
-                            border: `2px solid ${ativo ? "var(--laranja)" : "#DEE2E6"}`,
+                            borderRadius: RAIO.sm,
+                            border: `1.5px solid ${ativo ? "var(--laranja)" : COR.borda}`,
                             background: ativo ? "var(--laranja)11" : "var(--card)",
                             color: ativo ? "var(--laranja)" : "var(--text-soft)",
                             transition: "all 0.2s",
@@ -251,7 +251,7 @@ function Menu({
                         justifyContent: "space-between",
                         padding: "14px 16px",
                         background: ativa ? "#FEC60122" : "var(--bg)",
-                        borderRadius: "14px",
+                        borderRadius: RAIO.md,
                         border: `1.5px solid ${ativa ? "var(--amarelo)" : "transparent"}`,
                         cursor: ativa ? "default" : "pointer",
                       }}
@@ -334,10 +334,10 @@ function Menu({
                             }}
                             style={{
                               padding: "6px 10px",
-                              borderRadius: "8px",
+                              borderRadius: RAIO.sm,
                               border: "none",
-                              background: "#FFE3E3",
-                              color: "#FA5252",
+                              background: COR.erroBg,
+                              color: COR.erro,
                               cursor: "pointer",
                               fontSize: "12px",
                               fontWeight: 600,
@@ -378,7 +378,7 @@ function Menu({
                     gap: "12px",
                     padding: "14px 16px",
                     background: "var(--bg)",
-                    borderRadius: "14px",
+                    borderRadius: RAIO.md,
                     cursor: "pointer",
                   }}
                 >
@@ -403,7 +403,7 @@ function Menu({
                     gap: "12px",
                     padding: "14px 16px",
                     background: "var(--bg)",
-                    borderRadius: "14px",
+                    borderRadius: RAIO.md,
                     cursor: "pointer",
                   }}
                 >
@@ -442,15 +442,15 @@ function Menu({
                       gap: "12px",
                       padding: "14px 16px",
                       background: "var(--bg)",
-                      borderRadius: "14px",
+                      borderRadius: RAIO.md,
                       cursor: "pointer",
                     }}
                   >
-                    <Shield size={18} color="#FA5252" />
+                    <Shield size={18} color={COR.erro} />
                     <span
                       style={{
                         ...TIPOGRAFIA.nomeProduto,
-                        color: "#FA5252",
+                        color: COR.erro,
                         flex: 1,
                       }}
                     >
@@ -467,7 +467,7 @@ function Menu({
                     gap: "12px",
                     padding: "14px 16px",
                     background: "var(--bg)",
-                    borderRadius: "14px",
+                    borderRadius: RAIO.md,
                     cursor: "pointer",
                     marginTop: "4px",
                   }}
@@ -501,7 +501,7 @@ function Menu({
                     <div
                       style={{
                         background: "var(--card)",
-                        borderRadius: "20px",
+                        borderRadius: RAIO.pill,
                         padding: "28px 24px",
                         width: "100%",
                         maxWidth: "320px",
@@ -605,8 +605,8 @@ function Menu({
               placeholder="Nome do produto *"
               style={{
                 padding: "14px",
-                borderRadius: "12px",
-                border: "2px solid #DEE2E6",
+                borderRadius: RAIO.md,
+                border: BORDA,
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
@@ -620,8 +620,8 @@ function Menu({
               onChange={(e) => setCategoria(e.target.value)}
               style={{
                 padding: "14px",
-                borderRadius: "12px",
-                border: "2px solid #DEE2E6",
+                borderRadius: RAIO.md,
+                border: BORDA,
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
@@ -646,8 +646,8 @@ function Menu({
               placeholder="Subcategoria (opcional)"
               style={{
                 padding: "14px",
-                borderRadius: "12px",
-                border: "2px solid #DEE2E6",
+                borderRadius: RAIO.md,
+                border: BORDA,
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
