@@ -152,15 +152,21 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                   {ing.temEmCasa && <Check size={12} color="white" strokeWidth={3} />}
                 </div>
               )}
-              <span style={{
-                ...TIPOGRAFIA.corpo,
-                color: isNaoVerificado
-                  ? 'var(--text-soft)'
-                  : ing.temEmCasa ? 'var(--text-soft)' : 'var(--text)',
-                textDecoration: ing.temEmCasa && !isNaoVerificado ? 'line-through' : 'none',
-                flex: 1,
-              }}>
-                {ing.nome}
+              <span style={{ flex: 1 }}>
+                <span style={{
+                  ...TIPOGRAFIA.corpo,
+                  color: isNaoVerificado
+                    ? 'var(--text-soft)'
+                    : ing.temEmCasa ? 'var(--text-soft)' : 'var(--text)',
+                  textDecoration: ing.temEmCasa && !isNaoVerificado ? 'line-through' : 'none',
+                }}>
+                  {ing.nome}
+                </span>
+                {ing.observacao && (
+                  <span style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginLeft: '6px' }}>
+                    {ing.observacao}
+                  </span>
+                )}
               </span>
               {isNaoVerificado && (
                 <span style={{ ...TIPOGRAFIA.label, color: 'var(--laranja)' }}>não verificado</span>

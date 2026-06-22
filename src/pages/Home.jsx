@@ -26,6 +26,7 @@ import { useAtributos } from "../hooks/useAtributos";
 import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
 import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
+import { ReceitaTexto } from "../components/receitas/ReceitaTexto";
 import AdminPanel from "../components/AdminPanel";
 import FiltroCategoria from "../components/FiltroCategoria";
 import {
@@ -85,7 +86,9 @@ function Home({
   const admin = isAdmin(usuario.email);
   const [telaMenu, setTelaMenu] = useState("menu");
   const [receitaSelecionada, setReceitaSelecionada] = useState(null);
-  const [telaReceita, setTelaReceita] = useState("lista"); // "lista" | "detalhe" | "sugerir" | "nova"
+  const [telaReceita, setTelaReceita] = useState("lista"); // "lista" | "detalhe" | "texto" | "formulario"
+  const [textoReceita, setTextoReceita] = useState("");
+  const [dadosParseados, setDadosParseados] = useState(null);
   const [refeicoesFiltro, setRefeicoesFiltro] = useState([]);
   const CATEGORIAS_RECEITA = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa"];
 
@@ -292,7 +295,7 @@ function Home({
               </button>
             ) : aba === "receitas" && admin ? (
               <button
-                onClick={() => setTelaReceita("nova")}
+                onClick={() => setTelaReceita("texto")}
                 style={{
                   ...BOTAO_SECUNDARIO,
                   padding: "6px 14px",
@@ -640,9 +643,6 @@ function Home({
               receitas={receitasFiltradas}
               itensEmCasa={lista.filter(i => i.comprado)}
               onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
-              onSugerir={() => setTelaReceita("sugerir")}
-              isAdmin={admin}
-              onNovaReceita={() => setTelaReceita("nova")}
             />
           )}
           {telaReceita === "detalhe" && receitaSelecionada && (
@@ -662,21 +662,31 @@ function Home({
               }}
             />
           )}
-          {telaReceita === "sugerir" && (
-            <ReceitaFormulario
+          {telaReceita === "texto" && (
+            <ReceitaTexto
+              textoInicial={textoReceita}
               catalogo={catalogo}
               atributos={atributos}
-              isAdmin={false}
               onVoltar={() => setTelaReceita("lista")}
-              onEnviar={async (dados) => { await sugerirReceita(dados); }}
+              onContinuar={(texto, dados) => {
+                setTextoReceita(texto);
+                setDadosParseados(dados);
+                setTelaReceita("formulario");
+              }}
             />
           )}
-          {telaReceita === "nova" && (
+          {telaReceita === "formulario" && (
             <ReceitaFormulario
               catalogo={catalogo}
               atributos={atributos}
-              isAdmin={true}
-              onVoltar={() => setTelaReceita("lista")}
+              isAdmin={admin}
+              dadosIniciais={dadosParseados}
+              textoOriginal={textoReceita}
+              onVoltarTexto={(texto) => {
+                setTextoReceita(texto);
+                setTelaReceita("texto");
+              }}
+              onVoltar={() => { setTextoReceita(""); setDadosParseados(null); setTelaReceita("lista"); }}
               onEnviar={async (dados) => { await sugerirReceita(dados); }}
             />
           )}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, COR } from '../../utils/estilos'
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, COR } from '../../utils/estilos'
 
 const CATEGORIAS = ['Café da manhã', 'Almoço', 'Lanche', 'Jantar', 'Sobremesa']
 
@@ -47,29 +47,46 @@ function temMatchExato(resultadosProduto, resultadosAtributo, termo) {
   return matchProduto || matchAtributo
 }
 
-export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar, onEnviar }) {
-  const [nome, setNome] = useState('')
+export function ReceitaFormulario({
+  catalogo,
+  atributos = [],
+  isAdmin,
+  onVoltar,
+  onEnviar,
+  dadosIniciais = null,
+  textoOriginal = '',
+  onVoltarTexto = null,
+}) {
+  const [nome, setNome] = useState(dadosIniciais?.nome ?? '')
   const [categoria, setCategoria] = useState('')
   const [foto, setFoto] = useState('')
-  const [tempoPreparo, setTempoPreparo] = useState('')
-  const [porcoes, setPorcoes] = useState('')
-  const [ingredientes, setIngredientes] = useState([])
+  const [tempoPreparo, setTempoPreparo] = useState(dadosIniciais?.tempoPreparo ?? '')
+  const [porcoes, setPorcoes] = useState(dadosIniciais?.porcoes ?? '')
+  const [dificuldade, setDificuldade] = useState(dadosIniciais?.dificuldade ?? '')
+  const [ingredientes, setIngredientes] = useState(dadosIniciais?.ingredientes ?? [])
   const [buscaIngrediente, setBuscaIngrediente] = useState('')
-  const [modoPreparo, setModoPreparo] = useState('')
+  const [editandoIdx, setEditandoIdx] = useState(null) // índice do ingrediente sendo editado pelo nome
+  const [modoPreparo, setModoPreparo] = useState(
+    dadosIniciais?.passos?.length > 0 ? dadosIniciais.passos.join('\n') : ''
+  )
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
 
-  const [pendente, setPendente] = useState(null)
-  const [qtdPendente, setQtdPendente] = useState('')
-  const [unidPendente, setUnidPendente] = useState('unid.')
 
-  const buscaAtiva = buscaIngrediente.length >= 2
+  // termoAtivo: busca do campo "adicionar" ou do campo de edição inline
+  const termoAtivo = editandoIdx !== null
+    ? (ingredientes[editandoIdx]?.nome ?? '')
+    : buscaIngrediente
+
+  const buscaAtiva = termoAtivo.length >= 2
 
   const resultadosProduto = buscaAtiva
     ? catalogo
         .filter(p =>
-          buscaCorresponde(p, buscaIngrediente) &&
-          !ingredientes.some(i => i.produtoId === p.id)
+          buscaCorresponde(p, termoAtivo) &&
+          (editandoIdx !== null
+            ? ingredientes[editandoIdx]?.produtoId !== p.id
+            : !ingredientes.some(i => i.produtoId === p.id))
         )
         .slice(0, 8)
     : []
@@ -77,8 +94,10 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
   const resultadosAtributo = buscaAtiva
     ? atributos
         .filter(a =>
-          a.nome.toLowerCase().includes(buscaIngrediente.toLowerCase()) &&
-          !ingredientes.some(i => i.atributoId === a.id)
+          a.nome.toLowerCase().includes(termoAtivo.toLowerCase()) &&
+          (editandoIdx !== null
+            ? ingredientes[editandoIdx]?.atributoId !== a.id
+            : !ingredientes.some(i => i.atributoId === a.id))
         )
         .slice(0, 4)
     : []
@@ -87,53 +106,42 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
 
   const mostrarSugestaoNomeTemp = buscaAtiva && (
     !temResultados ||
-    !temMatchExato(resultadosProduto, resultadosAtributo, buscaIngrediente)
+    !temMatchExato(resultadosProduto, resultadosAtributo, termoAtivo)
   )
 
   const mostrarDropdown = buscaAtiva && (temResultados || mostrarSugestaoNomeTemp)
 
+  const aplicarSelecao = (dados) => {
+    if (editandoIdx !== null) {
+      // Substituir o ingrediente existente, preservando quantidade e unidade
+      setIngredientes(prev => prev.map((item, i) =>
+        i === editandoIdx
+          ? { quantidade: item.quantidade, unidade: item.unidade, ...dados }
+          : item
+      ))
+      setEditandoIdx(null)
+    } else {
+      setIngredientes(prev => [...prev, { quantidade: null, unidade: null, ...dados }])
+      setBuscaIngrediente('')
+    }
+  }
+
   const selecionarProduto = (produto) => {
-    const t = buscaIngrediente.toLowerCase()
+    const t = termoAtivo.toLowerCase()
     const atributoMatch = (produto.atributos || []).find(a => a.toLowerCase().includes(t))
     const nomeDisplay = atributoMatch && !produto.nome.toLowerCase().includes(t)
       ? `${produto.nome} (${atributoMatch})`
       : produto.nome
-    setPendente({ produtoId: produto.id, nome: nomeDisplay })
-    setQtdPendente('')
-    setUnidPendente('unid.')
-    setBuscaIngrediente('')
+    aplicarSelecao({ produtoId: produto.id, nome: nomeDisplay })
   }
 
   const selecionarAtributo = (atributo) => {
-    setPendente({ atributoId: atributo.id, nome: atributo.nome })
-    setQtdPendente('')
-    setUnidPendente('unid.')
-    setBuscaIngrediente('')
+    aplicarSelecao({ atributoId: atributo.id, nome: atributo.nome })
   }
 
   const selecionarNomeTemp = () => {
-    const termo = buscaIngrediente.trim()
-    setPendente({ nomeTemp: termo, nome: termo })
-    setQtdPendente('')
-    setUnidPendente('unid.')
-    setBuscaIngrediente('')
-  }
-
-  const confirmarIngrediente = () => {
-    if (!pendente) return
-    const novoIngrediente = {
-      nome: pendente.nome,
-      quantidade: qtdPendente || null,
-      unidade: qtdPendente ? unidPendente : null,
-    }
-    if (pendente.produtoId) novoIngrediente.produtoId = pendente.produtoId
-    if (pendente.atributoId) novoIngrediente.atributoId = pendente.atributoId
-    if (pendente.nomeTemp) novoIngrediente.nomeTemp = pendente.nomeTemp
-
-    setIngredientes(prev => [...prev, novoIngrediente])
-    setPendente(null)
-    setQtdPendente('')
-    setUnidPendente('unid.')
+    const termo = termoAtivo.trim()
+    aplicarSelecao({ nomeTemp: termo, nome: termo })
   }
 
   const removerIngrediente = (idx) => {
@@ -155,8 +163,10 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
       foto: foto.trim() || null,
       tempoPreparo: tempoPreparo ? Number(tempoPreparo) : null,
       porcoes: porcoes ? Number(porcoes) : null,
+      dificuldade: dificuldade || null,
       ingredientes,
       passos: passosValidos,
+      _textoOriginal: textoOriginal || null,
     })
     setEnviando(false)
     setEnviado(true)
@@ -200,6 +210,20 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
         {isAdmin ? 'Nova receita' : 'Sugerir receita'}
       </h2>
 
+      {/* Botão editar texto (apenas quando veio do parser) */}
+      {onVoltarTexto && (
+        <button
+          onClick={() => onVoltarTexto(textoOriginal)}
+          style={{
+            ...BOTAO_SECUNDARIO,
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '10px 16px', alignSelf: 'flex-start',
+          }}
+        >
+          <ArrowLeft size={14} /> Editar texto
+        </button>
+      )}
+
       {/* Nome */}
       <div>
         <label style={labelStyle}>Nome da receita *</label>
@@ -240,28 +264,100 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
       <div>
         <label style={labelStyle}>Ingredientes *</label>
 
-        {/* Lista de ingredientes já adicionados */}
+        {/* Lista de ingredientes já adicionados — campos editáveis */}
         {ingredientes.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
             {ingredientes.map((ing, idx) => (
               <div key={idx} style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 12px', borderRadius: RAIO.md,
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 8px', borderRadius: RAIO.md,
                 background: 'var(--card)',
                 border: `1.5px solid ${ing.nomeTemp ? 'var(--laranja)' : 'var(--borda, #DEE2E6)'}`,
               }}>
-                {ing.nomeTemp && (
-                  <span style={{ color: 'var(--laranja)', fontSize: '14px', flexShrink: 0 }}>⚠</span>
-                )}
-                <span style={{ ...TIPOGRAFIA.corpo, color: 'var(--text)', flex: 1 }}>
-                  {ing.quantidade ? `${ing.quantidade} ${ing.unidade} ` : ''}{ing.nome}
-                </span>
-                <button
-                  onClick={() => removerIngrediente(idx)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: COR.neutro }}
-                >
-                  <X size={14} />
-                </button>
+                  <input
+                    value={ing.quantidade ?? ''}
+                    onChange={e => setIngredientes(prev => prev.map((item, i) =>
+                      i === idx ? { ...item, quantidade: e.target.value || null } : item
+                    ))}
+                    placeholder="Qtd"
+                    style={{ ...inputStyle, width: '52px', flex: 'none', padding: '6px 8px', fontSize: '13px' }}
+                  />
+                  <select
+                    value={ing.unidade ?? ''}
+                    onChange={e => setIngredientes(prev => prev.map((item, i) =>
+                      i === idx ? { ...item, unidade: e.target.value || null } : item
+                    ))}
+                    style={{ ...inputStyle, width: '80px', flex: 'none', padding: '6px 6px', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    <option value="">—</option>
+                    {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  {/* Nome com busca live */}
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      value={ing.nome}
+                      onFocus={() => setEditandoIdx(idx)}
+                      onBlur={() => setTimeout(() => setEditandoIdx(null), 150)}
+                      onChange={e => setIngredientes(prev => prev.map((item, i) =>
+                        i === idx ? { ...item, nome: e.target.value, produtoId: undefined, atributoId: undefined, nomeTemp: e.target.value } : item
+                      ))}
+                      style={{ ...inputStyle, width: '100%', padding: '6px 8px', fontSize: '13px', borderColor: editandoIdx === idx ? 'var(--laranja)' : undefined }}
+                    />
+                    {editandoIdx === idx && mostrarDropdown && (
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+                        background: 'var(--card)', borderRadius: RAIO.md,
+                        border: '1.5px solid var(--borda, #DEE2E6)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                        marginTop: '4px', overflow: 'hidden',
+                      }}>
+                        {resultadosProduto.length > 0 && (
+                          <>
+                            {resultadosAtributo.length > 0 && (
+                              <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>PRODUTOS</div>
+                            )}
+                            {resultadosProduto.map(p => (
+                              <div key={p.id} onMouseDown={() => selecionarProduto(p)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--borda, #DEE2E6)', ...TIPOGRAFIA.corpo, color: 'var(--text)' }}>
+                                {labelSugestao(p, termoAtivo)}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        {resultadosAtributo.length > 0 && (
+                          <>
+                            {resultadosProduto.length > 0 && (
+                              <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>ATRIBUTOS</div>
+                            )}
+                            {resultadosAtributo.map(a => (
+                              <div key={a.id} onMouseDown={() => selecionarAtributo(a)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--borda, #DEE2E6)', ...TIPOGRAFIA.corpo, color: 'var(--text)' }}>
+                                {a.nome}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        {mostrarSugestaoNomeTemp && (
+                          <div onMouseDown={selecionarNomeTemp} style={{ padding: '10px 14px', cursor: 'pointer', ...TIPOGRAFIA.corpo, color: 'var(--laranja)' }}>
+                            Sugerir inclusão de "{termoAtivo.trim()}"
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Observação */}
+                  <input
+                    value={ing.observacao ?? ''}
+                    onChange={e => setIngredientes(prev => prev.map((item, i) =>
+                      i === idx ? { ...item, observacao: e.target.value || null } : item
+                    ))}
+                    placeholder="obs..."
+                    style={{ ...inputStyle, width: '90px', flex: 'none', padding: '6px 8px', fontSize: '12px', color: 'var(--text-soft)' }}
+                  />
+                  <button
+                    onClick={() => removerIngrediente(idx)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: COR.neutro, flexShrink: 0 }}
+                  >
+                    <X size={14} />
+                  </button>
               </div>
             ))}
           </div>
@@ -282,53 +378,8 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
           </div>
         )}
 
-        {/* Ingrediente pendente: quantidade + unidade + confirmar */}
-        {pendente && (
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: '8px',
-            padding: '12px', borderRadius: RAIO.md,
-            background: 'var(--card)', border: '1.5px solid var(--laranja)',
-            marginBottom: '10px',
-          }}>
-            <span style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)' }}>{pendente.nome}</span>
-            {pendente.nomeTemp && (
-              <span style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--laranja)' }}>
-                ⚠️ Ingrediente não catalogado — a receita ficará pendente de aprovação
-              </span>
-            )}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="number"
-                min="0"
-                value={qtdPendente}
-                onChange={e => setQtdPendente(e.target.value)}
-                placeholder="Qtd"
-                style={{ ...inputStyle, width: '90px', flex: 'none' }}
-                autoFocus
-              />
-              <select
-                value={unidPendente}
-                onChange={e => setUnidPendente(e.target.value)}
-                style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}
-              >
-                {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <button
-                onClick={confirmarIngrediente}
-                style={{
-                  ...BOTAO_PRIMARIO, padding: '0 16px', borderRadius: RAIO.md,
-                  flexShrink: 0, fontSize: '13px',
-                }}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Busca */}
-        {!pendente && (
-          <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }}>
             <input
               value={buscaIngrediente}
               onChange={e => setBuscaIngrediente(e.target.value)}
@@ -416,7 +467,6 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
               </div>
             )}
           </div>
-        )}
       </div>
 
       {/* Modo de preparo */}
@@ -455,6 +505,18 @@ export function ReceitaFormulario({ catalogo, atributos = [], isAdmin, onVoltar,
             placeholder="Ex: 4"
             style={inputStyle}
           />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={labelStyle}>Dificuldade</label>
+          <select
+            value={dificuldade}
+            onChange={e => setDificuldade(e.target.value)}
+            style={{ ...inputStyle, cursor: 'pointer' }}
+          >
+            {['', 'Fácil', 'Médio', 'Difícil'].map(op => (
+              <option key={op} value={op}>{op || '—'}</option>
+            ))}
+          </select>
         </div>
       </div>
 
