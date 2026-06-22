@@ -65,6 +65,7 @@ function Home({
     deletar,
   } = useSugestoes(usuario);
   const [adminAberto, setAdminAberto] = useState(false);
+  const [modoAdmin, setModoAdmin] = useState(false);
   const admin = isAdmin(usuario.email);
   const [telaMenu, setTelaMenu] = useState("menu");
 
@@ -95,7 +96,7 @@ function Home({
     const produto =
       catalogo.find((p) => p.id === item.produtoId) ||
       catalogo.find((p) => p.nome === item.nome);
-    if (produto) setProdutoSelecionado(produto);
+    if (produto) setProdutoSelecionado({ ...produto, _origemLista: true });
   };
 
   const removerItemPorProdutoId = (produto) => {
@@ -113,6 +114,27 @@ function Home({
         background: "var(--bg)",
       }}
     >
+      {admin && modoAdmin && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "100%",
+            maxWidth: "480px",
+            background: COR.erro,
+            padding: "1px 0",
+            textAlign: "center",
+            ...TIPOGRAFIA.label,
+            color: "white",
+            zIndex: 50,
+            pointerEvents: "none",
+          }}
+        >
+          Modo Edição Ativo
+        </div>
+      )}
       {/* Header */}
       <div
         style={{
@@ -338,6 +360,87 @@ function Home({
       {/* Aba Catálogo */}
       {aba === "catalogo" && (
         <div style={{ padding: "20px 16px" }}>
+          {/* Pendentes — só visíveis em modo admin */}
+          {admin && modoAdmin && sugestoesPendentes.length > 0 && (
+            <div style={{ marginBottom: "24px" }}>
+              <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "10px" }}>
+                Pendentes ({sugestoesPendentes.length})
+              </p>
+              {sugestoesPendentes.map((s) => {
+                const jaAprovou = s.aprovadores?.includes(usuario.uid);
+                return (
+                  <div
+                    key={s.id}
+                    style={{
+                      opacity: 0.5,
+                      marginBottom: "8px",
+                      position: "relative",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px 16px",
+                        background: "var(--card)",
+                        borderRadius: RAIO.md,
+                        boxShadow: "var(--shadow)",
+                        borderLeft: `4px solid ${COR.neutro}`,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{s.nome}</p>
+                        <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
+                          {s.categoria}{s.subcategoria ? ` · ${s.subcategoria}` : ""}
+                        </p>
+                        {s.status === "aguardando_segunda_aprovacao" && (
+                          <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.neutro, marginTop: "2px" }}>
+                            {s.aprovadores?.length}/2 aprovações
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => !jaAprovou && aprovar(s)}
+                          disabled={jaAprovou}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: RAIO.sm,
+                            border: "none",
+                            background: jaAprovou ? COR.borda : COR.sucessoBg,
+                            color: jaAprovou ? COR.neutro : COR.sucesso,
+                            fontFamily: "Nunito, sans-serif",
+                            fontSize: FONTE.sm,
+                            fontWeight: FONTE.bold,
+                            cursor: jaAprovou ? "default" : "pointer",
+                          }}
+                        >
+                          {jaAprovou ? "Aprovado" : "Aprovar"}
+                        </button>
+                        <button
+                          onClick={() => rejeitar(s)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: RAIO.sm,
+                            border: "none",
+                            background: COR.erroBg,
+                            color: COR.erro,
+                            fontFamily: "Nunito, sans-serif",
+                            fontSize: FONTE.sm,
+                            fontWeight: FONTE.bold,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Rejeitar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {carregando && (
             <p style={{ textAlign: "center", color: "var(--text-soft)" }}>
               Carregando...
@@ -417,6 +520,8 @@ function Home({
           listaAtiva={listaAtiva}
           itemDaLista={lista.find((i) => i.produtoId === produtoSelecionado.id)}
           catalogo={catalogo}
+          isAdmin={admin && modoAdmin}
+          origemLista={!!produtoSelecionado._origemLista}
         />
       )}
 
@@ -494,13 +599,8 @@ function Home({
       {adminAberto && (
         <AdminPanel
           onFechar={() => setAdminAberto(false)}
-          sugestoes={sugestoes}
-          pendentes={sugestoesPendentes}
-          aprovar={aprovar}
-          rejeitar={rejeitar}
-          atualizar={atualizar}
-          deletar={deletar}
-          usuario={usuario}
+          modoAdmin={modoAdmin}
+          setModoAdmin={setModoAdmin}
         />
       )}
     </div>

@@ -1,20 +1,7 @@
-import { useState } from 'react'
-import { X, Check, Trash2, Edit2 } from 'lucide-react'
-import { ORDEM_CATEGORIAS, corDaCategoria } from '../utils/categorias'
-import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from '../utils/estilos'
+import { X } from 'lucide-react'
+import { TIPOGRAFIA, RAIO } from '../utils/estilos'
 
-function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualizar, deletar, usuario }) {
-  const [editando, setEditando] = useState(null)
-  const [aba, setAba] = useState('pendentes')
-
-  const todas = sugestoes.filter(s => s.status === 'aprovado' || s.status === 'rejeitado')
-
-  const handleAprovar = async (s) => {
-    const jaAprovou = s.aprovadores?.includes(usuario.uid)
-    if (jaAprovou) return
-    await aprovar(s)
-  }
-
+function AdminPanel({ onFechar, modoAdmin, setModoAdmin }) {
   return (
     <div
       style={{
@@ -34,309 +21,46 @@ function AdminPanel({ onFechar, sugestoes, pendentes, aprovar, rejeitar, atualiz
           background: 'var(--card)',
           borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
           padding: '24px 20px 40px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
         }}
       >
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '20px',
-        }}>
-          <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)' }}>
-            Painel Admin
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)' }}>Admin</h2>
           <X size={22} color="var(--text-soft)" style={{ cursor: 'pointer' }} onClick={onFechar} />
         </div>
 
-        {/* Abas */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '20px',
-        }}>
-          {[
-            { id: 'pendentes', label: `Pendentes (${pendentes.length})` },
-            { id: 'historico', label: 'Histórico' },
-          ].map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setAba(id)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: RAIO.pill,
-                border: 'none',
-                fontFamily: 'Nunito, sans-serif',
-                fontSize: '13px',
-                cursor: 'pointer',
-                background: aba === id ? 'var(--laranja)' : 'var(--bg)',
-                color: aba === id ? 'white' : 'var(--text-soft)',
-                transition: 'all 0.2s',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'var(--bg)', borderRadius: RAIO.md }}>
+          <div>
+            <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)' }}>Modo admin</p>
+            <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '2px' }}>
+              {modoAdmin ? 'Edição ativa · pendentes visíveis' : 'Desativado'}
+            </p>
+          </div>
+          <div
+            onClick={() => setModoAdmin(v => !v)}
+            style={{
+              width: '48px',
+              height: '28px',
+              borderRadius: RAIO.pill,
+              background: modoAdmin ? 'var(--laranja)' : 'var(--text-soft)',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '3px',
+              left: modoAdmin ? '23px' : '3px',
+              width: '22px',
+              height: '22px',
+              borderRadius: '50%',
+              background: 'white',
+              transition: 'left 0.2s',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+            }} />
+          </div>
         </div>
-
-        {/* Pendentes */}
-        {aba === 'pendentes' && (
-          <div>
-            {pendentes.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <p style={{ fontSize: '40px' }}>✅</p>
-                <p style={{ color: 'var(--text)', marginTop: '12px' }}>
-                  Nenhuma sugestão pendente!
-                </p>
-              </div>
-            )}
-            {pendentes.map(s => {
-              const jaAprovou = s.aprovadores?.includes(usuario.uid)
-              const cor = corDaCategoria(s.categoria)
-              return (
-                <div key={s.id} style={{
-                  background: 'var(--bg)',
-                  borderRadius: RAIO.md,
-                  padding: '16px',
-                  marginBottom: '12px',
-                  borderLeft: `4px solid ${cor}`,
-                }}>
-                  {editando?.id === s.id ? (
-                    // Modo edição
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <input
-                        value={editando.nome}
-                        onChange={e => setEditando({ ...editando, nome: e.target.value })}
-                        style={{
-                          padding: '10px',
-                          borderRadius: RAIO.sm,
-                          border: BORDA,
-                          background: 'var(--card)',
-                          fontFamily: 'Nunito, sans-serif',
-                          fontSize: FONTE.md,
-                          color: 'var(--text)',
-                          outline: 'none',
-                        }}
-                      />
-                      <select
-                        value={editando.categoria}
-                        onChange={e => setEditando({ ...editando, categoria: e.target.value })}
-                        style={{
-                          padding: '10px',
-                          borderRadius: RAIO.sm,
-                          border: BORDA,
-                          background: 'var(--card)',
-                          fontFamily: 'Nunito, sans-serif',
-                          fontSize: FONTE.md,
-                          color: 'var(--text)',
-                          outline: 'none',
-                        }}
-                      >
-                        {[...ORDEM_CATEGORIAS]
-                          .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-                          .map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        <option value="Outro">Outro</option>
-                      </select>
-                      <input
-                        value={editando.subcategoria}
-                        onChange={e => setEditando({ ...editando, subcategoria: e.target.value })}
-                        placeholder="Subcategoria"
-                        style={{
-                          padding: '10px',
-                          borderRadius: RAIO.sm,
-                          border: BORDA,
-                          background: 'var(--card)',
-                          fontFamily: 'Nunito, sans-serif',
-                          fontSize: FONTE.md,
-                          color: 'var(--text)',
-                          outline: 'none',
-                        }}
-                      />
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={async () => {
-                            await atualizar(s, {
-                              nome: editando.nome,
-                              categoria: editando.categoria,
-                              subcategoria: editando.subcategoria,
-                            })
-                            setEditando(null)
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            borderRadius: RAIO.sm,
-                            border: 'none',
-                            background: '#51CF66',
-                            color: 'white',
-                            fontFamily: 'Nunito, sans-serif',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Salvar
-                        </button>
-                        <button
-                          onClick={() => setEditando(null)}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            borderRadius: RAIO.sm,
-                            border: 'none',
-                            background: 'var(--bg)',
-                            color: 'var(--text-soft)',
-                            fontFamily: 'Nunito, sans-serif',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    // Modo visualização
-                    <>
-                      <div style={{ marginBottom: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)' }}>{s.nome}</p>
-                          <Edit2
-                            size={16}
-                            color="var(--text-soft)"
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => setEditando({ ...s })}
-                          />
-                        </div>
-                        <p style={{ fontSize: '13px', color: 'var(--text-soft)', marginTop: '2px' }}>
-                          {s.categoria}{s.subcategoria ? ` › ${s.subcategoria}` : ''}
-                        </p>
-                        <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '4px' }}>
-                          Sugerido por {s.sugeridoPor}
-                        </p>
-                        {s.status === 'aguardando_segunda_aprovacao' && (
-                          <div style={{
-                            marginTop: '8px',
-                            padding: '6px 10px',
-                            background: '#FFF3BF',
-                            borderRadius: RAIO.sm,
-                            fontSize: FONTE.sm,
-                            color: '#E67700',
-                          }}>
-                            ⏳ Aguardando segunda aprovação ({s.aprovadores?.length}/2)
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => handleAprovar(s)}
-                          disabled={jaAprovou}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            borderRadius: RAIO.sm,
-                            border: 'none',
-                            background: jaAprovou ? COR.borda : 'var(--laranja)',
-                            color: jaAprovou ? 'var(--text-soft)' : 'white',
-                            fontFamily: 'Nunito, sans-serif',
-                            fontSize: '13px',
-                            cursor: jaAprovou ? 'default' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Check size={16} />
-                          {jaAprovou ? 'Aprovado por você' : 'Aprovar'}
-                        </button>
-                        <button
-                          onClick={() => rejeitar(s)}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            borderRadius: RAIO.sm,
-                            border: 'none',
-                            background: COR.erroBg,
-                            color: COR.erro,
-                            fontFamily: 'Nunito, sans-serif',
-                            fontSize: '13px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <X size={16} />
-                          Rejeitar
-                        </button>
-                        <button
-                          onClick={() => deletar(s)}
-                          style={{
-                            padding: '10px',
-                            borderRadius: RAIO.sm,
-                            border: 'none',
-                            background: 'var(--bg)',
-                            color: 'var(--text-soft)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Histórico */}
-        {aba === 'historico' && (
-          <div>
-            {todas.length === 0 && (
-              <p style={{ textAlign: 'center', color: 'var(--text-soft)', marginTop: '40px' }}>
-                Nenhum histórico ainda.
-              </p>
-            )}
-            {todas.map(s => (
-              <div key={s.id} style={{
-                background: 'var(--bg)',
-                borderRadius: RAIO.md,
-                padding: '14px 16px',
-                marginBottom: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <div>
-                  <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)' }}>{s.nome}</p>
-                  <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)' }}>{s.categoria}</p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{
-                    fontSize: FONTE.sm,
-                    padding: '4px 10px',
-                    borderRadius: RAIO.pill,
-                    background: s.status === 'aprovado' ? COR.sucessoBg : COR.erroBg,
-                    color: s.status === 'aprovado' ? COR.sucesso : COR.erro,
-                  }}>
-                    {s.status === 'aprovado' ? '✓ Aprovado' : '✗ Rejeitado'}
-                  </span>
-                  <Trash2
-                    size={16}
-                    color="var(--text-soft)"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => deletar(s)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

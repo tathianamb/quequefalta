@@ -454,7 +454,7 @@ function Menu({
                         flex: 1,
                       }}
                     >
-                      Painel Admin
+                      Admin
                     </span>
                     <span style={{ color: "var(--text-soft)" }}>›</span>
                   </div>
