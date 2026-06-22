@@ -1,7 +1,7 @@
 import { Check, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
-import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
+import { TIPOGRAFIA, RAIO, COR, BORDA } from '../utils/estilos'
 
 function ProdutoItem({
   produto,
@@ -126,11 +126,40 @@ function ProdutoItem({
           >
             {produto.nome}
           </p>
-          <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
-            {produto.subcategoria !== "-"
-              ? produto.subcategoria
-              : produto.categoria}
-          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+            <span
+              style={{
+                display: "inline-block",
+                background: cor + "22",
+                color: cor,
+                ...TIPOGRAFIA.subcategoria,
+                fontWeight: 600,
+                padding: "2px 8px",
+                borderRadius: RAIO.pill,
+              }}
+            >
+              {produto.subcategoria !== "-"
+                ? produto.subcategoria
+                : produto.categoria}
+            </span>
+            {(produto.atributos || []).map((a) => (
+              <span
+                key={a}
+                style={{
+                  display: "inline-block",
+                  background: "var(--bg)",
+                  border: BORDA,
+                  color: "var(--text-soft)",
+                  ...TIPOGRAFIA.subcategoria,
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: RAIO.pill,
+                }}
+              >
+                {a}
+              </span>
+            ))}
+          </div>
           {feedback && (
             <p
               style={{
