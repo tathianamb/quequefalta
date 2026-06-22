@@ -28,6 +28,7 @@ export function useSugestoes(usuario) {
         nome: sugestao.nome,
         categoria: sugestao.categoria,
         subcategoria: sugestao.subcategoria || '',
+        atributos: sugestao.atributos || [],
         tags: sugestao.tags || [],
         historico: [],
         receitas: [],
