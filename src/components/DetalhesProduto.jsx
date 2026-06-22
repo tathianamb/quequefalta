@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { corDaCategoria } from "../utils/categorias";
-import { X, Plus } from "lucide-react";
+import { corDaCategoria, ORDEM_CATEGORIAS } from "../utils/categorias";
+import { X, Plus, Edit2 } from "lucide-react";
 import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from "../utils/estilos";
 
 const MERCADOS_BASE = ["Atacadão", "Max", "Avenida", "Superbom"];
@@ -13,13 +13,47 @@ function hojeISO() {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
-function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo = [] }) {
+function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo = [], isAdmin = false, origemLista = false }) {
   const [mercado, setMercado] = useState("");
   const [preco, setPreco] = useState("");
   const [data, setData] = useState(hojeISO());
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+
+  const [editandoAdmin, setEditandoAdmin] = useState(false);
+  const [adminNome, setAdminNome] = useState(produto.nome || "");
+  const [adminCategoria, setAdminCategoria] = useState(produto.categoria || "");
+  const [adminSubcategoria, setAdminSubcategoria] = useState(produto.subcategoria || "");
+  const [adminAtributos, setAdminAtributos] = useState(produto.atributos || []);
+  const [adminNovoAtributo, setAdminNovoAtributo] = useState("");
+  const [salvandoAdmin, setSalvandoAdmin] = useState(false);
+
+  const handleSalvarAdmin = async () => {
+    setSalvandoAdmin(true);
+    try {
+      await updateDoc(doc(db, "catalogo", produto.id), {
+        nome: adminNome.trim(),
+        categoria: adminCategoria,
+        subcategoria: adminSubcategoria.trim(),
+        atributos: adminAtributos,
+      });
+      setEditandoAdmin(false);
+    } finally {
+      setSalvandoAdmin(false);
+    }
+  };
+
+  const adicionarAtributo = () => {
+    const valor = adminNovoAtributo.trim();
+    if (!valor || adminAtributos.includes(valor)) return;
+    setAdminAtributos([...adminAtributos, valor]);
+    setAdminNovoAtributo("");
+  };
+
+  const removerAtributo = (atributo) => {
+    setAdminAtributos(adminAtributos.filter((a) => a !== atributo));
+  };
 
   const cor = corDaCategoria(produto.categoria);
 
@@ -119,42 +153,120 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
             marginBottom: "20px",
           }}
         >
-          <div>
-            <div
-              style={{
-                display: "inline-block",
-                background: cor + "22",
-                color: cor,
-                fontSize: FONTE.sm,
-                fontWeight: FONTE.bold,
-                padding: "3px 10px",
-                borderRadius: RAIO.pill,
-                marginBottom: "6px",
-              }}
-            >
-              {produto.categoria}
-            </div>
-            <h2 style={{ ...TIPOGRAFIA.titulo, lineHeight: 1.2 }}>
-              {produto.nome}
-            </h2>
-            {produto.subcategoria && (
-              <p
-                style={{
-                  ...TIPOGRAFIA.subcategoria,
-                  color: "var(--text-soft)",
-                  marginTop: "2px",
-                }}
+          {editandoAdmin ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px", marginRight: "12px" }}>
+              <input
+                value={adminNome}
+                onChange={(e) => setAdminNome(e.target.value)}
+                placeholder="Nome"
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
+              />
+              <select
+                value={adminCategoria}
+                onChange={(e) => setAdminCategoria(e.target.value)}
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
               >
-                {produto.subcategoria}
-              </p>
+                {[...ORDEM_CATEGORIAS].sort((a, b) => a.localeCompare(b, "pt-BR")).map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <input
+                value={adminSubcategoria}
+                onChange={(e) => setAdminSubcategoria(e.target.value)}
+                placeholder="Subcategoria"
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
+              />
+              <div>
+                <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "6px" }}>Atributos</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                  {adminAtributos.map((a) => (
+                    <span
+                      key={a}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "var(--bg)", border: BORDA, color: "var(--text-soft)", ...TIPOGRAFIA.subcategoria, fontWeight: 600, padding: "2px 8px", borderRadius: RAIO.pill }}
+                    >
+                      {a}
+                      <X size={12} style={{ cursor: "pointer" }} onClick={() => removerAtributo(a)} />
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <input
+                    value={adminNovoAtributo}
+                    onChange={(e) => setAdminNovoAtributo(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && adicionarAtributo()}
+                    placeholder="Novo atributo"
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
+                  />
+                  <button
+                    onClick={adicionarAtributo}
+                    style={{ padding: "8px 12px", borderRadius: RAIO.sm, border: "none", background: "var(--laranja)", color: "white", cursor: "pointer", display: "flex", alignItems: "center" }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                <button
+                  onClick={handleSalvarAdmin}
+                  disabled={salvandoAdmin}
+                  style={{ flex: 1, padding: "10px", borderRadius: RAIO.sm, border: "none", background: COR.sucesso, color: "white", fontFamily: "Nunito, sans-serif", fontWeight: FONTE.bold, cursor: "pointer" }}
+                >
+                  {salvandoAdmin ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminAtributos(produto.atributos || []); }}
+                  style={{ flex: 1, padding: "10px", borderRadius: RAIO.sm, border: "none", background: "var(--bg)", color: "var(--text-soft)", fontFamily: "Nunito, sans-serif", fontWeight: FONTE.bold, cursor: "pointer" }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                {[
+                  produto.categoria,
+                  produto.subcategoria !== "-" ? produto.subcategoria : null,
+                  ...(produto.atributos || []),
+                ].filter(Boolean).map((label) => (
+                  <span
+                    key={label}
+                    style={{
+                      display: "inline-block",
+                      background: "var(--bg)",
+                      border: BORDA,
+                      color: "var(--text-soft)",
+                      ...TIPOGRAFIA.subcategoria,
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: RAIO.pill,
+                    }}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <h2 style={{ ...TIPOGRAFIA.titulo, lineHeight: 1.2 }}>
+                {produto.nome}
+              </h2>
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+            {isAdmin && !editandoAdmin && !origemLista && (
+              <button
+                onClick={() => setEditandoAdmin(true)}
+                style={{ background: "none", border: "none", padding: "4px", cursor: "pointer", color: "var(--text-soft)", display: "flex", alignItems: "center" }}
+              >
+                <Edit2 size={18} />
+              </button>
             )}
+            <X
+              size={22}
+              color="var(--text-soft)"
+              style={{ cursor: "pointer" }}
+              onClick={onFechar}
+            />
           </div>
-          <X
-            size={22}
-            color="var(--text-soft)"
-            style={{ cursor: "pointer", flexShrink: 0 }}
-            onClick={onFechar}
-          />
         </div>
 
         {/* Melhor preço */}
@@ -204,7 +316,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
         )}
 
         {/* Registrar preço */}
-        <div
+        {origemLista && <div
           style={{
             background: "var(--bg)",
             borderRadius: RAIO.lg,
@@ -392,7 +504,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
             <Plus size={18} />
             {sucesso ? "Registrado! ✓" : salvando ? "Salvando..." : "Registrar"}
           </button>
-        </div>
+        </div>}
 
         {/* Histórico */}
         {historico.length > 0 && (
