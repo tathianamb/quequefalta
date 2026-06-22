@@ -13,13 +13,19 @@ import {
   ChevronsDown,
   ShoppingCart,
   BookOpen,
-  LogOut,
+  ChefHat,
   Search,
   X,
+  Plus,
   Menu as MenuIcon,
 } from "lucide-react";
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
+import { useReceitas } from "../hooks/useReceitas";
+import { useAtributos } from "../hooks/useAtributos";
+import { ReceitaLista } from "../components/receitas/ReceitaLista";
+import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
+import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
 import AdminPanel from "../components/AdminPanel";
 import FiltroCategoria from "../components/FiltroCategoria";
 import {
@@ -64,10 +70,24 @@ function Home({
     atualizar,
     deletar,
   } = useSugestoes(usuario);
+  const {
+    aprovadas: receitasAprovadas,
+    pendentes: receitasPendentes,
+    sugerir: sugerirReceita,
+    aprovar: aprovarReceita,
+    rejeitar: rejeitarReceita,
+    deletar: deletarReceita,
+    atualizar: atualizarReceita,
+  } = useReceitas(usuario);
+  const { atributos } = useAtributos();
   const [adminAberto, setAdminAberto] = useState(false);
   const [modoAdmin, setModoAdmin] = useState(false);
   const admin = isAdmin(usuario.email);
   const [telaMenu, setTelaMenu] = useState("menu");
+  const [receitaSelecionada, setReceitaSelecionada] = useState(null);
+  const [telaReceita, setTelaReceita] = useState("lista"); // "lista" | "detalhe" | "sugerir" | "nova"
+  const [refeicoesFiltro, setRefeicoesFiltro] = useState([]);
+  const CATEGORIAS_RECEITA = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa"];
 
   const filtrar = (arr) =>
     arr.filter((p) => {
@@ -91,6 +111,11 @@ function Home({
   const catalogoFiltrado = filtrar(catalogo);
   const porCategoriaCatalogo = agrupar(catalogoFiltrado);
   const carregando = carregandoLista || carregandoCatalogo;
+  const receitasFiltradas = receitasAprovadas.filter(r => {
+    const buscaOk = r.nome.toLowerCase().includes(busca.toLowerCase());
+    const refeicaoOk = refeicoesFiltro.length === 0 || refeicoesFiltro.includes(r.categoria);
+    return buscaOk && refeicaoOk;
+  });
 
   const abrirProduto = (item) => {
     const produto =
@@ -165,32 +190,34 @@ function Home({
               <span style={{ color: "var(--laranja)" }}>Falta</span>
             </span>
           </div>
-          <div
-            style={{ position: "relative", cursor: "pointer" }}
-            onClick={() => setMenuAberto(true)}
-          >
-            <MenuIcon size={22} color="var(--text-soft)" />
-            {admin && sugestoesPendentes.length > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "-6px",
-                  right: "-6px",
-                  background: "var(--amarelo)",
-                  color: "var(--text)",
-                  borderRadius: RAIO.full,
-                  width: "18px",
-                  height: "18px",
-                  fontSize: FONTE.xs,
-                  fontWeight: FONTE.extrabold,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {sugestoesPendentes.length}
-              </div>
-            )}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{ position: "relative", cursor: "pointer" }}
+              onClick={() => setMenuAberto(true)}
+            >
+              <MenuIcon size={22} color="var(--text-soft)" />
+              {admin && modoAdmin && (sugestoesPendentes.length + receitasPendentes.length) > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-6px",
+                    right: "-6px",
+                    background: "var(--amarelo)",
+                    color: "var(--text)",
+                    borderRadius: RAIO.full,
+                    width: "18px",
+                    height: "18px",
+                    fontSize: FONTE.xs,
+                    fontWeight: FONTE.extrabold,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {sugestoesPendentes.length + receitasPendentes.length}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -211,7 +238,7 @@ function Home({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={
-                aba === "lista" ? "Buscar na lista..." : "Buscar no catálogo..."
+                aba === "lista" ? "Buscar na lista..." : aba === "catalogo" ? "Buscar no catálogo..." : "Buscar receitas..."
               }
               style={{
                 border: "none",
@@ -235,9 +262,11 @@ function Home({
         </div>
 
         {/* Filtro categorias */}
-        <FiltroCategoria
-          categoriasFiltro={categoriasFiltro}
-          setCategoriasFiltro={setCategoriasFiltro}
+        {<FiltroCategoria
+          categoriasFiltro={aba === "receitas" ? refeicoesFiltro : categoriasFiltro}
+          setCategoriasFiltro={aba === "receitas" ? setRefeicoesFiltro : setCategoriasFiltro}
+          categorias={aba === "receitas" ? CATEGORIAS_RECEITA : undefined}
+          tituloModal={aba === "receitas" ? "Refeição" : "Filtrar"}
           botoesExtras={
             aba === "catalogo" ? (
               <button
@@ -261,9 +290,23 @@ function Home({
                   </>
                 )}
               </button>
+            ) : aba === "receitas" && admin ? (
+              <button
+                onClick={() => setTelaReceita("nova")}
+                style={{
+                  ...BOTAO_SECUNDARIO,
+                  padding: "6px 14px",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Plus size={14} /> Receita
+              </button>
             ) : null
           }
-        />
+        />}
       </div>
 
       {/* Aba Lista */}
@@ -509,6 +552,137 @@ function Home({
         </div>
       )}
 
+      {/* Aba Receitas */}
+      {aba === "receitas" && (
+        <div style={{ padding: "20px 16px 96px" }}>
+          {admin && modoAdmin && receitasPendentes.length > 0 && telaReceita === "lista" && (
+            <div style={{ marginBottom: "24px" }}>
+              <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "10px" }}>
+                Pendentes ({receitasPendentes.length})
+              </p>
+              {receitasPendentes.map((r) => {
+                const temIngredienteTemp = r.ingredientes?.some((ing) => ing.nomeTemp);
+                return (
+                  <div
+                    key={r.id}
+                    style={{
+                      opacity: 0.6,
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px 16px",
+                        background: "var(--card)",
+                        borderRadius: RAIO.md,
+                        boxShadow: "var(--shadow)",
+                        borderLeft: `4px solid ${COR.neutro}`,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{r.nome}</p>
+                        <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
+                          {r.categoria}
+                        </p>
+                        {temIngredienteTemp && (
+                          <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--laranja)", marginTop: "2px" }}>
+                            ⚠ Ingredientes não catalogados
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => !temIngredienteTemp && aprovarReceita(r)}
+                          disabled={temIngredienteTemp}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: RAIO.sm,
+                            border: "none",
+                            background: temIngredienteTemp ? COR.borda : COR.sucessoBg,
+                            color: temIngredienteTemp ? COR.neutro : COR.sucesso,
+                            fontFamily: "Nunito, sans-serif",
+                            fontSize: FONTE.sm,
+                            fontWeight: FONTE.bold,
+                            cursor: temIngredienteTemp ? "not-allowed" : "pointer",
+                            opacity: temIngredienteTemp ? 0.6 : 1,
+                          }}
+                        >
+                          Aprovar
+                        </button>
+                        <button
+                          onClick={() => rejeitarReceita(r)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: RAIO.sm,
+                            border: "none",
+                            background: COR.erroBg,
+                            color: COR.erro,
+                            fontFamily: "Nunito, sans-serif",
+                            fontSize: FONTE.sm,
+                            fontWeight: FONTE.bold,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Rejeitar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {telaReceita === "lista" && (
+            <ReceitaLista
+              receitas={receitasFiltradas}
+              itensEmCasa={lista.filter(i => i.comprado)}
+              onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
+              onSugerir={() => setTelaReceita("sugerir")}
+              isAdmin={admin}
+              onNovaReceita={() => setTelaReceita("nova")}
+            />
+          )}
+          {telaReceita === "detalhe" && receitaSelecionada && (
+            <ReceitaDetalhe
+              receita={receitaSelecionada}
+              itensEmCasa={lista.filter(i => i.comprado)}
+              catalogo={catalogo}
+              onVoltar={() => { setReceitaSelecionada(null); setTelaReceita("lista"); }}
+              onAdicionarFaltantes={async (faltantes) => {
+                for (const ing of faltantes) {
+                  const produto = catalogo.find(p => p.id === ing.produtoId);
+                  if (produto) await adicionarItem(produto);
+                }
+                setReceitaSelecionada(null);
+                setTelaReceita("lista");
+                setAba("lista");
+              }}
+            />
+          )}
+          {telaReceita === "sugerir" && (
+            <ReceitaFormulario
+              catalogo={catalogo}
+              atributos={atributos}
+              isAdmin={false}
+              onVoltar={() => setTelaReceita("lista")}
+              onEnviar={async (dados) => { await sugerirReceita(dados); }}
+            />
+          )}
+          {telaReceita === "nova" && (
+            <ReceitaFormulario
+              catalogo={catalogo}
+              atributos={atributos}
+              isAdmin={true}
+              onVoltar={() => setTelaReceita("lista")}
+              onEnviar={async (dados) => { await sugerirReceita(dados); }}
+            />
+          )}
+        </div>
+      )}
+
       {/* Modal detalhes */}
       {produtoSelecionado && (
         <DetalhesProduto
@@ -564,6 +738,7 @@ function Home({
         {[
           { id: "lista", label: "Lista de compras", icon: ShoppingCart },
           { id: "catalogo", label: "Catálogo", icon: BookOpen },
+          { id: "receitas", label: "Receitas", icon: ChefHat },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -571,6 +746,8 @@ function Home({
               setAba(id);
               setBusca("");
               setCategoriasFiltro([]);
+              setRefeicoesFiltro([]);
+              if (id !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
             }}
             style={{
               flex: 1,
@@ -601,6 +778,9 @@ function Home({
           onFechar={() => setAdminAberto(false)}
           modoAdmin={modoAdmin}
           setModoAdmin={setModoAdmin}
+          receitasPendentes={receitasPendentes}
+          onAprovarReceita={aprovarReceita}
+          onRejeitarReceita={rejeitarReceita}
         />
       )}
     </div>

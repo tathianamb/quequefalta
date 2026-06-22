@@ -5,7 +5,6 @@ import {
   Link,
   Shield,
   LogOut,
-  Users,
   Share2,
   X,
 } from "lucide-react";
@@ -38,7 +37,6 @@ function Menu({
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
-
   const handleSugestao = async () => {
     if (!nome || !categoria) return;
     setEnviando(true);
@@ -395,42 +393,7 @@ function Menu({
                   <span style={{ color: "var(--text-soft)" }}>›</span>
                 </div>
 
-                <div
-                  onClick={() => setTela("receitas")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Link size={18} color="var(--text-soft)" />
-                  <div style={{ flex: 1 }}>
-                    <span
-                      style={{
-                        ...TIPOGRAFIA.nomeProduto,
-                        color: "var(--text)",
-                      }}
-                    >
-                      Receitas
-                    </span>
-                    <p
-                      style={{
-                        ...TIPOGRAFIA.corpo,
-                        color: "var(--text-soft)",
-                        marginTop: "2px",
-                      }}
-                    >
-                      Em breve
-                    </p>
-                  </div>
-                  <span style={{ color: "var(--text-soft)" }}>›</span>
-                </div>
-
-                {isAdmin && (
+{isAdmin && (
                   <div
                     onClick={() => {
                       onFechar();
@@ -675,53 +638,6 @@ function Menu({
           </div>
         )}
 
-        {tela === "receitas" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "4px",
-              }}
-            >
-              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>Receitas</p>
-              <X
-                size={22}
-                color="var(--text-soft)"
-                style={{ cursor: "pointer" }}
-                onClick={() => setTela("menu")}
-              />
-            </div>
-
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <p style={{ fontSize: "48px" }}>👨‍🍳</p>
-              <p
-                style={{
-                  ...TIPOGRAFIA.titulo,
-                  marginTop: "16px",
-                  color: "var(--text)",
-                }}
-              >
-                Em breve!
-              </p>
-              <p
-                style={{
-                  ...TIPOGRAFIA.corpo,
-                  color: "var(--text-soft)",
-                  marginTop: "8px",
-                  lineHeight: 1.5,
-                }}
-              >
-                Em breve você poderá vincular receitas aos produtos e adicionar
-                os ingredientes faltantes à lista com um toque.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

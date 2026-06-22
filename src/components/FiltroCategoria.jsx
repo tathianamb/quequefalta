@@ -14,6 +14,8 @@ function FiltroCategoria({
   categoriasFiltro,
   setCategoriasFiltro,
   botoesExtras,
+  categorias = ORDEM_CATEGORIAS,
+  tituloModal = "Filtrar",
 }) {
   const [aberto, setAberto] = useState(false);
   const [selecao, setSelecao] = useState(categoriasFiltro);
@@ -164,7 +166,7 @@ function FiltroCategoria({
                   color: "var(--text)",
                 }}
               >
-                Filtrar
+                {tituloModal}
               </h2>
               <X
                 size={20}
@@ -185,7 +187,7 @@ function FiltroCategoria({
                 flex: 1,
               }}
             >
-              {ORDEM_CATEGORIAS.map((cat) => {
+              {categorias.map((cat) => {
                 const selecionado = selecao.includes(cat);
                 return (
                   <button
