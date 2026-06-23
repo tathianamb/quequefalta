@@ -27,7 +27,8 @@ function Menu({
   setTodasListas,
   usuario,
   isAdmin,
-  onAbrirAdmin,
+  modoAdmin,
+  setModoAdmin,
   telaInicial,
 }) {
   const [tela, setTela] = useState(telaInicial || "menu");
@@ -395,10 +396,6 @@ function Menu({
 
 {isAdmin && (
                   <div
-                    onClick={() => {
-                      onFechar();
-                      onAbrirAdmin();
-                    }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -406,7 +403,6 @@ function Menu({
                       padding: "14px 16px",
                       background: "var(--bg)",
                       borderRadius: RAIO.md,
-                      cursor: "pointer",
                     }}
                   >
                     <Shield size={18} color={COR.erro} />
@@ -417,9 +413,33 @@ function Menu({
                         flex: 1,
                       }}
                     >
-                      Admin
+                      Modo admin
                     </span>
-                    <span style={{ color: "var(--text-soft)" }}>›</span>
+                    <div
+                      onClick={() => setModoAdmin(v => !v)}
+                      style={{
+                        width: "48px",
+                        height: "28px",
+                        borderRadius: RAIO.pill,
+                        background: modoAdmin ? "var(--laranja)" : "var(--text-soft)",
+                        position: "relative",
+                        cursor: "pointer",
+                        transition: "background 0.2s",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute",
+                        top: "3px",
+                        left: modoAdmin ? "23px" : "3px",
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "50%",
+                        background: "white",
+                        transition: "left 0.2s",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+                      }} />
+                    </div>
                   </div>
                 )}
                 <div

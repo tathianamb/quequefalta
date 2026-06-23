@@ -27,7 +27,6 @@ import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
 import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
 import { ReceitaTexto } from "../components/receitas/ReceitaTexto";
-import AdminPanel from "../components/AdminPanel";
 import FiltroCategoria from "../components/FiltroCategoria";
 import {
   TIPOGRAFIA,
@@ -81,7 +80,6 @@ function Home({
     atualizar: atualizarReceita,
   } = useReceitas(usuario);
   const { grupoSubstituicao } = useGrupoSubstituicao();
-  const [adminAberto, setAdminAberto] = useState(false);
   const [modoAdmin, setModoAdmin] = useState(false);
   const admin = isAdmin(usuario.email);
   const [telaMenu, setTelaMenu] = useState("menu");
@@ -725,7 +723,8 @@ function Home({
           setTodasListas={setTodasListas}
           usuario={usuario}
           isAdmin={admin}
-          onAbrirAdmin={() => setAdminAberto(true)}
+          modoAdmin={modoAdmin}
+          setModoAdmin={setModoAdmin}
           telaInicial={telaMenu}
         />
       )}
@@ -783,16 +782,6 @@ function Home({
         ))}
       </div>
 
-      {adminAberto && (
-        <AdminPanel
-          onFechar={() => setAdminAberto(false)}
-          modoAdmin={modoAdmin}
-          setModoAdmin={setModoAdmin}
-          receitasPendentes={receitasPendentes}
-          onAprovarReceita={aprovarReceita}
-          onRejeitarReceita={rejeitarReceita}
-        />
-      )}
     </div>
   );
 }
