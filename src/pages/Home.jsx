@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { signOut } from "firebase/auth";
-import { auth } from "../config/firebase";
+import { auth, db } from "../config/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { ORDEM_CATEGORIAS, textoParaCor } from "../utils/categorias";
 import { useLista } from "../hooks/useLista";
 import { useCatalogo } from "../hooks/useCatalogo";
@@ -81,14 +82,15 @@ function Home({
   } = useReceitas(usuario);
   const { grupoSubstituicao } = useGrupoSubstituicao();
   const [modoAdmin, setModoAdmin] = useState(false);
+  const [sugestaoEditando, setSugestaoEditando] = useState(null); // { id, nome, categoria, subcategoria }
+  const [sugestaoNomeFoco, setSugestaoNomeFoco] = useState(false);
   const admin = isAdmin(usuario.email);
   const [telaMenu, setTelaMenu] = useState("menu");
   const [receitaSelecionada, setReceitaSelecionada] = useState(null);
   const [telaReceita, setTelaReceita] = useState("lista"); // "lista" | "detalhe" | "texto" | "formulario"
   const [textoReceita, setTextoReceita] = useState("");
   const [dadosParseados, setDadosParseados] = useState(null);
-  const [refeicoesFiltro, setRefeicoesFiltro] = useState([]);
-  const CATEGORIAS_RECEITA = ["Café da manhã", "Almoço", "Lanche", "Jantar", "Sobremesa"];
+  const [receitaEditando, setReceitaEditando] = useState(null); // receita pendente sendo editada
 
   const filtrar = (arr) =>
     arr.filter((p) => {
@@ -112,11 +114,9 @@ function Home({
   const catalogoFiltrado = filtrar(catalogo);
   const porCategoriaCatalogo = agrupar(catalogoFiltrado);
   const carregando = carregandoLista || carregandoCatalogo;
-  const receitasFiltradas = receitasAprovadas.filter(r => {
-    const buscaOk = r.nome.toLowerCase().includes(busca.toLowerCase());
-    const refeicaoOk = refeicoesFiltro.length === 0 || refeicoesFiltro.includes(r.categoria);
-    return buscaOk && refeicaoOk;
-  });
+  const receitasFiltradas = receitasAprovadas.filter(r =>
+    r.nome.toLowerCase().includes(busca.toLowerCase())
+  );
 
   const abrirProduto = (item) => {
     const produto =
@@ -197,27 +197,6 @@ function Home({
               onClick={() => setMenuAberto(true)}
             >
               <MenuIcon size={22} color="var(--text-soft)" />
-              {admin && modoAdmin && (sugestoesPendentes.length + receitasPendentes.length) > 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "-6px",
-                    right: "-6px",
-                    background: "var(--amarelo)",
-                    color: "var(--text)",
-                    borderRadius: RAIO.full,
-                    width: "18px",
-                    height: "18px",
-                    fontSize: FONTE.xs,
-                    fontWeight: FONTE.extrabold,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {sugestoesPendentes.length + receitasPendentes.length}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -264,10 +243,9 @@ function Home({
 
         {/* Filtro categorias */}
         {<FiltroCategoria
-          categoriasFiltro={aba === "receitas" ? refeicoesFiltro : categoriasFiltro}
-          setCategoriasFiltro={aba === "receitas" ? setRefeicoesFiltro : setCategoriasFiltro}
-          categorias={aba === "receitas" ? CATEGORIAS_RECEITA : undefined}
-          tituloModal={aba === "receitas" ? "Refeição" : "Filtrar"}
+          categoriasFiltro={categoriasFiltro}
+          setCategoriasFiltro={setCategoriasFiltro}
+          tituloModal="Filtrar"
           botoesExtras={
             aba === "catalogo" ? (
               <button
@@ -290,20 +268,6 @@ function Home({
                     <ChevronsDown size={14} /> Expandir
                   </>
                 )}
-              </button>
-            ) : aba === "receitas" && admin ? (
-              <button
-                onClick={() => setTelaReceita("texto")}
-                style={{
-                  ...BOTAO_SECUNDARIO,
-                  padding: "6px 14px",
-                  fontSize: "13px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <Plus size={14} /> Receita
               </button>
             ) : null
           }
@@ -412,73 +376,214 @@ function Home({
               </p>
               {sugestoesPendentes.map((s) => {
                 const jaAprovou = s.aprovadores?.includes(usuario.uid);
+                const editando = sugestaoEditando?.id === s.id;
                 return (
                   <div
                     key={s.id}
                     style={{
-                      opacity: 0.5,
+                      opacity: editando ? 1 : 0.5,
                       marginBottom: "8px",
-                      position: "relative",
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
+                        flexDirection: "column",
+                        gap: "10px",
                         padding: "12px 16px",
                         background: "var(--card)",
                         borderRadius: RAIO.md,
                         boxShadow: "var(--shadow)",
-                        borderLeft: `4px solid ${COR.neutro}`,
+                        borderLeft: `4px solid ${editando ? "var(--laranja)" : COR.neutro}`,
                       }}
                     >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{s.nome}</p>
-                        <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
-                          {s.categoria}{s.subcategoria ? ` · ${s.subcategoria}` : ""}
-                        </p>
-                        {s.status === "aguardando_segunda_aprovacao" && (
-                          <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.neutro, marginTop: "2px" }}>
-                            {s.aprovadores?.length}/2 aprovações
-                          </p>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                        <button
-                          onClick={() => !jaAprovou && aprovar(s)}
-                          disabled={jaAprovou}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: RAIO.sm,
-                            border: "none",
-                            background: jaAprovou ? COR.borda : COR.sucessoBg,
-                            color: jaAprovou ? COR.neutro : COR.sucesso,
-                            fontFamily: "Nunito, sans-serif",
-                            fontSize: FONTE.sm,
-                            fontWeight: FONTE.bold,
-                            cursor: jaAprovou ? "default" : "pointer",
-                          }}
-                        >
-                          {jaAprovou ? "Aprovado" : "Aprovar"}
-                        </button>
-                        <button
-                          onClick={() => rejeitar(s)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: RAIO.sm,
-                            border: "none",
-                            background: COR.erroBg,
-                            color: COR.erro,
-                            fontFamily: "Nunito, sans-serif",
-                            fontSize: FONTE.sm,
-                            fontWeight: FONTE.bold,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Rejeitar
-                        </button>
-                      </div>
+                      {editando ? (
+                        <>
+                          {(() => {
+                            const termo = sugestaoEditando.nome.toLowerCase().trim();
+                            const sugestoes = termo.length >= 2
+                              ? catalogo.filter(p => p.nome.toLowerCase().includes(termo)).slice(0, 6)
+                              : [];
+                            const mostrarDropdown = sugestaoNomeFoco && sugestoes.length > 0;
+                            return (
+                              <div style={{ position: "relative" }}>
+                                <input
+                                  value={sugestaoEditando.nome}
+                                  onChange={e => setSugestaoEditando(prev => ({ ...prev, nome: e.target.value }))}
+                                  onFocus={() => setSugestaoNomeFoco(true)}
+                                  onBlur={() => setTimeout(() => setSugestaoNomeFoco(false), 150)}
+                                  placeholder="Nome *"
+                                  style={{
+                                    padding: "8px 12px", borderRadius: RAIO.sm,
+                                    border: "1.5px solid var(--borda, #DEE2E6)",
+                                    background: "var(--bg)", color: "var(--text)",
+                                    fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                    outline: "none", width: "100%", boxSizing: "border-box",
+                                  }}
+                                />
+                                {mostrarDropdown && (
+                                  <div style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
+                                    background: "var(--card)", borderRadius: RAIO.md,
+                                    border: "1.5px solid var(--borda, #DEE2E6)",
+                                    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+                                    marginTop: "2px", overflow: "hidden",
+                                  }}>
+                                    {sugestoes.map(p => (
+                                      <div
+                                        key={p.id}
+                                        onMouseDown={() => setSugestaoEditando(prev => ({
+                                          ...prev,
+                                          nome: p.nome,
+                                          categoria: p.categoria ?? prev.categoria,
+                                          subcategoria: p.subcategoria ?? prev.subcategoria,
+                                        }))}
+                                        style={{
+                                          padding: "10px 14px", cursor: "pointer",
+                                          borderBottom: "1px solid var(--borda, #DEE2E6)",
+                                          fontFamily: "Nunito, sans-serif",
+                                        }}
+                                      >
+                                        <p style={{ fontSize: FONTE.sm, color: "var(--text)", margin: 0 }}>{p.nome}</p>
+                                        <p style={{ fontSize: FONTE.xs, color: "var(--text-soft)", margin: "2px 0 0" }}>
+                                          {p.categoria}{p.subcategoria ? ` · ${p.subcategoria}` : ""} · já no catálogo
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          <select
+                            value={sugestaoEditando.categoria}
+                            onChange={e => setSugestaoEditando(prev => ({ ...prev, categoria: e.target.value, subcategoria: "" }))}
+                            style={{
+                              padding: "8px 12px", borderRadius: RAIO.sm,
+                              border: "1.5px solid var(--borda, #DEE2E6)",
+                              background: "var(--bg)", color: sugestaoEditando.categoria ? "var(--text)" : "var(--text-soft)",
+                              fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                              outline: "none", width: "100%", boxSizing: "border-box",
+                            }}
+                          >
+                            <option value="">Categoria *</option>
+                            {[...ORDEM_CATEGORIAS].sort((a, b) => a.localeCompare(b, "pt-BR")).map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                          {(() => {
+                            const subcats = [...new Set(
+                              catalogo
+                                .filter(p => p.categoria === sugestaoEditando.categoria && p.subcategoria)
+                                .map(p => p.subcategoria)
+                            )].sort((a, b) => a.localeCompare(b, "pt-BR"));
+                            return (
+                              <select
+                                value={sugestaoEditando.subcategoria}
+                                onChange={e => setSugestaoEditando(prev => ({ ...prev, subcategoria: e.target.value }))}
+                                disabled={!sugestaoEditando.categoria}
+                                style={{
+                                  padding: "8px 12px", borderRadius: RAIO.sm,
+                                  border: "1.5px solid var(--borda, #DEE2E6)",
+                                  background: "var(--bg)", color: sugestaoEditando.subcategoria ? "var(--text)" : "var(--text-soft)",
+                                  fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                  outline: "none", width: "100%", boxSizing: "border-box",
+                                  opacity: !sugestaoEditando.categoria ? 0.5 : 1,
+                                }}
+                              >
+                                <option value="">Subcategoria *</option>
+                                {subcats.map(sc => (
+                                  <option key={sc} value={sc}>{sc}</option>
+                                ))}
+                              </select>
+                            );
+                          })()}
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                            <button
+                              onClick={() => setSugestaoEditando(null)}
+                              style={{
+                                padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
+                                background: "var(--bg)", color: "var(--text-soft)",
+                                fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                fontWeight: FONTE.bold, cursor: "pointer",
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await atualizar(s, {
+                                  nome: sugestaoEditando.nome.trim(),
+                                  categoria: sugestaoEditando.categoria,
+                                  subcategoria: sugestaoEditando.subcategoria,
+                                });
+                                setSugestaoEditando(null);
+                              }}
+                              disabled={!sugestaoEditando.nome.trim() || !sugestaoEditando.categoria || !sugestaoEditando.subcategoria}
+                              style={{
+                                padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
+                                background: COR.sucessoBg, color: COR.sucesso,
+                                fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                fontWeight: FONTE.bold, cursor: "pointer",
+                                opacity: (!sugestaoEditando.nome.trim() || !sugestaoEditando.categoria || !sugestaoEditando.subcategoria) ? 0.5 : 1,
+                              }}
+                            >
+                              Salvar
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{s.nome}</p>
+                            <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
+                              {s.categoria}{s.subcategoria ? ` · ${s.subcategoria}` : ""}
+                            </p>
+                            {s.status === "aguardando_segunda_aprovacao" && (
+                              <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.neutro, marginTop: "2px" }}>
+                                {s.aprovadores?.length}/2 aprovações
+                              </p>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                            <button
+                              onClick={() => setSugestaoEditando({ id: s.id, nome: s.nome, categoria: s.categoria ?? "", subcategoria: s.subcategoria ?? "" })}
+                              style={{
+                                padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
+                                background: "var(--bg)", color: "var(--text-soft)",
+                                fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                fontWeight: FONTE.bold, cursor: "pointer",
+                              }}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => !jaAprovou && aprovar(s)}
+                              disabled={jaAprovou}
+                              style={{
+                                padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
+                                background: jaAprovou ? COR.borda : COR.sucessoBg,
+                                color: jaAprovou ? COR.neutro : COR.sucesso,
+                                fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                fontWeight: FONTE.bold, cursor: jaAprovou ? "default" : "pointer",
+                              }}
+                            >
+                              {jaAprovou ? "Aprovado" : "Aprovar"}
+                            </button>
+                            <button
+                              onClick={() => rejeitar(s)}
+                              style={{
+                                padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
+                                background: COR.erroBg, color: COR.erro,
+                                fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
+                                fontWeight: FONTE.bold, cursor: "pointer",
+                              }}
+                            >
+                              Rejeitar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -585,9 +690,6 @@ function Home({
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{r.nome}</p>
-                        <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
-                          {r.categoria}
-                        </p>
                         {temIngredienteTemp && (
                           <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--laranja)", marginTop: "2px" }}>
                             ⚠ Ingredientes não catalogados
@@ -595,6 +697,26 @@ function Home({
                         )}
                       </div>
                       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => {
+                            setReceitaEditando(r);
+                            setDadosParseados(r);
+                            setTelaReceita("formulario");
+                          }}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: RAIO.sm,
+                            border: "none",
+                            background: "var(--bg)",
+                            color: "var(--text-soft)",
+                            fontFamily: "Nunito, sans-serif",
+                            fontSize: FONTE.sm,
+                            fontWeight: FONTE.bold,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Editar
+                        </button>
                         <button
                           onClick={() => !temIngredienteTemp && aprovarReceita(r)}
                           disabled={temIngredienteTemp}
@@ -637,11 +759,29 @@ function Home({
             </div>
           )}
           {telaReceita === "lista" && (
-            <ReceitaLista
-              receitas={receitasFiltradas}
-              itensEmCasa={lista.filter(i => i.comprado)}
-              onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
-            />
+            <>
+              {admin && (
+                <button
+                  onClick={() => setTelaReceita("texto")}
+                  style={{
+                    ...BOTAO_SECUNDARIO,
+                    padding: "10px 16px",
+                    fontSize: "13px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <Plus size={14} /> Nova receita
+                </button>
+              )}
+              <ReceitaLista
+                receitas={receitasFiltradas}
+                itensEmCasa={lista.filter(i => i.comprado)}
+                onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
+              />
+            </>
           )}
           {telaReceita === "detalhe" && receitaSelecionada && (
             <ReceitaDetalhe
@@ -679,13 +819,30 @@ function Home({
               grupoSubstituicao={grupoSubstituicao}
               isAdmin={admin}
               dadosIniciais={dadosParseados}
-              textoOriginal={textoReceita}
-              onVoltarTexto={(texto) => {
+              textoOriginal={receitaEditando ? null : textoReceita}
+              onVoltarTexto={receitaEditando ? null : (texto) => {
                 setTextoReceita(texto);
                 setTelaReceita("texto");
               }}
-              onVoltar={() => { setTextoReceita(""); setDadosParseados(null); setTelaReceita("lista"); }}
-              onEnviar={async (dados) => { await sugerirReceita(dados); }}
+              onVoltar={() => { setTextoReceita(""); setDadosParseados(null); setReceitaEditando(null); setTelaReceita("lista"); }}
+              onEnviar={async (dados) => {
+                if (receitaEditando) {
+                  await atualizarReceita(receitaEditando, dados);
+                } else {
+                  await sugerirReceita(dados);
+                }
+              }}
+              onSugerirIngrediente={async (nome) => {
+                await addDoc(collection(db, "sugestoes"), {
+                  nome,
+                  categoria: "",
+                  subcategoria: "",
+                  sugeridoPor: usuario.email,
+                  listaAtiva,
+                  criadoEm: serverTimestamp(),
+                  status: "pendente",
+                });
+              }}
             />
           )}
         </div>
@@ -745,10 +902,10 @@ function Home({
         }}
       >
         {[
-          { id: "lista", label: "Lista de compras", icon: ShoppingCart },
-          { id: "catalogo", label: "Catálogo", icon: BookOpen },
-          { id: "receitas", label: "Receitas", icon: ChefHat },
-        ].map(({ id, label, icon: Icon }) => (
+          { id: "lista", label: "Lista de compras", icon: ShoppingCart, badge: 0 },
+          { id: "catalogo", label: "Catálogo", icon: BookOpen, badge: admin && modoAdmin ? sugestoesPendentes.length : 0 },
+          { id: "receitas", label: "Receitas", icon: ChefHat, badge: admin && modoAdmin ? receitasPendentes.length : 0 },
+        ].map(({ id, label, icon: Icon, badge }) => (
           <button
             key={id}
             onClick={() => {
@@ -776,7 +933,28 @@ function Home({
                 aba === id ? "2px solid var(--amarelo)" : "2px solid transparent",
             }}
           >
-            <Icon size={20} />
+            <div style={{ position: "relative" }}>
+              <Icon size={20} />
+              {badge > 0 && (
+                <div style={{
+                  position: "absolute",
+                  top: "-6px",
+                  right: "-8px",
+                  background: "var(--amarelo)",
+                  color: "var(--text)",
+                  borderRadius: RAIO.full,
+                  width: "16px",
+                  height: "16px",
+                  fontSize: FONTE.xs,
+                  fontWeight: FONTE.extrabold,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  {badge}
+                </div>
+              )}
+            </div>
             {label}
           </button>
         ))}
