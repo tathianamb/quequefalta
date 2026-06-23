@@ -71,17 +71,8 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
         {receita.nome}
       </h1>
 
-      {/* Meta: categoria, tempo, porções */}
+      {/* Meta: tempo, porções */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '24px', alignItems: 'center' }}>
-        <span style={{
-          ...TIPOGRAFIA.label,
-          color: 'var(--laranja)',
-          background: 'rgba(var(--laranja-rgb, 255,152,0),0.12)',
-          padding: '4px 10px',
-          borderRadius: RAIO.pill,
-        }}>
-          {receita.categoria}
-        </span>
         {receita.tempoPreparo && (
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', ...TIPOGRAFIA.corpo, color: 'var(--text-soft)' }}>
             <Clock size={14} /> {receita.tempoPreparo} min
