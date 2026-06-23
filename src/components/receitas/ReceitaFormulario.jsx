@@ -2,8 +2,6 @@ import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, COR } from '../../utils/estilos'
 
-const CATEGORIAS = ['Café da manhã', 'Almoço', 'Lanche', 'Jantar', 'Sobremesa']
-
 const UNIDADES = [
   { valor: '',          label: '—',          plural: null         },
   { valor: 'un.',       label: 'un.',         plural: null         }, // abreviação, sem plural
@@ -122,12 +120,12 @@ export function ReceitaFormulario({
   isAdmin,
   onVoltar,
   onEnviar,
+  onSugerirIngrediente = null,
   dadosIniciais = null,
   textoOriginal = '',
   onVoltarTexto = null,
 }) {
   const [nome, setNome] = useState(dadosIniciais?.nome ?? '')
-  const [categoria, setCategoria] = useState('')
   const [foto, setFoto] = useState('')
   const [tempoPreparo, setTempoPreparo] = useState(dadosIniciais?.tempoPreparo ?? '')
   const [porcoes, setPorcoes] = useState(dadosIniciais?.porcoes ?? '')
@@ -219,6 +217,7 @@ export function ReceitaFormulario({
   const selecionarNomeTemp = () => {
     const termo = termoAtivo.trim()
     aplicarSelecao({ nomeTemp: termo, nome: termo })
+    if (onSugerirIngrediente) onSugerirIngrediente(termo)
   }
 
   const [toastRemovido, setToastRemovido] = useState(null) // { nome, ingrediente, idx }
@@ -247,30 +246,47 @@ export function ReceitaFormulario({
   const nomeValido = nome.trim().replace(/\d/g, '').length >= 4
   const temIngredientes = ingredientes.length > 0
   const modoPreparoValido = modoPreparo.trim().length >= 20
-  const podeSalvar = nomeValido && categoria && temIngredientes && modoPreparoValido
+  const podeSalvar = nomeValido && temIngredientes && modoPreparoValido &&
+    !(isAdmin && temIngredienteNaoVerificado)
+  const podeSalvarRascunho = isAdmin && temIngredienteNaoVerificado &&
+    nomeValido && temIngredientes && modoPreparoValido
+
+  const montarDados = () => ({
+    nome: nome.trim(),
+    foto: foto.trim() || null,
+    tempoPreparo: tempoPreparo ? Number(tempoPreparo) : null,
+    porcoes: porcoes ? Number(porcoes) : null,
+    dificuldade: dificuldade || null,
+    ingredientes,
+    passos: modoPreparo.trim()
+      ? modoPreparo.split('\n').map(l => l.trim()).filter(Boolean)
+      : [],
+    _textoOriginal: textoOriginal || null,
+  })
 
   const handleEnviar = async () => {
     if (!podeSalvar || enviando) return
     setEnviando(true)
     setErroEnvio(null)
-    const passosValidos = modoPreparo.trim()
-      ? modoPreparo.split('\n').map(l => l.trim()).filter(Boolean)
-      : []
     try {
-      await onEnviar({
-        nome: nome.trim(),
-        categoria,
-        foto: foto.trim() || null,
-        tempoPreparo: tempoPreparo ? Number(tempoPreparo) : null,
-        porcoes: porcoes ? Number(porcoes) : null,
-        dificuldade: dificuldade || null,
-        ingredientes,
-        passos: passosValidos,
-        _textoOriginal: textoOriginal || null,
-      })
+      await onEnviar(montarDados())
       setEnviado(true)
     } catch (e) {
       setErroEnvio(e?.message ?? 'Erro ao enviar. Tente novamente.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const handleSalvarRascunho = async () => {
+    if (!podeSalvarRascunho || enviando) return
+    setEnviando(true)
+    setErroEnvio(null)
+    try {
+      await onEnviar({ ...montarDados(), status: 'pendente' })
+      setEnviado(true)
+    } catch (e) {
+      setErroEnvio(e?.message ?? 'Erro ao salvar. Tente novamente.')
     } finally {
       setEnviando(false)
     }
@@ -297,57 +313,42 @@ export function ReceitaFormulario({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Voltar para editar texto */}
-      <button
-        onClick={() => onVoltarTexto(textoOriginal)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          background: 'none', border: 'none', cursor: 'pointer',
-          padding: 0, color: 'var(--text-soft)',
-          fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
-        }}
-      >
-        <ArrowLeft size={16} /> Editar texto
-      </button>
-
-      <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)', margin: 0 }}>
-        {isAdmin ? 'Nova receita' : 'Sugerir receita'}
-      </h2>
+      {/* Navegação de volta */}
+      {onVoltarTexto ? (
+        <button
+          onClick={() => onVoltarTexto(textoOriginal)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0, color: 'var(--text-soft)',
+            fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
+          }}
+        >
+          <ArrowLeft size={16} /> Editar texto
+        </button>
+      ) : (
+        <button
+          onClick={onVoltar}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0, color: 'var(--text-soft)',
+            fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
+          }}
+        >
+          <ArrowLeft size={16} /> Voltar
+        </button>
+      )}
 
       {/* Nome */}
       <div>
-        <label style={labelStyle}>Nome da receita *</label>
+        <label style={{ ...labelStyle, fontSize: '16px' }}>Nome da receita *</label>
         <input
           value={nome}
           onChange={e => setNome(e.target.value)}
           placeholder="Ex: Macarrão ao molho vermelho"
-          style={inputStyle}
+          style={{ ...inputStyle, fontSize: '16px' }}
         />
-      </div>
-
-      {/* Categoria */}
-      <div>
-        <label style={labelStyle}>Refeição *</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {CATEGORIAS.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategoria(cat)}
-              style={{
-                ...TIPOGRAFIA.label,
-                padding: '8px 14px',
-                borderRadius: RAIO.pill,
-                border: '1.5px solid',
-                borderColor: categoria === cat ? 'var(--laranja)' : 'var(--borda, #DEE2E6)',
-                background: categoria === cat ? 'var(--laranja)' : 'transparent',
-                color: categoria === cat ? '#212529' : 'var(--text-soft)',
-                cursor: 'pointer',
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Ingredientes */}
@@ -695,18 +696,39 @@ export function ReceitaFormulario({
       </div>
 
       {/* Enviar */}
-      <button
-        onClick={handleEnviar}
-        disabled={!podeSalvar || enviando}
-        style={{
-          ...BOTAO_PRIMARIO,
-          padding: '14px',
-          opacity: !podeSalvar || enviando ? 0.5 : 1,
-          cursor: !podeSalvar || enviando ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {enviando ? 'Enviando...' : isAdmin ? 'Publicar receita' : 'Enviar sugestão'}
-      </button>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        {podeSalvarRascunho && (
+          <button
+            onClick={handleSalvarRascunho}
+            disabled={enviando}
+            style={{
+              ...BOTAO_PRIMARIO,
+              flex: 1,
+              padding: '14px',
+              opacity: enviando ? 0.5 : 1,
+              cursor: enviando ? 'not-allowed' : 'pointer',
+              background: 'var(--bg)',
+              color: 'var(--text-soft)',
+              border: '1.5px solid var(--borda, #DEE2E6)',
+            }}
+          >
+            Salvar rascunho
+          </button>
+        )}
+        <button
+          onClick={handleEnviar}
+          disabled={!podeSalvar || enviando}
+          style={{
+            ...BOTAO_PRIMARIO,
+            flex: 1,
+            padding: '14px',
+            opacity: !podeSalvar || enviando ? 0.5 : 1,
+            cursor: !podeSalvar || enviando ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {enviando ? 'Enviando...' : isAdmin ? 'Publicar receita' : 'Enviar sugestão'}
+        </button>
+      </div>
 
       {erroEnvio && (
         <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--amarelo-validacao)', textAlign: 'center', marginTop: '4px' }}>
