@@ -162,41 +162,63 @@ function separarPreparoDoNome(nome) {
   return { nome: nome.trim(), preparoSugerido: null }
 }
 
-/* =========================================================================
-   MATCH NO CATÁLOGO E GRUPOS DE SUBSTITUIÇÃO
-   Prioridade: produto exato → produto contains (2+ palavras) →
-               grupo exato → grupo contains (2+ palavras)
-   ========================================================================= */
+/* Casa os tokens de `alvoNorm` como sequência de PALAVRAS INTEIRAS dentro de `nomeNorm`.
+   Retorna a observação (o resto, sem o trecho casado), null se casou tudo,
+   ou undefined se não casou. "cenoura" casa em "cenoura picada";
+   "sal" NÃO casa em "salsão" (fronteira de palavra, não substring). */
+function casarPorToken(nomeNorm, alvoNorm) {
+  const nTok = nomeNorm.split(/\s+/)
+  const aTok = alvoNorm.split(/\s+/)
+  for (let i = 0; i + aTok.length <= nTok.length; i++) {
+    let bate = true
+    for (let j = 0; j < aTok.length; j++) {
+      if (nTok[i + j] !== aTok[j]) { bate = false; break }
+    }
+    if (bate) {
+      const resto = [...nTok.slice(0, i), ...nTok.slice(i + aTok.length)]
+        .join(' ').replace(/^[\s,]+|[\s,]+$/g, '').trim()
+      return resto || null
+    }
+  }
+  return undefined
+}
+
 function buscarMatch(nomeNorm, catalogo, grupoSubstituicao) {
+  const candidatos = []
+
+  // Produto e grupo competem JUNTOS — vence o mais específico, não o tipo.
   for (const produto of catalogo) {
-    if (normalizar(produto.nome) === nomeNorm) {
-      return { tipo: 'produto', item: produto, observacao: null }
+    const alvo = normalizar(produto.nome)
+    if (alvo === nomeNorm) {
+      candidatos.push({ tipo: 'produto', item: produto, observacao: null, peso: alvo.split(/\s+/).length, exato: true })
+    } else {
+      const obs = casarPorToken(nomeNorm, alvo)
+      if (obs !== undefined) candidatos.push({ tipo: 'produto', item: produto, observacao: obs, peso: alvo.split(/\s+/).length, exato: false })
     }
   }
-
-  for (const produto of catalogo) {
-    const prodNorm = normalizar(produto.nome)
-    if (prodNorm.split(/\s+/).length >= 2 && nomeNorm.includes(prodNorm)) {
-      const obs = nomeNorm.replace(prodNorm, '').replace(/^[\s,]+|[\s,]+$/g, '') || null
-      return { tipo: 'produto', item: produto, observacao: obs }
-    }
-  }
-
   for (const grupo of grupoSubstituicao) {
-    if (normalizar(grupo.nome) === nomeNorm) {
-      return { tipo: 'grupoSubstituicao', item: grupo, observacao: null }
+    const alvo = normalizar(grupo.nome)
+    if (alvo === nomeNorm) {
+      candidatos.push({ tipo: 'grupoSubstituicao', item: grupo, observacao: null, peso: alvo.split(/\s+/).length, exato: true })
+    } else {
+      const obs = casarPorToken(nomeNorm, alvo)
+      if (obs !== undefined) candidatos.push({ tipo: 'grupoSubstituicao', item: grupo, observacao: obs, peso: alvo.split(/\s+/).length, exato: false })
     }
   }
 
-  for (const grupo of grupoSubstituicao) {
-    const atrNorm = normalizar(grupo.nome)
-    if (atrNorm.split(/\s+/).length >= 2 && nomeNorm.includes(atrNorm)) {
-      const obs = nomeNorm.replace(atrNorm, '').replace(/^[\s,]+|[\s,]+$/g, '') || null
-      return { tipo: 'grupoSubstituicao', item: grupo, observacao: obs }
-    }
-  }
+  if (candidatos.length === 0) return null
 
-  return null
+  // Prioridade: match exato > mais palavras (mais específico) >
+  //             empate de peso: produto vence grupo (mais concreto).
+  candidatos.sort((a, b) => {
+    if (a.exato !== b.exato) return a.exato ? -1 : 1
+    if (b.peso !== a.peso) return b.peso - a.peso
+    if (a.tipo !== b.tipo) return a.tipo === 'produto' ? -1 : 1
+    return 0
+  })
+
+  const m = candidatos[0]
+  return { tipo: m.tipo, item: m.item, observacao: m.observacao }
 }
 
 /* =========================================================================

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, COR } from '../../utils/estilos'
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, COR } from '../../utils/estilos'
 
 const CATEGORIAS = ['Café da manhã', 'Almoço', 'Lanche', 'Jantar', 'Sobremesa']
 
@@ -236,9 +236,9 @@ export function ReceitaFormulario({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Voltar */}
+      {/* Voltar para editar texto */}
       <button
-        onClick={onVoltar}
+        onClick={() => onVoltarTexto(textoOriginal)}
         style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           background: 'none', border: 'none', cursor: 'pointer',
@@ -246,26 +246,12 @@ export function ReceitaFormulario({
           fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
         }}
       >
-        <ArrowLeft size={16} /> Receitas
+        <ArrowLeft size={16} /> Editar texto
       </button>
 
       <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)', margin: 0 }}>
         {isAdmin ? 'Nova receita' : 'Sugerir receita'}
       </h2>
-
-      {/* Botão editar texto (apenas quando veio do parser) */}
-      {onVoltarTexto && (
-        <button
-          onClick={() => onVoltarTexto(textoOriginal)}
-          style={{
-            ...BOTAO_SECUNDARIO,
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '10px 16px', alignSelf: 'flex-start',
-          }}
-        >
-          <ArrowLeft size={14} /> Editar texto
-        </button>
-      )}
 
       {/* Nome */}
       <div>
