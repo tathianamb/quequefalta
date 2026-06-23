@@ -1,13 +1,5 @@
 import { ChefHat, Clock, Users } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, COR } from '../../utils/estilos'
-
-const COR_CATEGORIA_RECEITA = {
-  'Café da manhã': '#E8B84B',
-  'Almoço': '#4caf50',
-  'Lanche': '#ff9800',
-  'Jantar': '#5c6bc0',
-  'Sobremesa': '#f06292',
-}
+import { TIPOGRAFIA, RAIO } from '../../utils/estilos'
 
 function contarFaltantes(receita, itensEmCasa) {
   const idsEmCasa = new Set(itensEmCasa.map(i => i.produtoId))
@@ -18,8 +10,6 @@ function CardReceita({ receita, itensEmCasa, onClick }) {
   const faltam = contarFaltantes(receita, itensEmCasa)
   const total = receita.ingredientes.length
   const temTudo = faltam === 0
-  const corCategoria = COR_CATEGORIA_RECEITA[receita.categoria] || COR.neutro
-
   return (
     <div
       onClick={() => onClick(receita)}
@@ -41,31 +31,19 @@ function CardReceita({ receita, itensEmCasa, onClick }) {
         <div style={{
           width: '100%',
           height: '100px',
-          background: `${corCategoria}22`,
+          background: 'var(--bg)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <ChefHat size={36} color={corCategoria} />
+          <ChefHat size={36} color="var(--text-soft)" />
         </div>
       )}
 
       <div style={{ padding: '14px 16px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-          <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)', lineHeight: 1.3, flex: 1 }}>
-            {receita.nome}
-          </p>
-          <span style={{
-            ...TIPOGRAFIA.label,
-            color: corCategoria,
-            background: `${corCategoria}22`,
-            padding: '3px 8px',
-            borderRadius: RAIO.pill,
-            flexShrink: 0,
-          }}>
-            {receita.categoria}
-          </span>
-        </div>
+        <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)', lineHeight: 1.3 }}>
+          {receita.nome}
+        </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
           {receita.tempoPreparo && (
