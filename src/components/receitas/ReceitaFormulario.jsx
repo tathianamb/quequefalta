@@ -1,10 +1,34 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, COR } from '../../utils/estilos'
 
 const CATEGORIAS = ['Café da manhã', 'Almoço', 'Lanche', 'Jantar', 'Sobremesa']
 
-const UNIDADES = ['unid.', 'g', 'kg', 'mL', 'L', 'xíc.', 'col. sopa', 'col. chá', 'col. café', 'pitada', 'a gosto']
+const UNIDADES = [
+  { valor: '',          label: '—',          plural: null         },
+  { valor: 'un.',       label: 'un.',         plural: null         }, // abreviação, sem plural
+  { valor: 'g',         label: 'g',           plural: null         },
+  { valor: 'kg',        label: 'kg',          plural: null         },
+  { valor: 'mL',        label: 'mL',          plural: null         },
+  { valor: 'L',         label: 'L',           plural: null         },
+  { valor: 'xíc.',      label: 'xíc.',        plural: null         }, // abreviação
+  { valor: 'cl. sopa',  label: 'cl. sopa',    plural: null         }, // abreviação
+  { valor: 'cl. chá',   label: 'cl. chá',     plural: null         },
+  { valor: 'cl. café',  label: 'cl. café',    plural: null         },
+  { valor: 'pitada',    label: 'pitada',      plural: 'pitadas'    },
+  { valor: 'lata',      label: 'lata',        plural: 'latas'      },
+  { valor: 'pacote',    label: 'pacote',      plural: 'pacotes'    },
+  { valor: 'dente',     label: 'dente',       plural: 'dentes'     },
+  { valor: 'fatia',     label: 'fatia',       plural: 'fatias'     },
+  { valor: 'ramo',      label: 'ramo',        plural: 'ramos'      },
+]
+
+function labelUnidade(valor, quantidade) {
+  const u = UNIDADES.find(u => u.valor === valor)
+  if (!u || !u.plural) return valor
+  const num = parseFloat(String(quantidade).replace(',', '.'))
+  return !isNaN(num) && num > 1 ? u.plural : u.label
+}
 
 const inputStyle = {
   width: '100%',
@@ -27,29 +51,29 @@ const labelStyle = {
 
 function buscaCorresponde(produto, termo) {
   const t = termo.toLowerCase()
-  if (produto.nome.toLowerCase().includes(t)) return true
-  return (produto.atributos || []).some(a => a.toLowerCase().includes(t))
+  if (produto.nome.toLowerCase().includes(t)) return true;
+  return (produto.grupoSubstituicao || []).some(g => g.toLowerCase().includes(t));
 }
 
 function labelSugestao(produto, termo) {
   const t = termo.toLowerCase()
-  const atributoMatch = (produto.atributos || []).find(a => a.toLowerCase().includes(t))
-  if (atributoMatch && !produto.nome.toLowerCase().includes(t)) {
-    return `${produto.nome} · ${atributoMatch}`
+  const grupoMatch = (produto.grupoSubstituicao || []).find(g => g.toLowerCase().includes(t))
+  if (grupoMatch && !produto.nome.toLowerCase().includes(t)) {
+    return `${produto.nome} · ${grupoMatch}`
   }
   return produto.nome
 }
 
-function temMatchExato(resultadosProduto, resultadosAtributo, termo) {
+function temMatchExato(resultadosProduto, resultadosGrupo, termo) {
   const t = termo.toLowerCase().trim()
   const matchProduto = resultadosProduto.some(p => p.nome.toLowerCase() === t)
-  const matchAtributo = resultadosAtributo.some(a => a.nome.toLowerCase() === t)
-  return matchProduto || matchAtributo
+  const matchGrupo = resultadosGrupo.some(g => g.nome.toLowerCase() === t)
+  return matchProduto || matchGrupo
 }
 
 export function ReceitaFormulario({
-  catalogo,
-  atributos = [],
+  catalogo, // produtos
+  grupoSubstituicao = [],
   isAdmin,
   onVoltar,
   onEnviar,
@@ -66,6 +90,7 @@ export function ReceitaFormulario({
   const [ingredientes, setIngredientes] = useState(dadosIniciais?.ingredientes ?? [])
   const [buscaIngrediente, setBuscaIngrediente] = useState('')
   const [editandoIdx, setEditandoIdx] = useState(null) // índice do ingrediente sendo editado pelo nome
+  const [editandoQtdIdx, setEditandoQtdIdx] = useState(null) // índice com campos qtd/unidade expandidos
   const [modoPreparo, setModoPreparo] = useState(
     dadosIniciais?.passos?.length > 0 ? dadosIniciais.passos.join('\n') : ''
   )
@@ -91,22 +116,22 @@ export function ReceitaFormulario({
         .slice(0, 8)
     : []
 
-  const resultadosAtributo = buscaAtiva
-    ? atributos
-        .filter(a =>
-          a.nome.toLowerCase().includes(termoAtivo.toLowerCase()) &&
+  const resultadosGrupo = buscaAtiva
+    ? grupoSubstituicao
+        .filter(g =>
+          g.nome.toLowerCase().includes(termoAtivo.toLowerCase()) &&
           (editandoIdx !== null
-            ? ingredientes[editandoIdx]?.atributoId !== a.id
-            : !ingredientes.some(i => i.atributoId === a.id))
+            ? ingredientes[editandoIdx]?.grupoSubstituicaoId !== g.id
+            : !ingredientes.some(i => i.grupoSubstituicaoId === g.id))
         )
         .slice(0, 4)
     : []
 
-  const temResultados = resultadosProduto.length > 0 || resultadosAtributo.length > 0
+  const temResultados = resultadosProduto.length > 0 || resultadosGrupo.length > 0
 
   const mostrarSugestaoNomeTemp = buscaAtiva && (
     !temResultados ||
-    !temMatchExato(resultadosProduto, resultadosAtributo, termoAtivo)
+    !temMatchExato(resultadosProduto, resultadosGrupo, termoAtivo)
   )
 
   const mostrarDropdown = buscaAtiva && (temResultados || mostrarSugestaoNomeTemp)
@@ -128,15 +153,15 @@ export function ReceitaFormulario({
 
   const selecionarProduto = (produto) => {
     const t = termoAtivo.toLowerCase()
-    const atributoMatch = (produto.atributos || []).find(a => a.toLowerCase().includes(t))
-    const nomeDisplay = atributoMatch && !produto.nome.toLowerCase().includes(t)
-      ? `${produto.nome} (${atributoMatch})`
+    const grupoMatch = (produto.grupoSubstituicao || []).find(g => g.toLowerCase().includes(t))
+    const nomeDisplay = grupoMatch && !produto.nome.toLowerCase().includes(t)
+      ? `${produto.nome} (${grupoMatch})`
       : produto.nome
     aplicarSelecao({ produtoId: produto.id, nome: nomeDisplay })
   }
 
-  const selecionarAtributo = (atributo) => {
-    aplicarSelecao({ atributoId: atributo.id, nome: atributo.nome })
+  const selecionarGrupoSubstituicao = (grupo) => {
+    aplicarSelecao({ grupoSubstituicaoId: grupo.id, nome: grupo.nome })
   }
 
   const selecionarNomeTemp = () => {
@@ -144,8 +169,26 @@ export function ReceitaFormulario({
     aplicarSelecao({ nomeTemp: termo, nome: termo })
   }
 
+  const [toastRemovido, setToastRemovido] = useState(null) // { nome, ingrediente, idx }
+  const toastTimerRef = useRef(null)
+
   const removerIngrediente = (idx) => {
+    const removido = ingredientes[idx]
     setIngredientes(prev => prev.filter((_, i) => i !== idx))
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToastRemovido({ nome: removido.nome, ingrediente: removido, idx })
+    toastTimerRef.current = setTimeout(() => setToastRemovido(null), 4000)
+  }
+
+  const desfazerRemocao = () => {
+    if (!toastRemovido) return
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setIngredientes(prev => {
+      const novo = [...prev]
+      novo.splice(toastRemovido.idx, 0, toastRemovido.ingrediente)
+      return novo
+    })
+    setToastRemovido(null)
   }
 
   const temIngredienteNaoVerificado = ingredientes.some(i => i.nomeTemp)
@@ -264,56 +307,95 @@ export function ReceitaFormulario({
       <div>
         <label style={labelStyle}>Ingredientes *</label>
 
-        {/* Lista de ingredientes já adicionados — campos editáveis */}
+        {/* Tabela de ingredientes */}
         {ingredientes.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-            {ingredientes.map((ing, idx) => (
-              <div key={idx} style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 8px', borderRadius: RAIO.md,
-                background: 'var(--card)',
-                border: `1.5px solid ${ing.nomeTemp ? 'var(--laranja)' : 'var(--borda, #DEE2E6)'}`,
-              }}>
-                  <input
-                    value={ing.quantidade ?? ''}
-                    onChange={e => setIngredientes(prev => prev.map((item, i) =>
-                      i === idx ? { ...item, quantidade: e.target.value || null } : item
-                    ))}
-                    placeholder="Qtd"
-                    style={{ ...inputStyle, width: '52px', flex: 'none', padding: '6px 8px', fontSize: '13px' }}
-                  />
-                  <select
-                    value={ing.unidade ?? ''}
-                    onChange={e => setIngredientes(prev => prev.map((item, i) =>
-                      i === idx ? { ...item, unidade: e.target.value || null } : item
-                    ))}
-                    style={{ ...inputStyle, width: '80px', flex: 'none', padding: '6px 6px', fontSize: '13px', cursor: 'pointer' }}
-                  >
-                    <option value="">—</option>
-                    {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                  {/* Nome com busca live */}
-                  <div style={{ position: 'relative', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 2px', marginBottom: '10px', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '35%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '5%' }} />
+            </colgroup>
+            <tbody>
+              {ingredientes.map((ing, idx) => (
+                <tr key={idx}>
+                  {/* Quantidade + Unidade: mostrar "a gosto" quando ambos null, ou campos ao clicar */}
+                  {editandoQtdIdx === idx ? (
+                    <>
+                      <td style={{ padding: '1px 1px' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          autoFocus
+                          value={ing.quantidade ?? ''}
+                          onChange={e => setIngredientes(prev => prev.map((item, i) =>
+                            i === idx ? { ...item, quantidade: e.target.value || null } : item
+                          ))}
+                          placeholder="Qtd"
+                          style={{ ...inputStyle, width: '100%', padding: '6px 4px', fontSize: '13px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '1px 1px' }}>
+                        <select
+                          value={ing.unidade ?? ''}
+                          onChange={e => {
+                            setIngredientes(prev => prev.map((item, i) =>
+                              i === idx ? { ...item, unidade: e.target.value || null } : item
+                            ))
+                            setEditandoQtdIdx(null)
+                          }}
+                          onBlur={() => setTimeout(() => setEditandoQtdIdx(null), 150)}
+                          style={{ ...inputStyle, width: '100%', padding: '6px 2px', fontSize: '13px', cursor: 'pointer' }}
+                        >
+                          {UNIDADES.map(u => <option key={u.valor} value={u.valor}>{u.label}</option>)}
+                        </select>
+                      </td>
+                    </>
+                  ) : (
+                    <td colSpan={2} style={{ padding: '1px 1px' }}>
+                      <div
+                        onClick={() => setEditandoQtdIdx(idx)}
+                        style={{
+                          ...inputStyle,
+                          padding: '6px 8px',
+                          fontSize: '13px',
+                          cursor: 'text',
+                          color: ing.quantidade ? 'var(--text)' : 'var(--text-soft)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {ing.quantidade
+                          ? `${ing.quantidade}${ing.unidade ? ' ' + labelUnidade(ing.unidade, ing.quantidade) : ''}`
+                          : 'a gosto'}
+                      </div>
+                    </td>
+                  )}
+                  {/* Ingrediente com busca live */}
+                  <td style={{ padding: '1px 1px', position: 'relative' }}>
                     <input
                       value={ing.nome}
                       onFocus={() => setEditandoIdx(idx)}
                       onBlur={() => setTimeout(() => setEditandoIdx(null), 150)}
                       onChange={e => setIngredientes(prev => prev.map((item, i) =>
-                        i === idx ? { ...item, nome: e.target.value, produtoId: undefined, atributoId: undefined, nomeTemp: e.target.value } : item
+                        i === idx ? { ...item, nome: e.target.value, produtoId: undefined, grupoSubstituicaoId: undefined, nomeTemp: e.target.value } : item
                       ))}
-                      style={{ ...inputStyle, width: '100%', padding: '6px 8px', fontSize: '13px', borderColor: editandoIdx === idx ? 'var(--laranja)' : undefined }}
+                      style={{ ...inputStyle, width: '100%', padding: '6px 8px', fontSize: '13px', borderColor: ing.nomeTemp ? 'var(--amarelo-validacao)' : editandoIdx === idx ? 'var(--laranja)' : 'var(--borda, #DEE2E6)' }}
                     />
                     {editandoIdx === idx && mostrarDropdown && (
                       <div style={{
-                        position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+                        position: 'absolute', top: '100%', left: 4, right: 4, zIndex: 20,
                         background: 'var(--card)', borderRadius: RAIO.md,
                         border: '1.5px solid var(--borda, #DEE2E6)',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                        marginTop: '4px', overflow: 'hidden',
+                        marginTop: '2px', overflow: 'hidden',
                       }}>
                         {resultadosProduto.length > 0 && (
                           <>
-                            {resultadosAtributo.length > 0 && (
+                            {resultadosGrupo.length > 0 && (
                               <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>PRODUTOS</div>
                             )}
                             {resultadosProduto.map(p => (
@@ -323,53 +405,59 @@ export function ReceitaFormulario({
                             ))}
                           </>
                         )}
-                        {resultadosAtributo.length > 0 && (
+                        {resultadosGrupo.length > 0 && (
                           <>
                             {resultadosProduto.length > 0 && (
-                              <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>ATRIBUTOS</div>
+                              <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>GRUPOS</div>
                             )}
-                            {resultadosAtributo.map(a => (
-                              <div key={a.id} onMouseDown={() => selecionarAtributo(a)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--borda, #DEE2E6)', ...TIPOGRAFIA.corpo, color: 'var(--text)' }}>
-                                {a.nome}
+                            {resultadosGrupo.map(g => (
+                              <div key={g.id} onMouseDown={() => selecionarGrupoSubstituicao(g)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--borda, #DEE2E6)', ...TIPOGRAFIA.corpo, color: 'var(--text)' }}>
+                                {g.nome}
                               </div>
                             ))}
                           </>
                         )}
                         {mostrarSugestaoNomeTemp && (
-                          <div onMouseDown={selecionarNomeTemp} style={{ padding: '10px 14px', cursor: 'pointer', ...TIPOGRAFIA.corpo, color: 'var(--laranja)' }}>
+                          <div onMouseDown={selecionarNomeTemp} style={{ padding: '10px 14px', cursor: 'pointer', ...TIPOGRAFIA.corpo, color: 'var(--amarelo-validacao)' }}>
                             Sugerir inclusão de "{termoAtivo.trim()}"
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </td>
                   {/* Observação */}
-                  <input
-                    value={ing.observacao ?? ''}
-                    onChange={e => setIngredientes(prev => prev.map((item, i) =>
-                      i === idx ? { ...item, observacao: e.target.value || null } : item
-                    ))}
-                    placeholder="obs..."
-                    style={{ ...inputStyle, width: '90px', flex: 'none', padding: '6px 8px', fontSize: '12px', color: 'var(--text-soft)' }}
-                  />
-                  <button
-                    onClick={() => removerIngrediente(idx)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: COR.neutro, flexShrink: 0 }}
-                  >
-                    <X size={14} />
-                  </button>
-              </div>
-            ))}
-          </div>
+                  <td style={{ padding: '1px 1px' }}>
+                    <input
+                      value={ing.observacao ?? ''}
+                      onChange={e => setIngredientes(prev => prev.map((item, i) =>
+                        i === idx ? { ...item, observacao: e.target.value || null } : item
+                      ))}
+                      placeholder="picado, cozido..."
+                      style={{ ...inputStyle, width: '100%', padding: '6px 6px', fontSize: '12px', color: ing.observacao ? 'var(--text)' : 'var(--text-soft)' }}
+                    />
+                  </td>
+                  {/* Remover */}
+                  <td style={{ padding: '2px 2px', textAlign: 'center' }}>
+                    <button
+                      onClick={() => removerIngrediente(idx)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: COR.neutro }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
 
         {/* Aviso geral quando há ingredientes nomeTemp */}
         {temIngredienteNaoVerificado && (
           <div style={{
             ...TIPOGRAFIA.subcategoria,
-            color: 'var(--laranja)',
-            background: 'rgba(255,152,0,0.08)',
-            border: '1px solid var(--laranja)',
+            color: 'var(--amarelo-validacao)',
+            background: 'rgba(var(--amarelo-rgb, 255,193,7),0.08)',
+            border: '1px solid var(--amarelo-validacao)',
             borderRadius: RAIO.md,
             padding: '8px 12px',
             marginBottom: '10px',
@@ -383,7 +471,7 @@ export function ReceitaFormulario({
             <input
               value={buscaIngrediente}
               onChange={e => setBuscaIngrediente(e.target.value)}
-              placeholder="Buscar ingrediente ou atributo..."
+              placeholder="Buscar ingrediente ou grupo..."
               style={inputStyle}
             />
             {mostrarDropdown && (
@@ -397,7 +485,7 @@ export function ReceitaFormulario({
                 {/* Seção de produtos */}
                 {resultadosProduto.length > 0 && (
                   <>
-                    {resultadosAtributo.length > 0 && (
+                    {resultadosGrupo.length > 0 && (
                       <div style={{
                         ...TIPOGRAFIA.label,
                         color: 'var(--text-soft)',
@@ -423,8 +511,8 @@ export function ReceitaFormulario({
                   </>
                 )}
 
-                {/* Seção de atributos */}
-                {resultadosAtributo.length > 0 && (
+                {/* Seção de grupos de substituição */}
+                {resultadosGrupo.length > 0 && (
                   <>
                     {resultadosProduto.length > 0 && (
                       <div style={{
@@ -433,20 +521,20 @@ export function ReceitaFormulario({
                         padding: '6px 14px 4px',
                         borderBottom: '1px solid var(--borda, #DEE2E6)',
                       }}>
-                        ATRIBUTOS
+                        GRUPOS DE SUBSTITUIÇÃO
                       </div>
                     )}
-                    {resultadosAtributo.map(a => (
+                    {resultadosGrupo.map(g => (
                       <div
-                        key={a.id}
-                        onClick={() => selecionarAtributo(a)}
+                        key={g.id}
+                        onClick={() => selecionarGrupoSubstituicao(g)}
                         style={{
                           padding: '10px 14px', cursor: 'pointer',
                           borderBottom: '1px solid var(--borda, #DEE2E6)',
                           ...TIPOGRAFIA.corpo, color: 'var(--text)',
                         }}
                       >
-                        {a.nome}
+                        {g.nome}
                       </div>
                     ))}
                   </>
@@ -458,7 +546,7 @@ export function ReceitaFormulario({
                     onClick={selecionarNomeTemp}
                     style={{
                       padding: '10px 14px', cursor: 'pointer',
-                      ...TIPOGRAFIA.corpo, color: 'var(--laranja)',
+                      ...TIPOGRAFIA.corpo, color: 'var(--amarelo-validacao)',
                     }}
                   >
                     Sugerir inclusão de "{buscaIngrediente.trim()}"
@@ -544,6 +632,44 @@ export function ReceitaFormulario({
       >
         {enviando ? 'Enviando...' : isAdmin ? 'Publicar receita' : 'Enviar sugestão'}
       </button>
+
+      {/* Toast desfazer remoção */}
+      {toastRemovido && (
+        <div style={{
+          position: 'fixed',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#212529',
+          color: '#fff',
+          borderRadius: RAIO.pill,
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          zIndex: 100,
+          whiteSpace: 'nowrap',
+          ...TIPOGRAFIA.corpo,
+        }}>
+          <span>"{toastRemovido.nome}" removido</span>
+          <button
+            onClick={desfazerRemocao}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--amarelo-validacao)',
+              fontFamily: 'Nunito, sans-serif',
+              fontWeight: 700,
+              fontSize: '14px',
+              padding: 0,
+            }}
+          >
+            Desfazer
+          </button>
+        </div>
+      )}
     </div>
   )
 }
