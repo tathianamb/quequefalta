@@ -22,7 +22,7 @@ import {
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import { useReceitas } from "../hooks/useReceitas";
-import { useAtributos } from "../hooks/useAtributos";
+import { useGrupoSubstituicao } from "../hooks/useGrupoSubstituicao";
 import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
 import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
@@ -80,7 +80,7 @@ function Home({
     deletar: deletarReceita,
     atualizar: atualizarReceita,
   } = useReceitas(usuario);
-  const { atributos } = useAtributos();
+  const { grupoSubstituicao } = useGrupoSubstituicao();
   const [adminAberto, setAdminAberto] = useState(false);
   const [modoAdmin, setModoAdmin] = useState(false);
   const admin = isAdmin(usuario.email);
@@ -666,7 +666,7 @@ function Home({
             <ReceitaTexto
               textoInicial={textoReceita}
               catalogo={catalogo}
-              atributos={atributos}
+              grupoSubstituicao={grupoSubstituicao}
               onVoltar={() => setTelaReceita("lista")}
               onContinuar={(texto, dados) => {
                 setTextoReceita(texto);
@@ -678,7 +678,7 @@ function Home({
           {telaReceita === "formulario" && (
             <ReceitaFormulario
               catalogo={catalogo}
-              atributos={atributos}
+              grupoSubstituicao={grupoSubstituicao}
               isAdmin={admin}
               dadosIniciais={dadosParseados}
               textoOriginal={textoReceita}

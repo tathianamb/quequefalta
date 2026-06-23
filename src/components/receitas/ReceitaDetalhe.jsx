@@ -10,9 +10,9 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
     let temEmCasa = false
     if (ing.nomeTemp) {
       temEmCasa = false
-    } else if (ing.atributoId) {
+    } else if (ing.grupoSubstituicaoId) {
       temEmCasa = itensEmCasa.some(item =>
-        Array.isArray(item.atributos) && item.atributos.includes(ing.atributoId)
+        Array.isArray(item.grupoSubstituicao) && item.grupoSubstituicao.includes(ing.nome)
       )
     } else if (ing.produtoId) {
       temEmCasa = idsEmCasa.has(ing.produtoId)

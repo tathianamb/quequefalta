@@ -142,9 +142,9 @@ function ProdutoItem({
                 ? produto.subcategoria
                 : produto.categoria}
             </span>
-            {(produto.atributos || []).map((a) => (
+            {(produto.grupoSubstituicao || []).map((g) => (
               <span
-                key={a}
+                key={g}
                 style={{
                   display: "inline-block",
                   background: "var(--bg)",
@@ -156,7 +156,7 @@ function ProdutoItem({
                   borderRadius: RAIO.pill,
                 }}
               >
-                {a}
+                {g}
               </span>
             ))}
           </div>

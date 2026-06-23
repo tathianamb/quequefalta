@@ -12,14 +12,14 @@ function normalizar(str) {
     .trim()
 }
 
-export function useAtributos() {
-  const [atributos, setAtributos] = useState([])
+export function useGrupoSubstituicao() {
+  const [grupoSubstituicao, setGrupoSubstituicao] = useState([])
   const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
-    const ref = collection(db, 'atributos')
+    const ref = collection(db, 'grupoSubstituicao')
     const unsub = onSnapshot(ref, (snap) => {
-      setAtributos(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setGrupoSubstituicao(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setCarregando(false)
     })
     return () => unsub()
@@ -27,24 +27,24 @@ export function useAtributos() {
 
   const buscar = (termo) => {
     const termoNorm = normalizar(termo)
-    return atributos.filter(a => normalizar(a.nome).includes(termoNorm))
+    return grupoSubstituicao.filter(g => normalizar(g.nome).includes(termoNorm))
   }
 
   const criar = async (nome) => {
     const nomeNorm = normalizar(nome)
 
     // Verifica se já existe localmente (state já carregado)
-    const existente = atributos.find(a => normalizar(a.nome) === nomeNorm)
+    const existente = grupoSubstituicao.find(g => normalizar(g.nome) === nomeNorm)
     if (existente) return existente
 
     // Verifica no Firestore (para evitar duplicatas em estado não carregado)
-    const q = query(collection(db, 'atributos'), where('nomeNorm', '==', nomeNorm))
+    const q = query(collection(db, 'grupoSubstituicao'), where('nomeNorm', '==', nomeNorm))
     const snap = await getDocs(q)
     if (!snap.empty) {
       return { id: snap.docs[0].id, ...snap.docs[0].data() }
     }
 
-    const ref = await addDoc(collection(db, 'atributos'), {
+    const ref = await addDoc(collection(db, 'grupoSubstituicao'), {
       nome,
       nomeNorm,
       criadoEm: serverTimestamp(),
@@ -52,5 +52,5 @@ export function useAtributos() {
     return { id: ref.id, nome, nomeNorm }
   }
 
-  return { atributos, carregando, buscar, criar }
+  return { grupoSubstituicao, carregando, buscar, criar }
 }

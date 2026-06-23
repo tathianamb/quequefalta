@@ -25,8 +25,8 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
   const [adminNome, setAdminNome] = useState(produto.nome || "");
   const [adminCategoria, setAdminCategoria] = useState(produto.categoria || "");
   const [adminSubcategoria, setAdminSubcategoria] = useState(produto.subcategoria || "");
-  const [adminAtributos, setAdminAtributos] = useState(produto.atributos || []);
-  const [adminNovoAtributo, setAdminNovoAtributo] = useState("");
+  const [adminGrupoSubstituicao, setAdminGrupoSubstituicao] = useState(produto.grupoSubstituicao || []);
+  const [adminNovoGrupoSubstituicao, setAdminNovoGrupoSubstituicao] = useState("");
   const [salvandoAdmin, setSalvandoAdmin] = useState(false);
 
   const handleSalvarAdmin = async () => {
@@ -36,7 +36,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
         nome: adminNome.trim(),
         categoria: adminCategoria,
         subcategoria: adminSubcategoria.trim(),
-        atributos: adminAtributos,
+        grupoSubstituicao: adminGrupoSubstituicao,
       });
       setEditandoAdmin(false);
     } finally {
@@ -44,15 +44,15 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
     }
   };
 
-  const adicionarAtributo = () => {
-    const valor = adminNovoAtributo.trim();
-    if (!valor || adminAtributos.includes(valor)) return;
-    setAdminAtributos([...adminAtributos, valor]);
-    setAdminNovoAtributo("");
+  const adicionarGrupoSubstituicao = () => {
+    const valor = adminNovoGrupoSubstituicao.trim();
+    if (!valor || adminGrupoSubstituicao.includes(valor)) return;
+    setAdminGrupoSubstituicao([...adminGrupoSubstituicao, valor]);
+    setAdminNovoGrupoSubstituicao("");
   };
 
-  const removerAtributo = (atributo) => {
-    setAdminAtributos(adminAtributos.filter((a) => a !== atributo));
+  const removerGrupoSubstituicao = (grupo) => {
+    setAdminGrupoSubstituicao(adminGrupoSubstituicao.filter((g) => g !== grupo));
   };
 
   const cor = corDaCategoria(produto.categoria);
@@ -177,28 +177,28 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                 style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
               />
               <div>
-                <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "6px" }}>Atributos</p>
+                <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "6px" }}>Grupo de Substituição</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
-                  {adminAtributos.map((a) => (
+                  {adminGrupoSubstituicao.map((g) => (
                     <span
-                      key={a}
+                      key={g}
                       style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "var(--bg)", border: BORDA, color: "var(--text-soft)", ...TIPOGRAFIA.subcategoria, fontWeight: 600, padding: "2px 8px", borderRadius: RAIO.pill }}
                     >
-                      {a}
-                      <X size={12} style={{ cursor: "pointer" }} onClick={() => removerAtributo(a)} />
+                      {g}
+                      <X size={12} style={{ cursor: "pointer" }} onClick={() => removerGrupoSubstituicao(g)} />
                     </span>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: "6px" }}>
                   <input
-                    value={adminNovoAtributo}
-                    onChange={(e) => setAdminNovoAtributo(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && adicionarAtributo()}
-                    placeholder="Novo atributo"
+                    value={adminNovoGrupoSubstituicao}
+                    onChange={(e) => setAdminNovoGrupoSubstituicao(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && adicionarGrupoSubstituicao()}
+                    placeholder="Novo grupo"
                     style={{ flex: 1, padding: "8px 10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
                   />
                   <button
-                    onClick={adicionarAtributo}
+                    onClick={adicionarGrupoSubstituicao}
                     style={{ padding: "8px 12px", borderRadius: RAIO.sm, border: "none", background: "var(--laranja)", color: "white", cursor: "pointer", display: "flex", alignItems: "center" }}
                   >
                     <Plus size={16} />
@@ -214,7 +214,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                   {salvandoAdmin ? "Salvando..." : "Salvar"}
                 </button>
                 <button
-                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminAtributos(produto.atributos || []); }}
+                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminGrupoSubstituicao(produto.grupoSubstituicao || []); }}
                   style={{ flex: 1, padding: "10px", borderRadius: RAIO.sm, border: "none", background: "var(--bg)", color: "var(--text-soft)", fontFamily: "Nunito, sans-serif", fontWeight: FONTE.bold, cursor: "pointer" }}
                 >
                   Cancelar
@@ -227,7 +227,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                 {[
                   produto.categoria,
                   produto.subcategoria !== "-" ? produto.subcategoria : null,
-                  ...(produto.atributos || []),
+                  ...(produto.grupoSubstituicao || []),
                 ].filter(Boolean).map((label) => (
                   <span
                     key={label}
