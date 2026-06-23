@@ -23,6 +23,50 @@ const UNIDADES = [
   { valor: 'ramo',      label: 'ramo',        plural: 'ramos'      },
 ]
 
+// Normaliza o que o parser retorna para o valor canônico de UNIDADES
+const ALIAS_UNIDADE = {
+  'xicara': 'xíc.', 'xicaras': 'xíc.', 'xícara': 'xíc.', 'xícaras': 'xíc.',
+  'xic': 'xíc.', 'xíc': 'xíc.',
+  'ml': 'mL', 'mililitro': 'mL', 'mililitros': 'mL',
+  'l': 'L', 'litro': 'L', 'litros': 'L',
+  'grama': 'g', 'gramas': 'g',
+  'quilo': 'kg', 'quilos': 'kg', 'quilograma': 'kg',
+  'colher de sopa': 'cl. sopa', 'colheres de sopa': 'cl. sopa',
+  'colher de chá': 'cl. chá', 'colheres de chá': 'cl. chá',
+  'colher de café': 'cl. café', 'colheres de café': 'cl. café',
+  'unidade': 'un.', 'unidades': 'un.', 'und': 'un.', 'un': 'un.',
+  'pitadas': 'pitada',
+  'latas': 'lata',
+  'pacotes': 'pacote',
+  'dentes': 'dente',
+  'fatias': 'fatia',
+  'ramos': 'ramo',
+}
+
+function normalizarUnidade(valor) {
+  if (!valor) return ''
+  const v = valor.toLowerCase().trim()
+  return ALIAS_UNIDADE[v] ?? (UNIDADES.find(u => u.valor === valor) ? valor : '')
+}
+
+const FRACOES_CHARS = '¼½¾⅓⅔⅛⅜⅝⅞'
+const FRACOES_MAP = { '¼':'1/4','½':'1/2','¾':'3/4','⅓':'1/3','⅔':'2/3','⅛':'1/8','⅜':'3/8','⅝':'5/8','⅞':'7/8' }
+
+const RE_QTD_VALIDA = new RegExp(
+  `^(\\d+\\s+\\d+\\/\\d+|\\d+\\s*[${FRACOES_CHARS}]|\\d+\\/\\d+|[${FRACOES_CHARS}]|\\d+(?:[.,]\\d+)?)$`
+)
+
+function validarQuantidade(v) {
+  return RE_QTD_VALIDA.test(v.trim())
+}
+
+function normalizarQuantidade(v) {
+  // substitui frações unicode → textual, normaliza vírgula → ponto, remove espaços extras
+  let s = v.trim()
+  for (const [f, r] of Object.entries(FRACOES_MAP)) s = s.split(f).join(r)
+  return s.replace(/\s+/g, ' ').replace(/,/g, '.')
+}
+
 function labelUnidade(valor, quantidade) {
   const u = UNIDADES.find(u => u.valor === valor)
   if (!u || !u.plural) return valor
@@ -40,6 +84,7 @@ const inputStyle = {
   fontFamily: 'Nunito, sans-serif',
   fontSize: '14px',
   boxSizing: 'border-box',
+  outline: 'none',
 }
 
 const labelStyle = {
@@ -87,7 +132,13 @@ export function ReceitaFormulario({
   const [tempoPreparo, setTempoPreparo] = useState(dadosIniciais?.tempoPreparo ?? '')
   const [porcoes, setPorcoes] = useState(dadosIniciais?.porcoes ?? '')
   const [dificuldade, setDificuldade] = useState(dadosIniciais?.dificuldade ?? '')
-  const [ingredientes, setIngredientes] = useState(dadosIniciais?.ingredientes ?? [])
+  const [ingredientes, setIngredientes] = useState(
+    (dadosIniciais?.ingredientes ?? []).map(ing => ({
+      ...ing,
+      unidade: normalizarUnidade(ing.unidade),
+      _parsedUnidade: normalizarUnidade(ing._parsedUnidade),
+    }))
+  )
   const [buscaIngrediente, setBuscaIngrediente] = useState('')
   const [editandoIdx, setEditandoIdx] = useState(null) // índice do ingrediente sendo editado pelo nome
   const [editandoQtdIdx, setEditandoQtdIdx] = useState(null) // índice com campos qtd/unidade expandidos
@@ -96,6 +147,7 @@ export function ReceitaFormulario({
   )
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
+  const [erroEnvio, setErroEnvio] = useState(null)
 
 
   // termoAtivo: busca do campo "adicionar" ou do campo de edição inline
@@ -191,28 +243,37 @@ export function ReceitaFormulario({
     setToastRemovido(null)
   }
 
-  const temIngredienteNaoVerificado = ingredientes.some(i => i.nomeTemp)
-  const podeSalvar = nome.trim() && categoria && ingredientes.length > 0
+  const temIngredienteNaoVerificado = ingredientes.some(i => i.nomeTemp || i._qtdErro)
+  const nomeValido = nome.trim().replace(/\d/g, '').length >= 4
+  const temIngredientes = ingredientes.length > 0
+  const modoPreparoValido = modoPreparo.trim().length >= 20
+  const podeSalvar = nomeValido && categoria && temIngredientes && modoPreparoValido
 
   const handleEnviar = async () => {
     if (!podeSalvar || enviando) return
     setEnviando(true)
+    setErroEnvio(null)
     const passosValidos = modoPreparo.trim()
       ? modoPreparo.split('\n').map(l => l.trim()).filter(Boolean)
       : []
-    await onEnviar({
-      nome: nome.trim(),
-      categoria,
-      foto: foto.trim() || null,
-      tempoPreparo: tempoPreparo ? Number(tempoPreparo) : null,
-      porcoes: porcoes ? Number(porcoes) : null,
-      dificuldade: dificuldade || null,
-      ingredientes,
-      passos: passosValidos,
-      _textoOriginal: textoOriginal || null,
-    })
-    setEnviando(false)
-    setEnviado(true)
+    try {
+      await onEnviar({
+        nome: nome.trim(),
+        categoria,
+        foto: foto.trim() || null,
+        tempoPreparo: tempoPreparo ? Number(tempoPreparo) : null,
+        porcoes: porcoes ? Number(porcoes) : null,
+        dificuldade: dificuldade || null,
+        ingredientes,
+        passos: passosValidos,
+        _textoOriginal: textoOriginal || null,
+      })
+      setEnviado(true)
+    } catch (e) {
+      setErroEnvio(e?.message ?? 'Erro ao enviar. Tente novamente.')
+    } finally {
+      setEnviando(false)
+    }
   }
 
   if (enviado) {
@@ -311,16 +372,43 @@ export function ReceitaFormulario({
                     <>
                       <td style={{ padding: '1px 1px' }}>
                         <input
-                          type="number"
-                          min="0"
-                          step="0.1"
+                          type="text"
+                          inputMode="decimal"
                           autoFocus
                           value={ing.quantidade ?? ''}
-                          onChange={e => setIngredientes(prev => prev.map((item, i) =>
-                            i === idx ? { ...item, quantidade: e.target.value || null } : item
-                          ))}
+                          onChange={e => {
+                            const v = e.target.value
+                            // filtra caracteres: só dígitos, espaço, / , . e frações unicode
+                            if (new RegExp(`^[\\d\\s/,.${FRACOES_CHARS}]*$`).test(v)) {
+                              setIngredientes(prev => prev.map((item, i) =>
+                                i === idx ? { ...item, quantidade: v || null, _qtdErro: false } : item
+                              ))
+                            }
+                          }}
+                          onBlur={e => {
+                            const v = e.target.value.trim()
+                            if (!v) {
+                              setIngredientes(prev => prev.map((item, i) =>
+                                i === idx ? { ...item, quantidade: null, _qtdErro: false } : item
+                              ))
+                              return
+                            }
+                            if (!validarQuantidade(v)) {
+                              setIngredientes(prev => prev.map((item, i) =>
+                                i === idx ? { ...item, _qtdErro: true } : item
+                              ))
+                            } else {
+                              setIngredientes(prev => prev.map((item, i) =>
+                                i === idx ? { ...item, quantidade: normalizarQuantidade(v), _qtdErro: false } : item
+                              ))
+                            }
+                          }}
                           placeholder="Qtd"
-                          style={{ ...inputStyle, width: '100%', padding: '6px 4px', fontSize: '13px' }}
+                          title="Use número, fração (1/2) ou misto (1 1/2)"
+                          style={{
+                            ...inputStyle, width: '100%', padding: '6px 4px', fontSize: '13px',
+                            borderColor: ing._qtdErro ? 'var(--amarelo-validacao)' : 'var(--borda, #DEE2E6)',
+                          }}
                         />
                       </td>
                       <td style={{ padding: '1px 1px' }}>
@@ -352,6 +440,7 @@ export function ReceitaFormulario({
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
+                          borderColor: ing._qtdErro ? 'var(--amarelo-validacao)' : 'var(--borda, #DEE2E6)',
                         }}
                       >
                         {ing.quantidade
@@ -448,7 +537,7 @@ export function ReceitaFormulario({
             padding: '8px 12px',
             marginBottom: '10px',
           }}>
-            Esta receita ficará pendente até que um admin resolva os ingredientes não catalogados.
+            Esta receita ficará pendente até que um admin resolva os campos destacados.
           </div>
         )}
 
@@ -618,6 +707,12 @@ export function ReceitaFormulario({
       >
         {enviando ? 'Enviando...' : isAdmin ? 'Publicar receita' : 'Enviar sugestão'}
       </button>
+
+      {erroEnvio && (
+        <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--amarelo-validacao)', textAlign: 'center', marginTop: '4px' }}>
+          {erroEnvio}
+        </p>
+      )}
 
       {/* Toast desfazer remoção */}
       {toastRemovido && (
