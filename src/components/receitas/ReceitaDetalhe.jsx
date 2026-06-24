@@ -1,7 +1,7 @@
-import { ArrowLeft, Clock, Users, ShoppingCart, Check } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO } from '../../utils/estilos'
+import { ArrowLeft, Clock, Users, ShoppingCart, Check, Pencil } from 'lucide-react'
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../../utils/estilos'
 
-export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa }) {
+export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa, isAdmin, onEditar }) {
   const idsEmCasa = new Set(itensEmCasa.map(i => i.produtoId))
 
   const ingredientesComStatus = receita.ingredientes.map(ing => {
@@ -30,25 +30,34 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      {/* Botão voltar */}
-      <button
-        onClick={onVoltar}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '0 0 16px 0',
-          color: 'var(--text-soft)',
-          fontFamily: 'Nunito, sans-serif',
-          fontWeight: 600,
-          fontSize: '14px',
-        }}
-      >
-        <ArrowLeft size={16} /> Receitas
-      </button>
+      {/* Botão voltar + editar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px' }}>
+        <button
+          onClick={onVoltar}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            color: 'var(--text-soft)', fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
+          }}
+        >
+          <ArrowLeft size={16} /> Receitas
+        </button>
+        {isAdmin && onEditar && (
+          <button
+            onClick={onEditar}
+            style={{
+              ...BOTAO_SECUNDARIO,
+              padding: '6px 12px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Pencil size={14} /> Editar
+          </button>
+        )}
+      </div>
 
       {/* Foto */}
       {receita.foto && (

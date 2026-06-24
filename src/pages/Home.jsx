@@ -784,6 +784,13 @@ function Home({
               receita={receitaSelecionada}
               itensEmCasa={lista.filter(i => i.comprado)}
               catalogo={catalogo}
+              isAdmin={admin}
+              onEditar={() => {
+                setReceitaEditando(receitaSelecionada);
+                setDadosParseados(receitaSelecionada);
+                setReceitaSelecionada(null);
+                setTelaReceita("formulario");
+              }}
               onVoltar={() => { setReceitaSelecionada(null); setTelaReceita("lista"); }}
               onToggleEmCasa={async (ing) => {
                 const produto = catalogo.find(p => p.id === ing.produtoId);
