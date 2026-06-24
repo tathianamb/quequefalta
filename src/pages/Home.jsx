@@ -288,7 +288,7 @@ function Home({
 
         {/* Ordenação + nova receita — só na listagem de receitas */}
         {aba === "receitas" && telaReceita === "lista" && (
-          <div style={{ padding: "0 16px 12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ padding: "0 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <button
               onClick={() => setOrdenacaoAberta(true)}
               style={{
