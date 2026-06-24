@@ -242,7 +242,7 @@ function Home({
         </div>
 
         {/* Filtro categorias */}
-        {<FiltroCategoria
+        {!(aba === "receitas" && telaReceita !== "lista") && <FiltroCategoria
           categoriasFiltro={categoriasFiltro}
           setCategoriasFiltro={setCategoriasFiltro}
           tituloModal="Filtrar"
