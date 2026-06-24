@@ -19,6 +19,8 @@ import {
   X,
   Plus,
   Menu as MenuIcon,
+  ArrowUpDown,
+  Check,
 } from "lucide-react";
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
@@ -91,6 +93,8 @@ function Home({
   const [textoReceita, setTextoReceita] = useState("");
   const [dadosParseados, setDadosParseados] = useState(null);
   const [receitaEditando, setReceitaEditando] = useState(null); // receita pendente sendo editada
+  const [ordenacaoReceitas, setOrdenacaoReceitas] = useState("relevancia"); // "relevancia" | "az" | "za"
+  const [ordenacaoAberta, setOrdenacaoAberta] = useState(false);
 
   const filtrar = (arr) =>
     arr.filter((p) => {
@@ -114,9 +118,18 @@ function Home({
   const catalogoFiltrado = filtrar(catalogo);
   const porCategoriaCatalogo = agrupar(catalogoFiltrado);
   const carregando = carregandoLista || carregandoCatalogo;
-  const receitasFiltradas = receitasAprovadas.filter(r =>
-    r.nome.toLowerCase().includes(busca.toLowerCase())
-  );
+  const receitasFiltradas = (() => {
+    const idsEmCasa = new Set(lista.filter(i => i.comprado).map(i => i.produtoId));
+    const base = receitasAprovadas.filter(r => r.nome.toLowerCase().includes(busca.toLowerCase()));
+    if (ordenacaoReceitas === "az") return [...base].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    if (ordenacaoReceitas === "za") return [...base].sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
+    // relevancia: receitas com todos os ingredientes em casa primeiro
+    return [...base].sort((a, b) => {
+      const faltamA = (a.ingredientes ?? []).filter(i => i.produtoId && !idsEmCasa.has(i.produtoId)).length;
+      const faltamB = (b.ingredientes ?? []).filter(i => i.produtoId && !idsEmCasa.has(i.produtoId)).length;
+      return faltamA - faltamB;
+    });
+  })();
 
   const abrirProduto = (item) => {
     const produto =
@@ -241,8 +254,8 @@ function Home({
           </div>
         </div>
 
-        {/* Filtro categorias */}
-        {!(aba === "receitas" && telaReceita !== "lista") && <FiltroCategoria
+        {/* Filtro categorias — lista e catálogo */}
+        {aba !== "receitas" && <FiltroCategoria
           categoriasFiltro={categoriasFiltro}
           setCategoriasFiltro={setCategoriasFiltro}
           tituloModal="Filtrar"
@@ -269,7 +282,31 @@ function Home({
                   </>
                 )}
               </button>
-            ) : aba === "receitas" && admin ? (
+            ) : null
+          }
+        />}
+
+        {/* Ordenação + nova receita — só na listagem de receitas */}
+        {aba === "receitas" && telaReceita === "lista" && (
+          <div style={{ padding: "0 16px 12px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <button
+              onClick={() => setOrdenacaoAberta(true)}
+              style={{
+                ...BOTAO_SECUNDARIO,
+                padding: "6px 14px",
+                fontSize: "13px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "var(--amarelo)",
+                color: "#212529",
+                border: "none",
+              }}
+            >
+              <ArrowUpDown size={14} />
+              {ordenacaoReceitas === "az" ? "A→Z" : ordenacaoReceitas === "za" ? "Z→A" : "Relevância"}
+            </button>
+            {admin && (
               <button
                 onClick={() => setTelaReceita("texto")}
                 style={{
@@ -283,9 +320,9 @@ function Home({
               >
                 <Plus size={14} /> Nova receita
               </button>
-            ) : null
-          }
-        />}
+            )}
+          </div>
+        )}
       </div>
 
       {/* Aba Lista */}
@@ -980,6 +1017,49 @@ function Home({
           </button>
         ))}
       </div>
+
+      {/* Bottom sheet ordenação receitas */}
+      {ordenacaoAberta && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(0,0,0,0.4)" }}
+          onClick={() => setOrdenacaoAberta(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "var(--card)", borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`, padding: "24px 20px 48px" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+              <h2 style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>Ordenar</h2>
+              <X size={20} color="var(--text-soft)" style={{ cursor: "pointer" }} onClick={() => setOrdenacaoAberta(false)} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {[
+                { id: "relevancia", label: "Relevância", descricao: "Receitas com mais ingredientes em casa primeiro" },
+                { id: "az", label: "A → Z", descricao: "Ordem alfabética crescente" },
+                { id: "za", label: "Z → A", descricao: "Ordem alfabética decrescente" },
+              ].map(op => (
+                <div
+                  key={op.id}
+                  onClick={() => { setOrdenacaoReceitas(op.id); setOrdenacaoAberta(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "12px",
+                    padding: "14px 16px", borderRadius: RAIO.md,
+                    background: ordenacaoReceitas === op.id ? "var(--amarelo)11" : "var(--bg)",
+                    border: `1.5px solid ${ordenacaoReceitas === op.id ? "var(--amarelo)" : "transparent"}`,
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{op.label}</p>
+                    <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>{op.descricao}</p>
+                  </div>
+                  {ordenacaoReceitas === op.id && <Check size={16} color="var(--laranja)" strokeWidth={3} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
