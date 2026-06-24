@@ -269,6 +269,20 @@ function Home({
                   </>
                 )}
               </button>
+            ) : aba === "receitas" && admin ? (
+              <button
+                onClick={() => setTelaReceita("texto")}
+                style={{
+                  ...BOTAO_SECUNDARIO,
+                  padding: "6px 14px",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Plus size={14} /> Nova receita
+              </button>
             ) : null
           }
         />}
@@ -759,29 +773,11 @@ function Home({
             </div>
           )}
           {telaReceita === "lista" && (
-            <>
-              {admin && (
-                <button
-                  onClick={() => setTelaReceita("texto")}
-                  style={{
-                    ...BOTAO_SECUNDARIO,
-                    padding: "10px 16px",
-                    fontSize: "13px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    marginBottom: "16px",
-                  }}
-                >
-                  <Plus size={14} /> Nova receita
-                </button>
-              )}
-              <ReceitaLista
-                receitas={receitasFiltradas}
-                itensEmCasa={lista.filter(i => i.comprado)}
-                onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
-              />
-            </>
+            <ReceitaLista
+              receitas={receitasFiltradas}
+              itensEmCasa={lista.filter(i => i.comprado)}
+              onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
+            />
           )}
           {telaReceita === "detalhe" && receitaSelecionada && (
             <ReceitaDetalhe
