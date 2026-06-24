@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Users, ShoppingCart, Check } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO } from '../../utils/estilos'
 
-export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes }) {
+export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa }) {
   const idsEmCasa = new Set(itensEmCasa.map(i => i.produtoId))
 
   const ingredientesComStatus = receita.ingredientes.map(ing => {
@@ -129,17 +129,21 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                   ?
                 </div>
               ) : (
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  background: ing.temEmCasa ? 'var(--verde, #2F9E44)' : 'transparent',
-                  border: `2px solid ${ing.temEmCasa ? 'var(--verde, #2F9E44)' : 'var(--borda, #DEE2E6)'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
+                <div
+                  onClick={() => onToggleEmCasa && ing.produtoId && onToggleEmCasa(ing)}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    background: ing.temEmCasa ? 'var(--verde, #2F9E44)' : 'transparent',
+                    border: `2px solid ${ing.temEmCasa ? 'var(--verde, #2F9E44)' : 'var(--borda, #DEE2E6)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    cursor: ing.produtoId ? 'pointer' : 'default',
+                  }}
+                >
                   {ing.temEmCasa && <Check size={12} color="white" strokeWidth={3} />}
                 </div>
               )}

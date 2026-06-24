@@ -789,6 +789,24 @@ function Home({
               itensEmCasa={lista.filter(i => i.comprado)}
               catalogo={catalogo}
               onVoltar={() => { setReceitaSelecionada(null); setTelaReceita("lista"); }}
+              onToggleEmCasa={async (ing) => {
+                const produto = catalogo.find(p => p.id === ing.produtoId);
+                if (!produto) return;
+                const itemNaLista = lista.find(i => i.produtoId === ing.produtoId);
+                if (itemNaLista) {
+                  await toggleComprado(itemNaLista);
+                } else {
+                  await addDoc(collection(db, "listas", listaAtiva, "lista"), {
+                    produtoId: produto.id,
+                    nome: produto.nome,
+                    categoria: produto.categoria,
+                    subcategoria: produto.subcategoria,
+                    comprado: true,
+                    compradoEm: new Date(),
+                    adicionadoEm: serverTimestamp(),
+                  });
+                }
+              }}
               onAdicionarFaltantes={async (faltantes) => {
                 for (const ing of faltantes) {
                   const produto = catalogo.find(p => p.id === ing.produtoId);
