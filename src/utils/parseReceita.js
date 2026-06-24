@@ -10,20 +10,18 @@ const RE = {
   comecaNumero: /^\d/,
   comecaFracao: new RegExp(`^[${FRACOES_STR}]`),
 
-  // Do mais específico ao mais curto (senão \d+ engole o "1" de "1 1/2")
   quantidade: new RegExp(
     `^(` +
-      `\\d+\\s+\\d+\\/\\d+` +             // 1 1/2
-      `|\\d+\\s*[${FRACOES_STR}]` +       // 1½ ou 1 ½
-      `|\\d+\\/\\d+` +                    // 1/2
-      `|[${FRACOES_STR}]` +               // ½
-      `|\\d+(?:[.,]\\d+)?` +              // 1 / 1,5 / 2.5
+      `\\d+\\s+\\d+\\/\\d+` +           
+      `|\\d+\\s*[${FRACOES_STR}]` +     
+      `|\\d+\\/\\d+` +                  
+      `|[${FRACOES_STR}]` +             
+      `|\\d+(?:[.,]\\d+)?` +            
     `)\\s*`
   ),
 
-  // Palavras completas antes de letras únicas (evita "g" engolir "gramas")
   unidade: new RegExp(
-    `^(` +
+    `^(?:d[eaos]+\\s+)?(` +        
       `quilos?|kg` +
       `|gramas?` +
       `|litros?|ml|mL` +
@@ -35,10 +33,8 @@ const RE = {
     'i'
   ),
 
-  // "(1 lata) de tomate" — embalagem alternativa no início do nome
   embalagem: /^\(([^)]*)\)\s*(?:de\s+)?/i,
 
-  // Tempo rotulado: só aceito como metadado da receita
   tempoRotulado: /(?:tempo(?:\s+de\s+(?:preparo|cozimento))?|pronto\s+em|preparo)\s*:?\s*(\d+)\s*(h(?:ora)?s?|min(?:uto)?s?)/i,
   tempoHM: /(\d+)\s*h(?:ora)?s?\s*(?:e\s*)?(\d+)?\s*(?:min(?:uto)?s?)?/i,
   tempoMin: /(\d+)\s*min(?:uto)?s?/i,
@@ -53,9 +49,7 @@ const RE = {
   numeracaoPasso: /^\s*(?:passo|step|etapa)\s+\d+\s*[:\-.)]\s*/i,
   numeracaoSimples: /^\s*\d+\s*[:.)\-]\s*/,
 
-  // "Sal a gosto" → "a gosto" é redundante (já expresso pela ausência de quantidade)
   aGostoSufixo: /\s+a\s+gosto\s*$/i,
-  // "Azeite para refogar", "Geleia para acompanhar" → uso vira observação
   paraUsoSufixo: /\s+(para\s+\S+(?:\s+\S+)?)\s*$/i,
 }
 
@@ -76,7 +70,6 @@ const LEXICO = {
 
 const LIMIAR = { ingredienteMax: 80, metadadoMax: 60, vizinhoMax: 40 }
 
-// Exportada para uso no formulário (lista de unidades válidas)
 export const UNIDADES_CONHECIDAS = [
   'g', 'kg', 'ml', 'mL', 'l', 'litro', 'litros',
   'xíc', 'xícara', 'xícaras',
@@ -119,9 +112,6 @@ function normalizar(str) {
    CAMADA 3 — EXTRATORES (cada um aplica UMA regex, devolve dado cru)
    ========================================================================= */
 function extrairQuantidade(texto) {
-  // Normaliza a linha UMA vez e trabalha sempre sobre ela.
-  // (Casar no normalizado e fatiar no original quebra quando ½→"1/2" muda o tamanho,
-  //  comendo letras do que vem depois — ex.: "½ xícara" virava "cara".)
   const t = substituirFracoes(texto)
   const m = t.match(RE.quantidade)
   if (!m) return { valor: null, resto: t }
@@ -162,10 +152,6 @@ function separarPreparoDoNome(nome) {
   return { nome: nome.trim(), preparoSugerido: null }
 }
 
-/* Casa os tokens de `alvoNorm` como sequência de PALAVRAS INTEIRAS dentro de `nomeNorm`.
-   Retorna a observação (o resto, sem o trecho casado), null se casou tudo,
-   ou undefined se não casou. "cenoura" casa em "cenoura picada";
-   "sal" NÃO casa em "salsão" (fronteira de palavra, não substring). */
 function casarPorToken(nomeNorm, alvoNorm) {
   const nTok = nomeNorm.split(/\s+/)
   const aTok = alvoNorm.split(/\s+/)
@@ -186,7 +172,6 @@ function casarPorToken(nomeNorm, alvoNorm) {
 function buscarMatch(nomeNorm, catalogo, grupoSubstituicao) {
   const candidatos = []
 
-  // Produto e grupo competem JUNTOS — vence o mais específico, não o tipo.
   for (const produto of catalogo) {
     const alvo = normalizar(produto.nome)
     if (alvo === nomeNorm) {
@@ -208,8 +193,6 @@ function buscarMatch(nomeNorm, catalogo, grupoSubstituicao) {
 
   if (candidatos.length === 0) return null
 
-  // Prioridade: match exato > mais palavras (mais específico) >
-  //             empate de peso: produto vence grupo (mais concreto).
   candidatos.sort((a, b) => {
     if (a.exato !== b.exato) return a.exato ? -1 : 1
     if (b.peso !== a.peso) return b.peso - a.peso
@@ -235,7 +218,6 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
   const u = extrairUnidade(resto)
   resto = u.resto
 
-  // Embalagem parentética: "400g (1 lata) de tomate pelado"
   let embalagem = null
   const e = extrairEmbalagem(resto.trim())
   if (e.valor) {
@@ -244,10 +226,8 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
     avisos.push(`embalagem alternativa detectada: "${embalagem}"`)
   }
 
-  // Remove "de/da/do" residual no início do nome
   let nome = resto.trim().replace(/^d[eaos]+\s+/i, '')
 
-  // "Sal a gosto" → nome "Sal" (o "a gosto" já está implícito na quantidade nula)
   if (RE.aGostoSufixo.test(nome)) {
     nome = nome.replace(RE.aGostoSufixo, '').trim()
   }
@@ -255,7 +235,6 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
   const val = validarQuantidadeUnidade(q.valor, u.valor)
   if (!val.ok) avisos.push(val.motivo)
 
-  // Separa preparo colado no nome → OBS (antes do match, para melhorar o match)
   const sep = separarPreparoDoNome(nome)
   let preparoSugerido = sep.preparoSugerido
   if (preparoSugerido) {
@@ -263,8 +242,6 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
     avisos.push(`preparo "${preparoSugerido}" sugerido para OBS`)
   }
 
-  // "Azeite para refogar" → nome "Azeite", obs "para refogar" (sugestão, não destrutivo
-  //  no sentido de que vai para observação, onde o usuário pode manter ou apagar)
   if (!preparoSugerido) {
     const mUso = nome.match(RE.paraUsoSufixo)
     if (mUso) {
@@ -274,11 +251,9 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
     }
   }
 
-  // Match no catálogo/grupos de substituição
   const nomeNorm = normalizar(nome)
   const match = nome ? buscarMatch(nomeNorm, catalogo, grupoSubstituicao) : null
 
-  // Monta objeto no formato que ReceitaFormulario espera
   const ingrediente = {
     nome,
     quantidade: q.valor || null,
@@ -299,7 +274,6 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
       ingrediente.grupoSubstituicaoId = match.item.id || null
       ingrediente.nome = match.item.nome
     }
-    // Observacao do match (texto residual após produto) tem precedência sobre preparo
     if (match.observacao) ingrediente.observacao = match.observacao
   } else {
     ingrediente.nomeTemp = nome
@@ -390,7 +364,6 @@ export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = 
     if (vizinho) ehIngredienteLinha[i] = true
   }
 
-  // Calcula seção de cada linha antecipadamente (elimina estado mutável no forEach)
   const secaoDaLinha = []
   let secaoAtual = 'desconhecida'
   for (let i = 0; i < linhas.length; i++) {
@@ -403,11 +376,10 @@ export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = 
 
   const consumidos = new Set()
 
-  // Varredura principal: usa secaoDaLinha (já calculado), sem recalcular seção.
   linhas.forEach((linha, i) => {
     if (consumidos.has(i)) return
     if (linha.trim().length === 0) return
-    if (ehCabecalhoLinha[i]) return            // cabeçalho já moveu a seção no mapeamento
+    if (ehCabecalhoLinha[i]) return
 
     if (secaoDaLinha[i] === 'preparo') {
       const passo = linha
@@ -418,7 +390,6 @@ export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = 
       return
     }
 
-    // Seção de ingredientes (ou topo desconhecido)
     if (ehIngredienteLinha[i]) {
       ingredientes.push(parseLinhaIngrediente(linha, catalogo, grupoSubstituicao))
     }
