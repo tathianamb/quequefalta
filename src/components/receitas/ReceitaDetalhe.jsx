@@ -146,10 +146,8 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
               <span style={{ flex: 1 }}>
                 <span style={{
                   ...TIPOGRAFIA.corpo,
-                  color: isNaoVerificado
-                    ? 'var(--text-soft)'
-                    : ing.temEmCasa ? 'var(--text-soft)' : 'var(--text)',
-                  textDecoration: ing.temEmCasa && !isNaoVerificado ? 'line-through' : 'none',
+                  color: isNaoVerificado ? 'var(--text-soft)' : 'var(--text)',
+                  textDecoration: 'none',
                 }}>
                   {ing.nome}
                 </span>
