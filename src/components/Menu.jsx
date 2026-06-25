@@ -50,17 +50,15 @@ function Menu({
         : s;
     };
     const linhas = [
-      ["id", "nome", "categoria", "subcategoria", "grupoSubstituicao", "receitas"].join(","),
+      ["nome", "categoria", "subcategoria", "grupoSubstituicao"].join(","),
       ...[...catalogo]
         .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
         .map((p) =>
           [
-            escapar(p.id),
             escapar(p.nome),
             escapar(p.categoria),
             escapar(p.subcategoria),
             escapar((p.grupoSubstituicao ?? []).join("; ")),
-            escapar((p.receitas ?? []).join("; ")),
           ].join(",")
         ),
     ];
