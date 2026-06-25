@@ -147,9 +147,8 @@ function ProdutoItem({
                 key={g}
                 style={{
                   display: "inline-block",
-                  background: "var(--bg)",
-                  border: BORDA,
-                  color: "var(--text-soft)",
+                  background: cor + "22",
+                  color: cor,
                   ...TIPOGRAFIA.subcategoria,
                   fontWeight: 600,
                   padding: "2px 8px",

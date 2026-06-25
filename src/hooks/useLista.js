@@ -36,6 +36,7 @@ export function useLista(listaAtiva) {
       nome: produto.nome,
       categoria: produto.categoria,
       subcategoria: produto.subcategoria,
+      grupoSubstituicao: produto.grupoSubstituicao ?? [],
       comprado: false,
       compradoEm: null,
       adicionadoEm: serverTimestamp(),
