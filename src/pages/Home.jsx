@@ -99,44 +99,7 @@ function Home({
   const [ordenacaoReceitas, setOrdenacaoReceitas] = useState("relevancia"); // "relevancia" | "az" | "za"
   const [ordenacaoAberta, setOrdenacaoAberta] = useState(false);
 
-  useBackStack([
-    // sub-tela de sugestao dentro do menu
-    {
-      aberta: menuAberto && telaMenu === "sugestao",
-      fechar: () => setTelaMenu("menu"),
-    },
-    // sub-telas de receita: formulario
-    {
-      aberta: aba === "receitas" && telaReceita === "formulario",
-      fechar: () => {
-        if (receitaEditando) {
-          setReceitaEditando(null);
-          setTelaReceita("lista");
-        } else {
-          setTelaReceita("texto");
-        }
-      },
-    },
-    // sub-telas de receita: texto
-    {
-      aberta: aba === "receitas" && telaReceita === "texto",
-      fechar: () => setTelaReceita("lista"),
-    },
-    // sub-telas de receita: detalhe
-    {
-      aberta: aba === "receitas" && telaReceita === "detalhe",
-      fechar: () => { setReceitaSelecionada(null); setTelaReceita("lista"); },
-    },
-    // modal de detalhes do produto
-    { aberta: !!produtoSelecionado, fechar: () => setProdutoSelecionado(null) },
-    // bottom sheet de ordenacao de receitas
-    { aberta: ordenacaoAberta, fechar: () => setOrdenacaoAberta(false) },
-    // menu principal (mais externo)
-    {
-      aberta: menuAberto,
-      fechar: () => { setMenuAberto(false); setTelaMenu("menu"); },
-    },
-  ]);
+  const { pushBack } = useBackStack();
 
   const filtrar = (arr) =>
     arr.filter((p) => {
@@ -153,6 +116,8 @@ function Home({
     });
 
   const irParaGrupo = (grupo) => {
+    const abaAtual = aba;
+    pushBack(() => { setAba(abaAtual); setGrupoFiltro([]); });
     setAba("catalogo");
     setBusca("");
     setCategoriasFiltro([]);
@@ -188,7 +153,10 @@ function Home({
 
   const abrirProduto = (item) => {
     const produto = catalogo.find((p) => p.id === item.produtoId);
-    if (produto) setProdutoSelecionado({ ...produto, _origemLista: true });
+    if (produto) {
+      setProdutoSelecionado({ ...produto, _origemLista: true });
+      pushBack(() => setProdutoSelecionado(null));
+    }
   };
 
   const removerItemPorProdutoId = (produto) => {
@@ -266,7 +234,7 @@ function Home({
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
               style={{ position: "relative", cursor: "pointer" }}
-              onClick={() => setMenuAberto(true)}
+              onClick={() => { setMenuAberto(true); pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); }); }}
             >
               <MenuIcon size={22} color="var(--text-soft)" />
             </div>
@@ -360,7 +328,7 @@ function Home({
         {aba === "receitas" && telaReceita === "lista" && (
           <div style={{ padding: "0 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <button
-              onClick={() => setOrdenacaoAberta(true)}
+              onClick={() => { setOrdenacaoAberta(true); pushBack(() => setOrdenacaoAberta(false)); }}
               style={{
                 ...BOTAO_SECUNDARIO,
                 padding: "6px 14px",
@@ -378,7 +346,7 @@ function Home({
             </button>
             {admin && (
               <button
-                onClick={() => setTelaReceita("texto")}
+                onClick={() => { setTelaReceita("texto"); pushBack(() => setTelaReceita("lista")); }}
                 style={{
                   ...BOTAO_SECUNDARIO,
                   padding: "6px 14px",
@@ -435,7 +403,7 @@ function Home({
                   Quer procurar no Catálogo?
                 </p>
                 <button
-                  onClick={() => setAba("catalogo")}
+                  onClick={() => { const abaAtual = aba; pushBack(() => setAba(abaAtual)); setAba("catalogo"); }}
                   style={{
                     marginTop: "20px",
                     padding: "14px 24px",
@@ -752,6 +720,7 @@ function Home({
                 onClick={() => {
                   setMenuAberto(true);
                   setTelaMenu("sugestao");
+                  pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); });
                 }}
                 style={{
                   marginTop: "20px",
@@ -772,7 +741,7 @@ function Home({
               categoria={categoria}
               itens={itens}
               onToggle={adicionarItem}
-              onAbrir={setProdutoSelecionado}
+              onAbrir={(p) => { setProdutoSelecionado(p); pushBack(() => setProdutoSelecionado(null)); }}
               busca={busca}
               itensDaLista={lista}
               contexto="catalogo"
@@ -888,7 +857,7 @@ function Home({
             <ReceitaLista
               receitas={receitasFiltradas}
               itensEmCasa={lista.filter(i => i.comprado)}
-              onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); }}
+              onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); pushBack(() => { setReceitaSelecionada(null); setTelaReceita("lista"); }); }}
             />
           )}
           {telaReceita === "detalhe" && receitaSelecionada && (
@@ -902,6 +871,7 @@ function Home({
                 setDadosParseados(receitaSelecionada);
                 setReceitaSelecionada(null);
                 setTelaReceita("formulario");
+                pushBack(() => { setReceitaEditando(null); setTelaReceita("lista"); });
               }}
               onVoltar={() => { setReceitaSelecionada(null); setTelaReceita("lista"); }}
               onToggleEmCasa={async (ing) => {
@@ -921,11 +891,15 @@ function Home({
                 }
                 setReceitaSelecionada(null);
                 setTelaReceita("lista");
+                const abaAntesFaltantes = aba;
+                pushBack(() => setAba(abaAntesFaltantes));
                 setAba("lista");
               }}
               onBuscarIngrediente={(nome) => {
                 setReceitaSelecionada(null);
                 setTelaReceita("lista");
+                const abaAntesIngrediente = aba;
+                pushBack(() => setAba(abaAntesIngrediente));
                 setAba("catalogo");
                 setBusca(nome);
                 setGrupoFiltro([]);
@@ -943,6 +917,7 @@ function Home({
                 setTextoReceita(texto);
                 setDadosParseados(dados);
                 setTelaReceita("formulario");
+                pushBack(() => setTelaReceita("texto"));
               }}
             />
           )}
@@ -1044,6 +1019,16 @@ function Home({
           <button
             key={id}
             onClick={() => {
+              if (id !== aba) {
+                const abaAtual = aba;
+                pushBack(() => {
+                  setAba(abaAtual);
+                  setBusca("");
+                  setCategoriasFiltro([]);
+                  setGrupoFiltro([]);
+                  if (abaAtual !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
+                });
+              }
               setAba(id);
               setBusca("");
               setCategoriasFiltro([]);
