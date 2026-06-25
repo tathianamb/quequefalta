@@ -873,6 +873,14 @@ function Home({
                 setTelaReceita("lista");
                 setAba("lista");
               }}
+              onBuscarIngrediente={(nome) => {
+                setReceitaSelecionada(null);
+                setTelaReceita("lista");
+                setAba("catalogo");
+                setBusca(nome);
+                setGrupoFiltro([]);
+                setCategoriasFiltro([]);
+              }}
             />
           )}
           {telaReceita === "texto" && (

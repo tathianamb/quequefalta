@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Users, ShoppingCart, Check, Pencil } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../../utils/estilos'
 
-export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa, isAdmin, onEditar }) {
+export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa, isAdmin, onEditar, onBuscarIngrediente }) {
   const idsEmCasa = new Set(itensEmCasa.map(i => i.produtoId))
 
   const ingredientesComStatus = receita.ingredientes.map(ing => {
@@ -157,11 +157,19 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                 </div>
               )}
               <span style={{ flex: 1 }}>
-                <span style={{
-                  ...TIPOGRAFIA.corpo,
-                  color: isNaoVerificado ? 'var(--text-soft)' : 'var(--text)',
-                  textDecoration: 'none',
-                }}>
+                <span
+                  onClick={!isNaoVerificado && ing.produtoId && onBuscarIngrediente
+                    ? () => onBuscarIngrediente(ing.nome)
+                    : undefined}
+                  style={{
+                    ...TIPOGRAFIA.corpo,
+                    color: isNaoVerificado ? 'var(--text-soft)' : 'var(--text)',
+                    cursor: !isNaoVerificado && ing.produtoId && onBuscarIngrediente ? 'pointer' : 'default',
+                    textDecoration: !isNaoVerificado && ing.produtoId && onBuscarIngrediente ? 'underline' : 'none',
+                    textDecorationColor: 'var(--text-soft)',
+                    textUnderlineOffset: '3px',
+                  }}
+                >
                   {ing.nome}
                 </span>
                 {ing.observacao && (
