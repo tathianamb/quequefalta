@@ -875,7 +875,7 @@ function Home({
             <ReceitaFormulario
               catalogo={catalogo}
               grupoSubstituicao={grupoSubstituicao}
-              isAdmin={admin}
+              isAdmin={admin && modoAdmin}
               dadosIniciais={dadosParseados}
               textoOriginal={receitaEditando ? null : textoReceita}
               onVoltarTexto={receitaEditando ? null : (texto) => {

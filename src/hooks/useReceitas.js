@@ -22,10 +22,18 @@ export function useReceitas(usuario) {
   const pendentes = receitas.filter(r => r.status === 'pendente')
 
   const sugerir = async (dados) => {
-    const temIngredienteTemporario = (dados.ingredientes ?? []).some(i => 'nomeTemp' in i)
+    const temIngredienteTemporario = (dados.ingredientes ?? []).some(i => i.nomeTemp)
     const status = temIngredienteTemporario ? 'pendente' : 'aprovada'
+    const ingredientesLimpos = (dados.ingredientes ?? []).map(ing => {
+      const limpo = {}
+      for (const [k, v] of Object.entries(ing)) {
+        if (v !== undefined) limpo[k] = v
+      }
+      return limpo
+    })
     await addDoc(collection(db, 'receitas'), {
       ...dados,
+      ingredientes: ingredientesLimpos,
       status,
       criadaPor: usuario.uid,
       criadaEm: serverTimestamp(),

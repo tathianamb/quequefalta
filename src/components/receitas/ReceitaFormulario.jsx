@@ -146,6 +146,7 @@ export function ReceitaFormulario({
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
   const [erroEnvio, setErroEnvio] = useState(null)
+  const jasSugeridos = useRef(new Set())
 
 
   // termoAtivo: busca do campo "adicionar" ou do campo de edição inline
@@ -217,7 +218,10 @@ export function ReceitaFormulario({
   const selecionarNomeTemp = () => {
     const termo = termoAtivo.trim()
     aplicarSelecao({ nomeTemp: termo, nome: termo })
-    if (onSugerirIngrediente) onSugerirIngrediente(termo)
+    if (onSugerirIngrediente) {
+      onSugerirIngrediente(termo)
+      jasSugeridos.current.add(termo)
+    }
   }
 
   const [toastRemovido, setToastRemovido] = useState(null) // { nome, ingrediente, idx }
@@ -269,6 +273,13 @@ export function ReceitaFormulario({
     setEnviando(true)
     setErroEnvio(null)
     try {
+      if (onSugerirIngrediente) {
+        for (const ing of ingredientes) {
+          if (ing.nomeTemp && !jasSugeridos.current.has(ing.nomeTemp)) {
+            await onSugerirIngrediente(ing.nomeTemp)
+          }
+        }
+      }
       await onEnviar(montarDados())
       setEnviado(true)
     } catch (e) {
@@ -297,7 +308,7 @@ export function ReceitaFormulario({
       <div style={{ textAlign: 'center', padding: '48px 0' }}>
         <p style={{ fontSize: '48px' }}>🎉</p>
         <p style={{ ...TIPOGRAFIA.titulo, color: 'var(--text)', marginTop: '16px' }}>
-          {temIngredienteNaoVerificado ? 'Sugestão enviada!' : isAdmin ? 'Receita cadastrada!' : 'Sugestão enviada!'}
+          {temIngredienteNaoVerificado ? 'Receita enviada!' : 'Receita publicada!'}
         </p>
         <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--text-soft)', marginTop: '8px', lineHeight: 1.5 }}>
           {temIngredienteNaoVerificado
@@ -726,7 +737,7 @@ export function ReceitaFormulario({
             cursor: !podeSalvar || enviando ? 'not-allowed' : 'pointer',
           }}
         >
-          {enviando ? 'Enviando...' : isAdmin ? 'Publicar receita' : 'Enviar sugestão'}
+          {enviando ? 'Enviando...' : 'Publicar receita'}
         </button>
       </div>
 
