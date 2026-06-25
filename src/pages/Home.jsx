@@ -157,6 +157,7 @@ function Home({
   };
 
   const [todasExpandidas, setTodasExpandidas] = useState(true);
+  const [todasExpandidasLista, setTodasExpandidasLista] = useState(true);
 
   return (
     <div
@@ -282,9 +283,11 @@ function Home({
             : undefined}
           tituloModal="Filtrar"
           botoesExtras={
-            aba === "catalogo" ? (
+            aba === "catalogo" || aba === "lista" ? (
               <button
-                onClick={() => setTodasExpandidas((e) => !e)}
+                onClick={() => aba === "catalogo"
+                  ? setTodasExpandidas((e) => !e)
+                  : setTodasExpandidasLista((e) => !e)}
                 style={{
                   ...BOTAO_SECUNDARIO,
                   padding: "6px 14px",
@@ -294,7 +297,7 @@ function Home({
                   gap: "6px",
                 }}
               >
-                {todasExpandidas ? (
+                {(aba === "catalogo" ? todasExpandidas : todasExpandidasLista) ? (
                   <>
                     <ChevronsUp size={14} /> Recolher
                   </>
@@ -412,6 +415,7 @@ function Home({
               itensDaLista={lista}
               onRemover={removerItem}
               onFiltrarGrupo={irParaGrupo}
+              forcarAberto={todasExpandidasLista}
             />
           ))}
           {comprados.length > 0 && (
