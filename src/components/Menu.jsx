@@ -7,6 +7,7 @@ import {
   LogOut,
   Share2,
   X,
+  Download,
 } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
@@ -30,6 +31,7 @@ function Menu({
   modoAdmin,
   setModoAdmin,
   telaInicial,
+  catalogo,
 }) {
   const [tela, setTela] = useState(telaInicial || "menu");
   const [nome, setNome] = useState("");
@@ -38,6 +40,39 @@ function Menu({
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+
+  const exportarCatalogo = () => {
+    const escapar = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n")
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    };
+    const linhas = [
+      ["id", "nome", "categoria", "subcategoria", "grupoSubstituicao", "receitas"].join(","),
+      ...[...catalogo]
+        .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
+        .map((p) =>
+          [
+            escapar(p.id),
+            escapar(p.nome),
+            escapar(p.categoria),
+            escapar(p.subcategoria),
+            escapar((p.grupoSubstituicao ?? []).join("; ")),
+            escapar((p.receitas ?? []).join("; ")),
+          ].join(",")
+        ),
+    ];
+    const blob = new Blob(["﻿" + linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "catalogo.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSugestao = async () => {
     if (!nome || !categoria) return;
     setEnviando(true);
@@ -442,6 +477,26 @@ function Menu({
                     </div>
                   </div>
                 )}
+                {isAdmin && (
+                  <div
+                    onClick={exportarCatalogo}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      padding: "14px 16px",
+                      background: "var(--bg)",
+                      borderRadius: RAIO.md,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Download size={18} color="var(--text-soft)" />
+                    <span style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)", flex: 1 }}>
+                      Exportar catálogo CSV
+                    </span>
+                  </div>
+                )}
+
                 <div
                   onClick={() => setConfirmandoSaida(true)}
                   style={{

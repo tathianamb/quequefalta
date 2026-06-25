@@ -941,6 +941,7 @@ function Home({
           modoAdmin={modoAdmin}
           setModoAdmin={setModoAdmin}
           telaInicial={telaMenu}
+          catalogo={catalogo}
         />
       )}
 
