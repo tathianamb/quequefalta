@@ -20,14 +20,18 @@ export function useTema() {
       root.style.setProperty("--text", "#F8F9FA");
       root.style.setProperty("--text-soft", "#868E96");
       root.style.setProperty("--shadow", "0 2px 12px rgba(0,0,0,0.3)");
-      root.style.setProperty("--amarelo-validacao", "#fec601"); // amarelo vivo — contraste ok no escuro
+      root.style.setProperty("--amarelo-validacao", "#fec601");
+      root.style.setProperty("--verde-bg", "#1A2E1A");
+      root.style.setProperty("--verde-borda", "#2F9E44");
     } else {
       root.style.setProperty("--bg", "#F8F9FA");
       root.style.setProperty("--card", "#FFFFFF");
       root.style.setProperty("--text", "#212529");
       root.style.setProperty("--text-soft", "#868E96");
       root.style.setProperty("--shadow", "0 2px 12px rgba(0,0,0,0.08)");
-      root.style.setProperty("--amarelo-validacao", "#b07d00"); // mostarda escura — contraste ok no claro
+      root.style.setProperty("--amarelo-validacao", "#b07d00");
+      root.style.setProperty("--verde-bg", "#EBFBEE");
+      root.style.setProperty("--verde-borda", "#69DB7C");
     }
   }, [escuro]);
 
