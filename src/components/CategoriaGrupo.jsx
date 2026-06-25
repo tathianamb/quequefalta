@@ -16,6 +16,7 @@ function CategoriaGrupo({
   onRemover,
   forcarAberto,
   contexto,
+  onFiltrarGrupo,
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
@@ -90,6 +91,7 @@ function CategoriaGrupo({
             comprado={p.comprado}
             onRemover={onRemover || null}
             contexto={contexto}
+            onFiltrarGrupo={onFiltrarGrupo}
           />
         ))}
     </div>

@@ -47,22 +47,24 @@ function Home({
   setListaAtiva,
   setTodasListas,
 }) {
+  const { catalogo, carregando: carregandoCatalogo } = useCatalogo();
   const {
     lista,
     carregando: carregandoLista,
     adicionarItem,
+    adicionarItemComprado,
     toggleComprado,
     removerItem,
-  } = useLista(listaAtiva);
+  } = useLista(listaAtiva, catalogo);
   const scrollRef = useRef(null);
   const isDragging = useRef(false);
   const startX = useRef(0);
   const scrollLeft = useRef(0);
-  const { catalogo, carregando: carregandoCatalogo } = useCatalogo();
   const { escuro, toggleTema, seguirSistema } = useTema();
   const [aba, setAba] = useState("lista");
   const [busca, setBusca] = useState("");
   const [categoriasFiltro, setCategoriasFiltro] = useState([]);
+  const [grupoFiltro, setGrupoFiltro] = useState([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const {
@@ -101,8 +103,21 @@ function Home({
       const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase());
       const categoriaOk =
         categoriasFiltro.length === 0 || categoriasFiltro.includes(p.categoria);
-      return buscaOk && categoriaOk;
+      const grupoOk =
+        grupoFiltro.length === 0 ||
+        grupoFiltro.some(
+          (g) =>
+            (p.grupoSubstituicao ?? []).includes(g) || p.subcategoria === g,
+        );
+      return buscaOk && categoriaOk && grupoOk;
     });
+
+  const irParaGrupo = (grupo) => {
+    setAba("catalogo");
+    setBusca("");
+    setCategoriasFiltro([]);
+    setGrupoFiltro([grupo]);
+  };
 
   const agrupar = (arr) =>
     ORDEM_CATEGORIAS.reduce((acc, cat) => {
@@ -132,9 +147,7 @@ function Home({
   })();
 
   const abrirProduto = (item) => {
-    const produto =
-      catalogo.find((p) => p.id === item.produtoId) ||
-      catalogo.find((p) => p.nome === item.nome);
+    const produto = catalogo.find((p) => p.id === item.produtoId);
     if (produto) setProdutoSelecionado({ ...produto, _origemLista: true });
   };
 
@@ -256,8 +269,17 @@ function Home({
 
         {/* Filtro categorias — lista e catálogo */}
         {aba !== "receitas" && <FiltroCategoria
-          categoriasFiltro={categoriasFiltro}
-          setCategoriasFiltro={setCategoriasFiltro}
+          categoriasFiltro={grupoFiltro}
+          setCategoriasFiltro={setGrupoFiltro}
+          categorias={aba === "catalogo"
+            ? [...new Set(catalogo.flatMap(p => [...(p.grupoSubstituicao ?? []), ...(p.subcategoria ? [p.subcategoria] : [])]))]
+                .filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))
+            : aba === "lista"
+            ? [...new Set(lista.flatMap(item => {
+                const prod = catalogo.find(p => p.id === item.produtoId) ?? item;
+                return [...(prod.grupoSubstituicao ?? []), ...(prod.subcategoria ? [prod.subcategoria] : [])];
+              }))].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))
+            : undefined}
           tituloModal="Filtrar"
           botoesExtras={
             aba === "catalogo" ? (
@@ -389,6 +411,7 @@ function Home({
               busca={busca}
               itensDaLista={lista}
               onRemover={removerItem}
+              onFiltrarGrupo={irParaGrupo}
             />
           ))}
           {comprados.length > 0 && (
@@ -410,6 +433,7 @@ function Home({
                 collapsed={true}
                 corOverride={COR.neutro}
                 onRemover={removerItem}
+                onFiltrarGrupo={irParaGrupo}
               />
             </div>
           )}
@@ -704,6 +728,7 @@ function Home({
               contexto="catalogo"
               onRemover={removerItemPorProdutoId}
               forcarAberto={todasExpandidas}
+              onFiltrarGrupo={irParaGrupo}
             />
           ))}
         </div>
@@ -836,15 +861,7 @@ function Home({
                 if (itemNaLista) {
                   await toggleComprado(itemNaLista);
                 } else {
-                  await addDoc(collection(db, "listas", listaAtiva, "lista"), {
-                    produtoId: produto.id,
-                    nome: produto.nome,
-                    categoria: produto.categoria,
-                    subcategoria: produto.subcategoria,
-                    comprado: true,
-                    compradoEm: new Date(),
-                    adicionadoEm: serverTimestamp(),
-                  });
+                  await adicionarItemComprado(produto);
                 }
               }}
               onAdicionarFaltantes={async (faltantes) => {
@@ -971,6 +988,7 @@ function Home({
               setAba(id);
               setBusca("");
               setCategoriasFiltro([]);
+              setGrupoFiltro([]);
               setRefeicoesFiltro([]);
               if (id !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
             }}

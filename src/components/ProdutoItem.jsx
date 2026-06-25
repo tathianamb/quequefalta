@@ -11,6 +11,7 @@ function ProdutoItem({
   comprado,
   onRemover,
   contexto,
+  onFiltrarGrupo,
 }) {
   const cor = corDaCategoria(produto.categoria);
   const [feedback, setFeedback] = useState(false);
@@ -128,6 +129,9 @@ function ProdutoItem({
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
             <span
+              onClick={onFiltrarGrupo && produto.subcategoria && produto.subcategoria !== "-"
+                ? (e) => { e.stopPropagation(); onFiltrarGrupo(produto.subcategoria); }
+                : undefined}
               style={{
                 display: "inline-block",
                 background: cor + "22",
@@ -136,6 +140,7 @@ function ProdutoItem({
                 fontWeight: 600,
                 padding: "2px 8px",
                 borderRadius: RAIO.pill,
+                cursor: onFiltrarGrupo && produto.subcategoria && produto.subcategoria !== "-" ? "pointer" : "default",
               }}
             >
               {produto.subcategoria !== "-"
@@ -145,6 +150,7 @@ function ProdutoItem({
             {(produto.grupoSubstituicao || []).map((g) => (
               <span
                 key={g}
+                onClick={onFiltrarGrupo ? (e) => { e.stopPropagation(); onFiltrarGrupo(g); } : undefined}
                 style={{
                   display: "inline-block",
                   background: cor + "22",
@@ -153,6 +159,7 @@ function ProdutoItem({
                   fontWeight: 600,
                   padding: "2px 8px",
                   borderRadius: RAIO.pill,
+                  cursor: onFiltrarGrupo ? "pointer" : "default",
                 }}
               >
                 {g}
