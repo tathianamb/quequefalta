@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+﻿import { useState, useRef } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -26,6 +26,7 @@ import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import { useReceitas } from "../hooks/useReceitas";
 import { useGrupoSubstituicao } from "../hooks/useGrupoSubstituicao";
+import { useBackStack } from "../hooks/useBackStack";
 import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
 import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
@@ -97,6 +98,45 @@ function Home({
   const [receitaEditando, setReceitaEditando] = useState(null); // receita pendente sendo editada
   const [ordenacaoReceitas, setOrdenacaoReceitas] = useState("relevancia"); // "relevancia" | "az" | "za"
   const [ordenacaoAberta, setOrdenacaoAberta] = useState(false);
+
+  useBackStack([
+    // sub-tela de sugestao dentro do menu
+    {
+      aberta: menuAberto && telaMenu === "sugestao",
+      fechar: () => setTelaMenu("menu"),
+    },
+    // sub-telas de receita: formulario
+    {
+      aberta: aba === "receitas" && telaReceita === "formulario",
+      fechar: () => {
+        if (receitaEditando) {
+          setReceitaEditando(null);
+          setTelaReceita("lista");
+        } else {
+          setTelaReceita("texto");
+        }
+      },
+    },
+    // sub-telas de receita: texto
+    {
+      aberta: aba === "receitas" && telaReceita === "texto",
+      fechar: () => setTelaReceita("lista"),
+    },
+    // sub-telas de receita: detalhe
+    {
+      aberta: aba === "receitas" && telaReceita === "detalhe",
+      fechar: () => { setReceitaSelecionada(null); setTelaReceita("lista"); },
+    },
+    // modal de detalhes do produto
+    { aberta: !!produtoSelecionado, fechar: () => setProdutoSelecionado(null) },
+    // bottom sheet de ordenacao de receitas
+    { aberta: ordenacaoAberta, fechar: () => setOrdenacaoAberta(false) },
+    // menu principal (mais externo)
+    {
+      aberta: menuAberto,
+      fechar: () => { setMenuAberto(false); setTelaMenu("menu"); },
+    },
+  ]);
 
   const filtrar = (arr) =>
     arr.filter((p) => {
