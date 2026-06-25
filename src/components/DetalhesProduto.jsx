@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { corDaCategoria, ORDEM_CATEGORIAS } from "../utils/categorias";
-import { X, Plus, Edit2 } from "lucide-react";
+import { X, Plus, Edit2, Trash2 } from "lucide-react";
 import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from "../utils/estilos";
 
 const MERCADOS_BASE = ["Atacadão", "Max", "Avenida", "Superbom"];
@@ -13,7 +13,7 @@ function hojeISO() {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
-function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo = [], isAdmin = false, origemLista = false }) {
+function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo = [], isAdmin = false, origemLista = false, onDeletar }) {
   const [mercado, setMercado] = useState("");
   const [preco, setPreco] = useState("");
   const [data, setData] = useState(hojeISO());
@@ -219,6 +219,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                 >
                   Cancelar
                 </button>
+                {onDeletar && (
+                  <button
+                    onClick={() => { if (window.confirm(`Excluir "${produto.nome}" do catálogo?`)) onDeletar(produto); }}
+                    style={{ padding: "10px 12px", borderRadius: RAIO.sm, border: "none", background: COR.erroBg, color: COR.erro, cursor: "pointer", display: "flex", alignItems: "center" }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </div>
           ) : (

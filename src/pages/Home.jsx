@@ -1,7 +1,7 @@
 ﻿import { useState, useRef } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../config/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
 import { ORDEM_CATEGORIAS, textoParaCor } from "../utils/categorias";
 import { useLista } from "../hooks/useLista";
 import { useCatalogo } from "../hooks/useCatalogo";
@@ -194,6 +194,11 @@ function Home({
   const removerItemPorProdutoId = (produto) => {
     const item = lista.find((i) => i.produtoId === produto.id);
     if (item) removerItem(item);
+  };
+
+  const deletarProdutoCatalogo = async (produto) => {
+    await deleteDoc(doc(db, "catalogo", produto.id));
+    setProdutoSelecionado(null);
   };
 
   const [todasExpandidas, setTodasExpandidas] = useState(true);
@@ -989,6 +994,7 @@ function Home({
           catalogo={catalogo}
           isAdmin={admin && modoAdmin}
           origemLista={!!produtoSelecionado._origemLista}
+          onDeletar={admin && modoAdmin ? deletarProdutoCatalogo : undefined}
         />
       )}
 
