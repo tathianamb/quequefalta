@@ -29,7 +29,7 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
   const temTudo = faltantes.length === 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+    <div>
       {/* Botão voltar + editar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px' }}>
         <button
@@ -157,6 +157,11 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                 </div>
               )}
               <span style={{ flex: 1 }}>
+                {(ing.quantidade || ing.unidade) && (
+                  <span style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginRight: '6px' }}>
+                    {[ing.quantidade, ing.unidade].filter(Boolean).join(' ')}
+                  </span>
+                )}
                 <span
                   onClick={!isNaoVerificado && ing.produtoId && onBuscarIngrediente
                     ? () => onBuscarIngrediente(ing.nome)
