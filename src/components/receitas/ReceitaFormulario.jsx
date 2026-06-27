@@ -323,7 +323,7 @@ export function ReceitaFormulario({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div>
       {/* Navegação de volta */}
       {onVoltarTexto ? (
         <button
@@ -333,6 +333,7 @@ export function ReceitaFormulario({
             background: 'none', border: 'none', cursor: 'pointer',
             padding: 0, color: 'var(--text-soft)',
             fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
+            marginBottom: '20px',
           }}
         >
           <ArrowLeft size={16} /> Editar texto
@@ -345,6 +346,7 @@ export function ReceitaFormulario({
             background: 'none', border: 'none', cursor: 'pointer',
             padding: 0, color: 'var(--text-soft)',
             fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
+            marginBottom: '20px',
           }}
         >
           <ArrowLeft size={16} /> Voltar
@@ -352,7 +354,7 @@ export function ReceitaFormulario({
       )}
 
       {/* Nome */}
-      <div>
+      <div style={{ marginBottom: '20px' }}>
         <label style={{ ...labelStyle, fontSize: '16px' }}>Nome da receita *</label>
         <input
           value={nome}
@@ -363,7 +365,7 @@ export function ReceitaFormulario({
       </div>
 
       {/* Ingredientes */}
-      <div>
+      <div style={{ marginBottom: '20px' }}>
         <label style={labelStyle}>Ingredientes *</label>
 
         {/* Tabela de ingredientes */}
@@ -645,7 +647,7 @@ export function ReceitaFormulario({
       </div>
 
       {/* Modo de preparo */}
-      <div>
+      <div style={{ marginBottom: '20px' }}>
         <label style={labelStyle}>Modo de preparo</label>
         <textarea
           value={modoPreparo}
@@ -660,7 +662,7 @@ export function ReceitaFormulario({
       </div>
 
       {/* Opcionais */}
-      <div style={{ display: 'flex', gap: '12px' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
         <div style={{ flex: 1 }}>
           <label style={labelStyle}>Tempo (min)</label>
           <input
@@ -696,7 +698,7 @@ export function ReceitaFormulario({
       </div>
 
       {/* Foto (opcional) */}
-      <div>
+      <div style={{ marginBottom: '20px' }}>
         <label style={labelStyle}>Foto (URL, opcional)</label>
         <input
           value={foto}
@@ -707,7 +709,7 @@ export function ReceitaFormulario({
       </div>
 
       {/* Enviar */}
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         {podeSalvarRascunho && (
           <button
             onClick={handleSalvarRascunho}

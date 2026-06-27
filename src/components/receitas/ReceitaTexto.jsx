@@ -42,7 +42,7 @@ export function ReceitaTexto({ textoInicial = '', catalogo, grupoSubstituicao, o
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div>
       {/* Voltar */}
       <button
         onClick={onVoltar}
@@ -51,17 +51,18 @@ export function ReceitaTexto({ textoInicial = '', catalogo, grupoSubstituicao, o
           background: 'none', border: 'none', cursor: 'pointer',
           padding: 0, color: 'var(--text-soft)',
           fontFamily: 'Nunito, sans-serif', fontWeight: 600, fontSize: '14px',
+          marginBottom: '20px',
         }}
       >
         <ArrowLeft size={16} /> Receitas
       </button>
 
-      <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)', margin: 0 }}>
+      <h2 style={{ ...TIPOGRAFIA.h2, color: 'var(--text)', marginBottom: '20px' }}>
         Nova receita
       </h2>
 
       {/* Textarea */}
-      <div>
+      <div style={{ marginBottom: '20px' }}>
         <textarea
           value={texto}
           onChange={e => setTexto(e.target.value)}
