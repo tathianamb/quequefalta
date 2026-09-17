@@ -47,12 +47,15 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
   const detalheFila = paraFila
     ? `\n${paraFila} ite${paraFila > 1 ? "ns" : "m"} sem match ${paraFila > 1 ? "vão" : "vai"} para a fila de revisão (mande /revisar depois).`
     : "";
+  const fraseGravados = gravados === 0
+    ? "Nenhum preço será registrado."
+    : `${gravados} preço${gravados > 1 ? "s" : ""} ser${gravados > 1 ? "ão" : "á"} registrado${gravados > 1 ? "s" : ""}.`;
 
   await enviarOuEditar(
     telegram,
     chatId,
     messageId,
-    `Etapa 4/4 — Finalizar\n\n${gravados} preço${gravados > 1 ? "s" : ""} ser${gravados > 1 ? "ão" : "á"} registrado${gravados > 1 ? "s" : ""}.${detalheFila}\n\nConfirma?`,
+    `Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheFila}\n\nConfirma?`,
     { reply_markup: tecladoEtapa4(lote.id) }
   );
 }
