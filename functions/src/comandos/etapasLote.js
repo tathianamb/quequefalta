@@ -28,11 +28,9 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
   // como preço a gravar se já existe um produtoIdResolvido — um item enviado
   // como "sugerir novo produto" também fica com status "resolvido", mas sem
   // produtoIdResolvido (o produto ainda não existe), então vai para a fila.
-  // jaRegistrado é só um aviso — o item ainda tem statusMatch "match" até
-  // você removê-lo (❌) na etapa 2 — mas não deve contar como "vai ser
-  // gravado" aqui, já que finalizar sem remover duplicaria o histórico.
-  const comMatch = lote.itens.filter((i) => i.statusMatch === "match" && !i.jaRegistrado);
-  const jaRegistrados = lote.itens.filter((i) => i.statusMatch === "match" && i.jaRegistrado);
+  // Itens jaRegistrado nunca chegam aqui como "match" — sair da etapa 2 pra
+  // frente já os descarta automaticamente (ver navegarEtapa em callback.js).
+  const comMatch = lote.itens.filter((i) => i.statusMatch === "match");
   const resolvidos = lote.itens.filter((i) => i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido);
   const paraFilaOutros = lote.itens.filter((i) =>
     i.statusMatch !== "match" && i.statusMatch !== "descartado" &&
@@ -45,15 +43,12 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
   const detalheFila = paraFila
     ? `\n${paraFila} ite${paraFila > 1 ? "ns" : "m"} sem match ${paraFila > 1 ? "vão" : "vai"} para a fila de revisão (mande /revisar depois).`
     : "";
-  const detalheJaRegistrados = jaRegistrados.length
-    ? `\n⚠️ ${jaRegistrados.length} ite${jaRegistrados.length > 1 ? "ns" : "m"} marcado${jaRegistrados.length > 1 ? "s" : ""} como já registrado ainda ${jaRegistrados.length > 1 ? "estão" : "está"} na etapa 2 — remova com ❌ lá antes de finalizar, senão ${jaRegistrados.length > 1 ? "serão" : "será"} gravado${jaRegistrados.length > 1 ? "s" : ""} de novo.`
-    : "";
 
   await enviarOuEditar(
     telegram,
     chatId,
     messageId,
-    `Etapa 4/4 — Finalizar\n\n${gravados} preço${gravados > 1 ? "s" : ""} ser${gravados > 1 ? "ão" : "á"} registrado${gravados > 1 ? "s" : ""}.${detalheFila}${detalheJaRegistrados}\n\nConfirma?`,
+    `Etapa 4/4 — Finalizar\n\n${gravados} preço${gravados > 1 ? "s" : ""} ser${gravados > 1 ? "ão" : "á"} registrado${gravados > 1 ? "s" : ""}.${detalheFila}\n\nConfirma?`,
     { reply_markup: tecladoEtapa4(lote.id) }
   );
 }

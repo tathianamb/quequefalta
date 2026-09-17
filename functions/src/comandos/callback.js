@@ -230,6 +230,17 @@ async function navegarEtapa(telegram, chatId, loteId, direcao, messageId) {
     return;
   }
 
+  // Sair da etapa 2 pra frente sem remover (❌) um item jaRegistrado é a
+  // confirmação implícita de que o match está certo e é mesmo duplicata —
+  // descarta pra não ser gravado de novo (não vira pendente em /revisar).
+  if ((lote.etapaAtual || 1) === 2 && direcao === 1) {
+    for (const item of lote.itens) {
+      if (item.statusMatch === "match" && item.jaRegistrado) {
+        await atualizarItemDoLote(loteId, item.indice, { statusMatch: "descartado" });
+      }
+    }
+  }
+
   const novaEtapa = Math.min(4, Math.max(1, (lote.etapaAtual || 1) + direcao));
   await definirEtapaDoLote(loteId, novaEtapa);
   const loteAtualizado = await buscarLotePorId(loteId);
@@ -237,16 +248,18 @@ async function navegarEtapa(telegram, chatId, loteId, direcao, messageId) {
 }
 
 async function removerMatch(telegram, chatId, loteId, indice, messageId) {
-  const lote = await buscarLotePorId(loteId);
-  const item = lote?.itens.find((i) => i.indice === indice);
-
-  // Um item já registrado nesse mercado/data não precisa de revisão nenhuma —
-  // removê-lo descarta de vez (não vira pendente em /revisar), diferente do
-  // caso normal de "match errado", que ainda precisa ser resolvido.
-  await atualizarItemDoLote(loteId, indice, item?.jaRegistrado
-    ? { statusMatch: "descartado" }
-    : { statusMatch: "sem_match", produtoIdCasado: null, nomeProdutoCasado: null }
-  );
+  // ❌ significa "esse match não está certo" — inclusive quando o item está
+  // marcado jaRegistrado: pode ser falso positivo da detecção (mesmo
+  // mercado/data, produto diferente), então cai no fluxo normal de revisão
+  // (etapa 3) em vez de ser descartado direto. Confirmar a duplicata sem
+  // clicar ❌ (avançando para a etapa 3) é o que descarta de vez — ver
+  // navegarEtapa.
+  await atualizarItemDoLote(loteId, indice, {
+    statusMatch: "sem_match",
+    produtoIdCasado: null,
+    nomeProdutoCasado: null,
+    jaRegistrado: false,
+  });
 
   const loteAtualizado = await buscarLotePorId(loteId);
   await mostrarEtapa(telegram, chatId, loteAtualizado, messageId);
