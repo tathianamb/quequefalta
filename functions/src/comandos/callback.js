@@ -163,19 +163,13 @@ async function resolverContextoRevisao(params) {
       });
     },
     async sugerirProduto() {
-      const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
-      const { jaExistia } = await criarSugestaoDeProduto({
-        nome: item.nomeExtraido,
-        uid: lote.uid,
-        listaAtiva,
-        preco: item.precoExtraido,
-        mercado: lote.mercado,
-        data: lote.dataDaNota,
-      });
+      // Não cria a sugestão agora — só marca a intenção. A sugestão só é
+      // criada de verdade em finalizarLote, ao confirmar a etapa 4. Isso
+      // torna o clique reversível (voltar/corrigir antes de confirmar não
+      // deixa uma sugestão órfã no Firestore, como acontecia antes).
       await atualizarItemDoLote(loteId, indice, {
-        revisao: { status: "resolvido", produtoIdResolvido: null, aguardandoNomeNovo: false },
+        revisao: { status: "resolvido", produtoIdResolvido: null, aguardandoNomeNovo: false, sugestaoPendente: true },
       });
-      return { jaExistia };
     },
   };
 }
@@ -270,10 +264,14 @@ async function sugerirProduto(telegram, chatId, params, messageId) {
     await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
     return;
   }
-  const { jaExistia } = await ctx.sugerirProduto();
-  const mensagem = jaExistia
-    ? `📨 "${ctx.item.nomeExtraido}" já tinha sido sugerido antes — aguardando aprovação de um admin. Assim que for aprovado, você pode registrar o preço de novo.`
-    : `📨 "${ctx.item.nomeExtraido}" foi enviado como sugestão de produto novo — um admin vai revisar. Assim que for aprovado, você pode registrar o preço de novo.`;
+  const resultado = await ctx.sugerirProduto();
+  const mensagem = params[0] === "fila"
+    ? (resultado.jaExistia
+        ? `📨 "${ctx.item.nomeExtraido}" já tinha sido sugerido antes — aguardando aprovação de um admin. Assim que for aprovado, você pode registrar o preço de novo.`
+        : `📨 "${ctx.item.nomeExtraido}" foi enviado como sugestão de produto novo — um admin vai revisar. Assim que for aprovado, você pode registrar o preço de novo.`)
+    // No lote, a sugestão só é criada de fato ao confirmar a etapa 4 — até
+    // lá é só uma marcação reversível (voltar/corrigir nome desfaz).
+    : `📨 "${ctx.item.nomeExtraido}" vai ser enviado como sugestão de produto novo ao finalizar (etapa 4).`;
   await telegram.enviarMensagem(chatId, mensagem);
   await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId);
 }
@@ -350,6 +348,7 @@ async function finalizarLote(telegram, chatId, loteId) {
 
   let gravados = 0;
   let paraFila = 0;
+  let sugeridos = 0;
 
   for (const item of lote.itens) {
     if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) {
@@ -364,6 +363,18 @@ async function finalizarLote(telegram, chatId, loteId) {
         nomeNota: item.nomeExpandido || item.nomeExtraido,
       });
       gravados++;
+    } else if (item.revisao?.sugestaoPendente) {
+      // Sugestão criada só agora, na confirmação — até aqui era só uma
+      // marcação reversível no próprio lote (ver resolverContextoRevisao).
+      await criarSugestaoDeProduto({
+        nome: item.nomeExpandido || item.nomeExtraido,
+        uid: lote.uid,
+        listaAtiva,
+        preco: item.precoExtraido,
+        mercado: lote.mercado,
+        data: lote.dataDaNota,
+      });
+      sugeridos++;
     } else if (item.revisao?.status === "resolvido" && item.revisao.produtoIdResolvido) {
       await registrarPreco({
         produtoId: item.revisao.produtoIdResolvido,
@@ -392,11 +403,14 @@ async function finalizarLote(telegram, chatId, loteId) {
 
   await marcarLoteConfirmado(loteId);
 
+  const mensagemSugeridos = sugeridos
+    ? ` ${sugeridos} ite${sugeridos > 1 ? "ns" : "m"} foi${sugeridos > 1 ? "ram" : ""} enviado${sugeridos > 1 ? "s" : ""} como sugestão de produto novo.`
+    : "";
   const mensagemFila = paraFila
     ? ` ${paraFila} ite${paraFila > 1 ? "ns" : "m"} foi${paraFila > 1 ? "ram" : ""} para a fila de revisão (mande /revisar para resolver).`
     : "";
   await telegram.enviarMensagem(
     chatId,
-    `✅ ${gravados} preço${gravados > 1 ? "s" : ""} registrado${gravados > 1 ? "s" : ""} no QueQueFalta!${mensagemFila}`
+    `✅ ${gravados} preço${gravados > 1 ? "s" : ""} registrado${gravados > 1 ? "s" : ""} no QueQueFalta!${mensagemSugeridos}${mensagemFila}`
   );
 }

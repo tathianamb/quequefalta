@@ -25,9 +25,9 @@ async function mostrarEtapa2(telegram, chatId, lote, messageId) {
 
 async function mostrarEtapa4(telegram, chatId, lote, messageId) {
   // Mesmo critério usado em finalizarLote (callback.js): "resolvido" só conta
-  // como preço a gravar se já existe um produtoIdResolvido — um item enviado
-  // como "sugerir novo produto" também fica com status "resolvido", mas sem
-  // produtoIdResolvido (o produto ainda não existe), então vai para a fila.
+  // como preço a gravar se já existe um produtoIdResolvido — sugestaoPendente
+  // é o item marcado "sugerir novo produto" na etapa 3, que só vira uma
+  // sugestão de verdade ao confirmar aqui (não grava preço, não vai pra fila).
   // Itens jaRegistrado nunca chegam aqui como "match" — sair da etapa 2 pra
   // frente já os descarta automaticamente (ver navegarEtapa em callback.js).
   // duplicataAceita é um "resolvido" que não deve gravar de novo — mesmo
@@ -36,14 +36,20 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
   const resolvidos = lote.itens.filter((i) =>
     i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido && !i.revisao.duplicataAceita
   );
+  const sugestoesPendentes = lote.itens.filter((i) => i.revisao?.sugestaoPendente);
   const paraFilaOutros = lote.itens.filter((i) =>
     i.statusMatch !== "match" && i.statusMatch !== "descartado" && !i.revisao?.duplicataAceita &&
+    !i.revisao?.sugestaoPendente &&
     !(i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido)
   );
 
   const gravados = comMatch.length + resolvidos.length;
+  const sugeridos = sugestoesPendentes.length;
   const paraFila = paraFilaOutros.length;
 
+  const detalheSugeridos = sugeridos
+    ? `\n${sugeridos} ite${sugeridos > 1 ? "ns" : "m"} ${sugeridos > 1 ? "vão" : "vai"} como sugestão de produto novo.`
+    : "";
   const detalheFila = paraFila
     ? `\n${paraFila} ite${paraFila > 1 ? "ns" : "m"} sem match ${paraFila > 1 ? "vão" : "vai"} para a fila de revisão (mande /revisar depois).`
     : "";
@@ -55,7 +61,7 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
     telegram,
     chatId,
     messageId,
-    `Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheFila}\n\nConfirma?`,
+    `Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheSugeridos}${detalheFila}\n\nConfirma?`,
     { reply_markup: tecladoEtapa4(lote.id) }
   );
 }

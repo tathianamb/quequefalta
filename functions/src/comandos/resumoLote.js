@@ -4,6 +4,9 @@ export function descreverItem(item) {
   if (item.statusMatch === "descartado") {
     return `${nomeNota} (descartado — já tinha preço registrado) — ${preco}`;
   }
+  if (item.revisao?.sugestaoPendente) {
+    return `${nomeNota} (vai virar sugestão de produto novo) — ${preco}`;
+  }
   if (item.statusMatch === "match") {
     return `${item.nomeProdutoCasado} (nota: "${nomeNota}") — ${preco}`;
   }
@@ -13,6 +16,7 @@ export function descreverItem(item) {
 export function formatarLinhaItem(item) {
   const prefixo =
     item.statusMatch === "descartado" ? "🗑️" :
+    item.revisao?.sugestaoPendente ? "📨" :
     item.statusMatch === "match" && item.jaRegistrado ? "⚠️" :
     item.statusMatch === "match" ? "✅" :
     "❌";
