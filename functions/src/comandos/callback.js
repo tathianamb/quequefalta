@@ -1,3 +1,4 @@
+import { getFirestore } from "firebase-admin/firestore";
 import {
   buscarLotePorId,
   marcarLoteConfirmado,
@@ -71,6 +72,8 @@ async function resolverContextoRevisao(params) {
           listaAtiva,
         });
         await resolverItemRevisao(itemId, produtoId);
+        const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
+        return { nomeProduto: produtoDoc.data()?.nome };
       },
       async marcarAguardandoNome() {
         await marcarAguardandoNomeNovo(itemId);
@@ -117,6 +120,8 @@ async function resolverContextoRevisao(params) {
       await atualizarItemDoLote(loteId, indice, {
         revisao: { status: "resolvido", produtoIdResolvido: produtoId, aguardandoNomeNovo: false },
       });
+      const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
+      return { nomeProduto: produtoDoc.data()?.nome };
     },
     async marcarAguardandoNome() {
       await atualizarItemDoLote(loteId, indice, {
@@ -156,8 +161,9 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
     return;
   }
 
-  await ctx.resolver(produtoId);
-  await telegram.enviarMensagem(chatId, "✅ Preço registrado!");
+  const { nomeProduto } = await ctx.resolver(produtoId);
+  const preco = `R$ ${ctx.item.precoExtraido.toFixed(2).replace(".", ",")}`;
+  await telegram.enviarMensagem(chatId, `✅ Preço registrado! (${nomeProduto} — ${preco})`);
   await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
 }
 
