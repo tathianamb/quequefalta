@@ -4,7 +4,7 @@ import { criarClienteTelegram } from "./telegram/api.js";
 import { tratarVincular } from "./comandos/vincular.js";
 import { tratarTabela } from "./comandos/tabela.js";
 import { tratarCallback } from "./comandos/callback.js";
-import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarProximoDaMesmaLista } from "./comandos/revisar.js";
+import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
 import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
@@ -86,7 +86,7 @@ async function processarUpdate(telegram, update) {
   if (itemLoteAguardandoNome) {
     await atualizarItemDoLote(loteEmAberto.id, itemLoteAguardandoNome.indice, {
       nomeExtraido: texto.trim(),
-      revisao: { status: null, produtoIdResolvido: null, aguardandoNomeNovo: false },
+      revisao: null,
     });
     await telegram.enviarMensagem(chatId, `Nome atualizado para "${texto.trim()}".`);
     await mostrarEtapa(telegram, chatId, await buscarLoteEmAberto(chatId));
@@ -97,7 +97,7 @@ async function processarUpdate(telegram, update) {
   if (itemAguardandoNome) {
     await atualizarNomeItemRevisao(itemAguardandoNome.id, texto.trim());
     await telegram.enviarMensagem(chatId, `Nome atualizado para "${texto.trim()}".`);
-    await mostrarProximoDaMesmaLista(telegram, chatId, itemAguardandoNome);
+    await mostrarItemRenomeadoDaFila(telegram, chatId, itemAguardandoNome.id);
     return;
   }
 

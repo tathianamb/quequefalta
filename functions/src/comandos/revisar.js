@@ -1,5 +1,5 @@
 import { getFirestore } from "firebase-admin/firestore";
-import { buscarProximoComStatus, contarComStatus } from "../firestore/revisao.js";
+import { buscarProximoComStatus, contarComStatus, buscarItemRevisaoPorId } from "../firestore/revisao.js";
 import { encontrarMatch } from "../matching/fuzzyMatch.js";
 import { tecladoRevisaoItem, tecladoEtapa3 } from "../telegram/teclados.js";
 import { enviarOuEditar } from "../telegram/enviarOuEditar.js";
@@ -18,15 +18,7 @@ function fonteFila(uid, status) {
   };
 }
 
-async function mostrarProximoComFonte(telegram, chatId, fonte, { rotulo, mensagemVazia }, messageId) {
-  const item = await fonte.buscarProximo();
-  if (!item) {
-    await enviarOuEditar(telegram, chatId, messageId, mensagemVazia);
-    return;
-  }
-
-  const restantes = await fonte.contar();
-
+async function renderizarItemDaFila(telegram, chatId, item, rotulo, restantes, messageId) {
   const db = getFirestore();
   const catalogoSnap = await db.collection("catalogo").get();
   const catalogo = catalogoSnap.docs.map((d) => ({ id: d.id, nome: d.data().nome }));
@@ -44,6 +36,29 @@ async function mostrarProximoComFonte(telegram, chatId, fonte, { rotulo, mensage
     `${rotulo} (${restantes} ite${restantes > 1 ? "ns" : "m"})\n\n"${item.nomeExtraido}" — ${preco} (${item.mercado})\n\n${textoSugestoes}`,
     { reply_markup: tecladoRevisaoItem(item.ref, sugestoes) }
   );
+}
+
+async function mostrarProximoComFonte(telegram, chatId, fonte, { rotulo, mensagemVazia }, messageId) {
+  const item = await fonte.buscarProximo();
+  if (!item) {
+    await enviarOuEditar(telegram, chatId, messageId, mensagemVazia);
+    return;
+  }
+
+  const restantes = await fonte.contar();
+  await renderizarItemDaFila(telegram, chatId, item, rotulo, restantes, messageId);
+}
+
+// Depois de corrigir o nome de um item da fila global, reexibimos o MESMO
+// item (buscado por id) em vez de "o próximo pendente" — buscarProximoComStatus
+// usa limit(1) sem orderBy, então pedir o próximo poderia devolver um item
+// diferente do que acabou de ser renomeado, dando a impressão de que a
+// correção não tentou match de novo.
+export async function mostrarItemRenomeadoDaFila(telegram, chatId, itemId, messageId) {
+  const item = await buscarItemRevisaoPorId(itemId);
+  const rotulo = item.status === "ignorado" ? "⏭️ Adiados" : "📋 Revisão";
+  const restantes = await contarComStatus(item.uid, item.status);
+  await renderizarItemDaFila(telegram, chatId, { ...item, ref: `fila:${item.id}` }, rotulo, restantes, messageId);
 }
 
 export async function mostrarProximaRevisao(telegram, chatId, uid, messageId) {
@@ -80,7 +95,7 @@ export function mostrarProximoDaMesmaLista(telegram, chatId, item, messageId) {
 // antes da etapa 4), mantendo o lote como única fonte de verdade durante a
 // navegação. Um item "pendente" aqui é sem-match e ainda não revisado.
 function itensSemMatchPendentes(lote) {
-  return lote.itens.filter((i) => i.statusMatch === "sem_match" && !i.revisao);
+  return lote.itens.filter((i) => i.statusMatch === "sem_match" && !i.revisao?.status);
 }
 
 export async function mostrarEtapa3(telegram, chatId, lote, messageId) {

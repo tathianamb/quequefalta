@@ -91,7 +91,7 @@ async function resolverContextoRevisao(params) {
   const indice = Number(indiceStr);
   const lote = await buscarLotePorId(loteId);
   const item = lote?.itens.find((i) => i.indice === indice);
-  const acionavel = item && item.statusMatch === "sem_match" && !item.revisao;
+  const acionavel = item && item.statusMatch === "sem_match" && !item.revisao?.status;
 
   return {
     item,

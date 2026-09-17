@@ -25,7 +25,7 @@ async function mostrarEtapa2(telegram, chatId, lote, messageId) {
 }
 
 async function mostrarEtapa4(telegram, chatId, lote, messageId) {
-  const semRevisao = lote.itens.filter((i) => i.statusMatch === "sem_match" && !i.revisao);
+  const semRevisao = lote.itens.filter((i) => i.statusMatch === "sem_match" && !i.revisao?.status);
   const resolvidos = lote.itens.filter((i) => i.revisao?.status === "resolvido");
   const comMatch = lote.itens.filter((i) => i.statusMatch === "match");
   const adiados = lote.itens.filter((i) => i.revisao?.status === "ignorado");
