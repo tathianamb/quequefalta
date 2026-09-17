@@ -89,10 +89,10 @@ async function processarUpdate(telegram, update) {
       nomeExtraido: texto.trim(),
       revisao: null,
     });
-    await telegram.enviarMensagem(chatId, `Nome atualizado para "${texto.trim()}".`);
     // Edita a tela original (com os botões de sugestão) em vez de mandar uma
-    // mensagem nova — sem isso, cada correção de nome deixava duas mensagens
-    // acumuladas no chat.
+    // mensagem nova — o nome novo já aparece ali na próxima pergunta, sem
+    // precisar de uma confirmação "Nome atualizado" separada (numa correção
+    // atrás da outra, isso rapidamente virava um histórico longo).
     await mostrarEtapa(telegram, chatId, await buscarLoteEmAberto(chatId), messageIdOriginal);
     return;
   }
@@ -101,7 +101,6 @@ async function processarUpdate(telegram, update) {
   if (itemAguardandoNome) {
     const messageIdOriginal = itemAguardandoNome.messageIdAguardandoNome;
     await atualizarNomeItemRevisao(itemAguardandoNome.id, texto.trim());
-    await telegram.enviarMensagem(chatId, `Nome atualizado para "${texto.trim()}".`);
     await mostrarItemRenomeadoDaFila(telegram, chatId, itemAguardandoNome.id, messageIdOriginal);
     return;
   }
