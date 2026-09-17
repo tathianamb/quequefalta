@@ -208,6 +208,7 @@ Para compartilhar
 | Offline | Service Worker + cache local | Visualização e marcação sem internet |
 | CI/CD | GitHub Actions | Build e deploy automáticos no push para `main` |
 | Bot do Telegram | Firebase Cloud Functions (Node 20) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
+| Assistente de cardápio | Firebase Cloud Functions (agendada) + Gemini API (tier gratuito) | Sugestão diária de cardápio via Telegram, com refinamento por feedback |
 
 ---
 

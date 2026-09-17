@@ -1,18 +1,22 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { criarClienteTelegram } from "./telegram/api.js";
+import { criarClienteGemini } from "./gemini/api.js";
 import { tratarVincular } from "./comandos/vincular.js";
 import { tratarTabela } from "./comandos/tabela.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
+import { tratarCasa, processarFeedbackCardapio } from "./comandos/cardapio.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
 import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
 import { buscarItemAguardandoNome, atualizarNomeItemRevisao } from "./firestore/revisao.js";
+import { buscarCardapioAguardandoFeedback } from "./firestore/cardapio.js";
 import { tecladoLotePendente } from "./telegram/teclados.js";
 
 const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_WEBHOOK_SECRET = defineSecret("TELEGRAM_WEBHOOK_SECRET");
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 // O Firebase CLI grava secrets via stdin no Windows sempre com \r\n ao final,
 // então todo secret lido aqui precisa ser saneado antes de usar.
@@ -32,7 +36,7 @@ function apagarSeExistir(telegram, chatId, messageId) {
 const PEDIR_VINCULO =
   "Vincule sua conta primeiro: gere um código no app (Menu → Vincular Telegram) e mande /vincular 123456 aqui.";
 
-async function processarUpdate(telegram, update) {
+async function processarUpdate(telegram, gemini, update) {
   if (update.callback_query) {
     await tratarCallback(telegram, update.callback_query);
     return;
@@ -87,6 +91,11 @@ async function processarUpdate(telegram, update) {
     return;
   }
 
+  if (texto.startsWith("/casa")) {
+    await tratarCasa(telegram, chatId, uid, texto);
+    return;
+  }
+
   const itemLoteAguardandoNome = loteEmAberto?.itens.find((i) => i.revisao?.aguardandoNomeNovo);
   if (itemLoteAguardandoNome) {
     const { messageIdAguardandoNome: messageIdOriginal, messageIdPergunta } = itemLoteAguardandoNome.revisao || {};
@@ -113,6 +122,13 @@ async function processarUpdate(telegram, update) {
     return;
   }
 
+  const cardapioAguardandoFeedback = await buscarCardapioAguardandoFeedback(chatId);
+  if (cardapioAguardandoFeedback) {
+    await processarFeedbackCardapio(telegram, gemini, cardapioAguardandoFeedback, texto.trim());
+    await apagarSeExistir(telegram, chatId, update.message.message_id);
+    return;
+  }
+
   if (podeSerTabela(texto)) {
     if (loteEmAberto) {
       await telegram.enviarMensagem(chatId, "Ainda tem um lote aguardando sua confirmação.", {
@@ -134,7 +150,7 @@ async function processarUpdate(telegram, update) {
 export const telegramWebhook = onRequest(
   {
     region: "southamerica-east1",
-    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET],
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, GEMINI_API_KEY],
     timeoutSeconds: 60,
     memory: "256MiB",
   },
@@ -147,6 +163,7 @@ export const telegramWebhook = onRequest(
 
     const update = req.body;
     const telegram = criarClienteTelegram(limpar(TELEGRAM_BOT_TOKEN.value()));
+    const gemini = criarClienteGemini(limpar(GEMINI_API_KEY.value()));
 
     // A resposta HTTP é sempre enviada aqui, uma única vez, depois que
     // processarUpdate() termina (com sucesso ou erro) — nenhum `return`
@@ -155,7 +172,7 @@ export const telegramWebhook = onRequest(
     // que já causou isso: cada `return` dentro de um try/catch no nível do
     // handler pulava a linha final de res.send()).
     try {
-      await processarUpdate(telegram, update);
+      await processarUpdate(telegram, gemini, update);
     } catch (erro) {
       console.error("Erro ao processar update do Telegram:", erro);
       const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;

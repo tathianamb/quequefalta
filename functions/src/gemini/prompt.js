@@ -1,0 +1,62 @@
+function formatarPessoas(pessoas) {
+  if (!pessoas?.length) return "Nenhuma pessoa cadastrada ainda.";
+  return pessoas
+    .map((p) => {
+      const partes = [];
+      if (p.restricoes?.length) partes.push(`restrições: ${p.restricoes.join(", ")}`);
+      if (p.preferencias?.length) partes.push(`preferências: ${p.preferencias.join(", ")}`);
+      return `- ${p.nome}${partes.length ? ` (${partes.join("; ")})` : ""}`;
+    })
+    .join("\n");
+}
+
+function formatarItensEmCasa(itensEmCasa) {
+  if (!itensEmCasa?.length) {
+    return "Nenhum item marcado como comprado na lista no momento — assuma uma despensa básica (arroz, feijão, óleo, tempero, ovos) e sugira algo simples de fazer.";
+  }
+  return itensEmCasa.map((i) => i.nome).join(", ");
+}
+
+function cabecalho({ pessoas, observacoesGerais, itensEmCasa }) {
+  return [
+    "Você é um assistente de cardápio para uma casa no Brasil. Sugira um cardápio para o dia seguinte (café da manhã, almoço e jantar), em português, de forma direta e objetiva.",
+    "",
+    "Pessoas da casa:",
+    formatarPessoas(pessoas),
+    "",
+    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
+    "",
+    "Itens disponíveis em casa:",
+    formatarItensEmCasa(itensEmCasa),
+    "",
+    "Você pode sugerir qualquer prato viável, não precisa se limitar apenas aos itens listados — priorize usar o que já tem em casa quando fizer sentido, mas complete com ingredientes básicos se necessário.",
+  ]
+    .filter((linha) => linha !== null)
+    .join("\n");
+}
+
+export function montarPromptInicial({ pessoas, observacoesGerais, itensEmCasa }) {
+  return `${cabecalho({ pessoas, observacoesGerais, itensEmCasa })}\n\nSugira o cardápio agora.`;
+}
+
+export function montarPromptRefinamento({ pessoas, observacoesGerais, itensEmCasa, historico, feedbackNovo }) {
+  const rodadasAnteriores = (historico || [])
+    .map((h, indice) => {
+      if (h.tipo === "geracao_inicial") {
+        return `Sugestão inicial:\n${h.resposta}`;
+      }
+      return `Feedback ${indice}: "${h.feedbackUsuario}"\nNova sugestão:\n${h.resposta}`;
+    })
+    .join("\n\n");
+
+  return [
+    cabecalho({ pessoas, observacoesGerais, itensEmCasa }),
+    "",
+    "Histórico desta conversa até agora:",
+    rodadasAnteriores,
+    "",
+    `Novo feedback do usuário: "${feedbackNovo}"`,
+    "",
+    "Gere uma nova sugestão de cardápio incorporando esse feedback.",
+  ].join("\n");
+}
