@@ -124,19 +124,25 @@ function Home({
     setGrupoFiltro([grupo]);
   };
 
-  const agrupar = (arr) =>
-    ORDEM_CATEGORIAS.reduce((acc, cat) => {
+  const agrupar = (arr, { incluirOutras = false } = {}) => {
+    const acc = ORDEM_CATEGORIAS.reduce((acc, cat) => {
       const itens = arr.filter((p) => p.categoria === cat);
       if (itens.length > 0) acc[cat] = itens;
       return acc;
     }, {});
+    if (incluirOutras) {
+      const semCategoriaValida = arr.filter((p) => !ORDEM_CATEGORIAS.includes(p.categoria));
+      if (semCategoriaValida.length > 0) acc["Outras"] = semCategoriaValida;
+    }
+    return acc;
+  };
 
   const pendentes = filtrar(lista.filter((i) => !i.comprado));
   const comprados = filtrar(lista.filter((i) => i.comprado));
   const porCategoriaPendentes = agrupar(pendentes);
   const porCategoriaComprados = agrupar(comprados);
   const catalogoFiltrado = filtrar(catalogo);
-  const porCategoriaCatalogo = agrupar(catalogoFiltrado);
+  const porCategoriaCatalogo = agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin });
   const carregando = carregandoLista || carregandoCatalogo;
   const receitasFiltradas = (() => {
     const idsEmCasa = new Set(lista.filter(i => i.comprado).map(i => i.produtoId));
