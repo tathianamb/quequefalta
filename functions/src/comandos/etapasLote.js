@@ -24,13 +24,19 @@ async function mostrarEtapa2(telegram, chatId, lote, messageId) {
 }
 
 async function mostrarEtapa4(telegram, chatId, lote, messageId) {
-  const semRevisao = lote.itens.filter((i) => i.statusMatch === "sem_match" && !i.revisao?.status);
-  const resolvidos = lote.itens.filter((i) => i.revisao?.status === "resolvido");
+  // Mesmo critério usado em finalizarLote (callback.js): "resolvido" só conta
+  // como preço a gravar se já existe um produtoIdResolvido — um item enviado
+  // como "sugerir novo produto" também fica com status "resolvido", mas sem
+  // produtoIdResolvido (o produto ainda não existe), então vai para a fila.
   const comMatch = lote.itens.filter((i) => i.statusMatch === "match");
-  const adiados = lote.itens.filter((i) => i.revisao?.status === "ignorado");
+  const resolvidos = lote.itens.filter((i) => i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido);
+  const paraFilaOutros = lote.itens.filter((i) =>
+    i.statusMatch !== "match" && i.statusMatch !== "descartado" &&
+    !(i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido)
+  );
 
   const gravados = comMatch.length + resolvidos.length;
-  const paraFila = semRevisao.length + adiados.length;
+  const paraFila = paraFilaOutros.length;
 
   const detalheFila = paraFila
     ? `\n${paraFila} ite${paraFila > 1 ? "ns" : "m"} sem match ${paraFila > 1 ? "vão" : "vai"} para a fila de revisão (mande /revisar depois).`
