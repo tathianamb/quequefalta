@@ -15,7 +15,10 @@ import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
+import { useTelegramVinculo } from "../hooks/useTelegramVinculo";
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
+
+const TELEGRAM_BOT_USERNAME = "quequefalta_bot";
 
 function Menu({
   onFechar,
@@ -40,6 +43,20 @@ function Menu({
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const [codigoVinculo, setCodigoVinculo] = useState(null);
+  const [gerandoCodigo, setGerandoCodigo] = useState(false);
+
+  const { vinculado, gerarCodigo, desvincular } = useTelegramVinculo(usuario);
+
+  const handleGerarCodigo = async () => {
+    setGerandoCodigo(true);
+    try {
+      const { codigo, expiraEm } = await gerarCodigo();
+      setCodigoVinculo({ codigo, expiraEm });
+    } finally {
+      setGerandoCodigo(false);
+    }
+  };
 
   const exportarCatalogo = () => {
     const escapar = (v) => {
@@ -427,6 +444,36 @@ function Menu({
                   <span style={{ color: "var(--text-soft)" }}>›</span>
                 </div>
 
+                <div
+                  onClick={() => setTela("telegram")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "14px 16px",
+                    background: "var(--bg)",
+                    borderRadius: RAIO.md,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Link size={18} color="var(--text-soft)" />
+                  <span
+                    style={{
+                      ...TIPOGRAFIA.nomeProduto,
+                      color: "var(--text)",
+                      flex: 1,
+                    }}
+                  >
+                    Vincular Telegram
+                  </span>
+                  {vinculado && (
+                    <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--verde)" }}>
+                      vinculado
+                    </span>
+                  )}
+                  <span style={{ color: "var(--text-soft)" }}>›</span>
+                </div>
+
 {isAdmin && (
                   <div
                     style={{
@@ -708,6 +755,135 @@ function Menu({
                   ? "Enviando..."
                   : "Enviar sugestão"}
             </button>
+          </div>
+        )}
+
+        {/* Tela Vincular Telegram */}
+        {tela === "telegram" && (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "4px",
+              }}
+            >
+              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
+                Vincular Telegram
+              </p>
+              <X
+                size={22}
+                color="var(--text-soft)"
+                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  setTela("menu");
+                  setCodigoVinculo(null);
+                }}
+              />
+            </div>
+
+            {vinculado ? (
+              <>
+                <p
+                  style={{
+                    color: "var(--text-soft)",
+                    ...TIPOGRAFIA.corpo,
+                    marginBottom: "4px",
+                  }}
+                >
+                  Seu Telegram está vinculado. Mande fotos de notas fiscais
+                  para o bot registrar os preços automaticamente.
+                </p>
+                <button
+                  onClick={desvincular}
+                  style={{
+                    padding: "14px",
+                    ...BOTAO_SECUNDARIO,
+                    cursor: "pointer",
+                  }}
+                >
+                  Desvincular
+                </button>
+              </>
+            ) : codigoVinculo ? (
+              <>
+                <p
+                  style={{
+                    color: "var(--text-soft)",
+                    ...TIPOGRAFIA.corpo,
+                    marginBottom: "4px",
+                  }}
+                >
+                  Abra o bot no Telegram e envie o comando abaixo:
+                </p>
+                <div
+                  style={{
+                    padding: "20px",
+                    background: "var(--bg)",
+                    borderRadius: RAIO.md,
+                    textAlign: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      ...TIPOGRAFIA.display,
+                      color: "var(--text)",
+                      letterSpacing: "4px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {codigoVinculo.codigo}
+                  </p>
+                  <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
+                    /vincular {codigoVinculo.codigo}
+                  </p>
+                </div>
+                <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
+                  Válido por 10 minutos.
+                </p>
+                <a
+                  href={`https://t.me/${TELEGRAM_BOT_USERNAME}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "14px",
+                    ...BOTAO_PRIMARIO,
+                    textAlign: "center",
+                    textDecoration: "none",
+                    display: "block",
+                  }}
+                >
+                  Abrir bot no Telegram
+                </a>
+              </>
+            ) : (
+              <>
+                <p
+                  style={{
+                    color: "var(--text-soft)",
+                    ...TIPOGRAFIA.corpo,
+                    marginBottom: "4px",
+                  }}
+                >
+                  Vincule sua conta ao bot do Telegram para registrar preços
+                  enviando fotos de notas fiscais.
+                </p>
+                <button
+                  onClick={handleGerarCodigo}
+                  disabled={gerandoCodigo}
+                  style={{
+                    padding: "14px",
+                    ...BOTAO_PRIMARIO,
+                    cursor: gerandoCodigo ? "default" : "pointer",
+                  }}
+                >
+                  {gerandoCodigo ? "Gerando..." : "Gerar código"}
+                </button>
+              </>
+            )}
           </div>
         )}
 
