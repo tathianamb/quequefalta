@@ -7,7 +7,7 @@ import { tratarTabela } from "./comandos/tabela.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
-import { tratarCasa, processarFeedbackCardapio } from "./comandos/cardapio.js";
+import { tratarCasa, tratarCardapioManual, processarFeedbackCardapio } from "./comandos/cardapio.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
 import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
 import { buscarItemAguardandoNome, atualizarNomeItemRevisao } from "./firestore/revisao.js";
@@ -93,6 +93,11 @@ async function processarUpdate(telegram, gemini, update) {
 
   if (texto.startsWith("/casa")) {
     await tratarCasa(telegram, chatId, uid, texto);
+    return;
+  }
+
+  if (texto === "/cardapio") {
+    await tratarCardapioManual(telegram, gemini, chatId, uid);
     return;
   }
 

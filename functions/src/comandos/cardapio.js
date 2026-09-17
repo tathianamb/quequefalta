@@ -47,16 +47,35 @@ export async function tratarCasa(telegram, chatId, uid, textoComando) {
   await telegram.enviarMensagem(chatId, `Perfil salvo!\n\n${formatarPerfilCasa(perfilSalvo)}${aviso}`);
 }
 
+export async function tratarCardapioManual(telegram, gemini, chatId, uid) {
+  const perfil = await buscarPerfilCasa(uid);
+  if (!perfil?.pessoas?.length) {
+    await telegram.enviarMensagem(
+      chatId,
+      "Configure o perfil da casa primeiro com /casa antes de pedir um cardápio."
+    );
+    return;
+  }
+
+  await telegram.enviarMensagem(chatId, "🔄 Gerando cardápio...");
+  await gerarCardapioInicial(telegram, gemini, uid, chatId, { forcar: true });
+}
+
 function dataDeAmanha() {
   const amanha = new Date(Date.now() + 24 * 60 * 60 * 1000);
   return amanha.toISOString().slice(0, 10);
 }
 
-export async function gerarCardapioInicial(telegram, gemini, uid, chatId) {
+// forcar=true ignora o cardápio já existente do dia e gera um novo do zero —
+// usado pelo comando manual /cardapio. O scheduler chama sem forcar, para
+// não duplicar geração/envio em reruns do Cloud Scheduler (idempotência).
+export async function gerarCardapioInicial(telegram, gemini, uid, chatId, { forcar = false } = {}) {
   const dataIso = dataDeAmanha();
 
-  const existente = await buscarCardapioDoDia(uid, dataIso);
-  if (existente) return;
+  if (!forcar) {
+    const existente = await buscarCardapioDoDia(uid, dataIso);
+    if (existente) return;
+  }
 
   const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
 

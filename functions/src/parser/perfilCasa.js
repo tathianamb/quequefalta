@@ -6,7 +6,7 @@ const REGEX_HORARIO = /^([01]\d|2[0-3]):00$/;
 //   Tathiana: sem lactose; gosta de apimentado
 //   Marido: não gosta de peixe
 //   Observações: evitar carne vermelha mais de 2x por semana
-//   Horário: 20:00
+//   Horário: 22:00
 //
 // Não diferenciamos restrição de preferência na entrada — cada item da lista
 // separada por ";" vira preferência/restrição igualmente; quem lê o texto
@@ -20,7 +20,7 @@ export function parsearPerfilCasa(texto, perfilAnterior = null) {
 
   const pessoas = [];
   let observacoesGerais = perfilAnterior?.observacoesGerais || "";
-  let horarioEnvio = perfilAnterior?.horarioEnvio || "20:00";
+  let horarioEnvio = perfilAnterior?.horarioEnvio || "22:00";
   const erros = [];
 
   for (const linha of linhas) {
@@ -39,7 +39,7 @@ export function parsearPerfilCasa(texto, perfilAnterior = null) {
       if (REGEX_HORARIO.test(valor)) {
         horarioEnvio = valor;
       } else {
-        erros.push(`Horário "${valor}" inválido — mantendo o horário anterior (${horarioEnvio}). Use o formato HH:00, ex: 20:00.`);
+        erros.push(`Horário "${valor}" inválido — mantendo o horário anterior (${horarioEnvio}). Use o formato HH:00, ex: 22:00.`);
       }
       continue;
     }
@@ -59,7 +59,7 @@ export function parsearPerfilCasa(texto, perfilAnterior = null) {
 
 export function formatarPerfilCasa(perfil) {
   if (!perfil?.pessoas?.length) {
-    return "Nenhum perfil configurado ainda. Mande /casa seguido do perfil, por exemplo:\n\n/casa\nTathiana: sem lactose; gosta de apimentado\nMarido: não gosta de peixe\nObservações: evitar carne vermelha mais de 2x por semana\nHorário: 20:00";
+    return "Nenhum perfil configurado ainda. Mande /casa seguido do perfil, por exemplo:\n\n/casa\nTathiana: sem lactose; gosta de apimentado\nMarido: não gosta de peixe\nObservações: evitar carne vermelha mais de 2x por semana\nHorário: 22:00";
   }
 
   const linhasPessoas = perfil.pessoas
