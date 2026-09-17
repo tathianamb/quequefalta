@@ -644,18 +644,18 @@ function Home({
                               Editar
                             </button>
                             <button
-                              onClick={() => !jaAprovou && s.categoria && aprovar(s)}
-                              disabled={jaAprovou || !s.categoria}
+                              onClick={() => s.categoria && aprovar(s)}
+                              disabled={!s.categoria}
                               style={{
                                 padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
-                                background: jaAprovou || !s.categoria ? COR.borda : COR.sucessoBg,
-                                color: jaAprovou || !s.categoria ? COR.neutro : COR.sucesso,
+                                background: !s.categoria ? COR.borda : COR.sucessoBg,
+                                color: !s.categoria ? COR.neutro : COR.sucesso,
                                 fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
-                                fontWeight: FONTE.bold, cursor: jaAprovou || !s.categoria ? "default" : "pointer",
+                                fontWeight: FONTE.bold, cursor: !s.categoria ? "default" : "pointer",
                               }}
                               title={!s.categoria ? "Defina uma categoria antes de aprovar" : undefined}
                             >
-                              {jaAprovou ? "Aprovado" : "Aprovar"}
+                              Aprovar
                             </button>
                             <button
                               onClick={() => rejeitar(s)}
