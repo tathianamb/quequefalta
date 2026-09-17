@@ -156,7 +156,7 @@ export const telegramWebhook = onRequest(
   {
     region: "southamerica-east1",
     secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, GEMINI_API_KEY],
-    timeoutSeconds: 60,
+    timeoutSeconds: 120,
     memory: "256MiB",
   },
   async (req, res) => {
