@@ -1,3 +1,5 @@
+import { descreverItem } from "../comandos/resumoLote.js";
+
 export function tecladoLotePendente(loteId) {
   return {
     inline_keyboard: [[{ text: "🗑️ Cancelar lote pendente", callback_data: `lote_canc:${loteId}` }]],
@@ -18,7 +20,7 @@ export function tecladoEtapa1(loteId) {
 
 export function tecladoEtapa2(loteId, itensComMatch) {
   const botoesRemover = itensComMatch.map((item) => [
-    { text: `❌ ${item.nomeProdutoCasado}`, callback_data: `lote_rm:${loteId}:${item.indice}` },
+    { text: `❌ ${descreverItem(item)}`, callback_data: `lote_rm:${loteId}:${item.indice}` },
   ]);
   return { inline_keyboard: [...botoesRemover, ...botoesNavegacao(loteId, 2)] };
 }

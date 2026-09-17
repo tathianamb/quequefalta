@@ -17,8 +17,7 @@ async function mostrarEtapa1(telegram, chatId, lote, messageId) {
 async function mostrarEtapa2(telegram, chatId, lote, messageId) {
   const itensComMatch = lote.itens.filter((i) => i.statusMatch === "match");
   const texto = itensComMatch.length
-    ? "Etapa 2/4 — Revisão dos itens com match\n\nClique no item que está errado para tirá-lo do match automático (ele passa a contar como sem match):\n\n" +
-      itensComMatch.map(formatarLinhaItem).join("\n")
+    ? "Etapa 2/4 — Revisão dos itens com match\n\nClique no item que está errado para tirá-lo do match automático (ele passa a contar como sem match):"
     : "Etapa 2/4 — Revisão dos itens com match\n\nNenhum item com match automático.";
 
   await enviarOuEditar(telegram, chatId, messageId, texto, { reply_markup: tecladoEtapa2(lote.id, itensComMatch) });
