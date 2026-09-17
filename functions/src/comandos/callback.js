@@ -44,6 +44,8 @@ export async function tratarCallback(telegram, callbackQuery) {
     await ignorarRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_sug") {
     await sugerirProduto(telegram, chatId, params, messageId);
+  } else if (acao === "rv_dup") {
+    await aceitarDuplicata(telegram, chatId, params, messageId);
   }
 }
 
@@ -62,20 +64,22 @@ async function resolverContextoRevisao(params) {
     return {
       item,
       acionavel,
-      async resolver(produtoId) {
+      async resolver(produtoId, { aceitarDuplicata = false } = {}) {
         const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
         const nomeProduto = produtoDoc.data()?.nome;
-        if (await produtoJaTemRegistro({ produtoId, mercado: item.mercado, data: item.dataDaNota })) {
+        if (!aceitarDuplicata && await produtoJaTemRegistro({ produtoId, mercado: item.mercado, data: item.dataDaNota })) {
           return { nomeProduto, jaRegistrado: true };
         }
-        const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
-        await registrarPreco({
-          produtoId,
-          mercado: item.mercado,
-          preco: item.precoExtraido,
-          data: item.dataDaNota,
-          listaAtiva,
-        });
+        if (!aceitarDuplicata) {
+          const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
+          await registrarPreco({
+            produtoId,
+            mercado: item.mercado,
+            preco: item.precoExtraido,
+            data: item.dataDaNota,
+            listaAtiva,
+          });
+        }
         await resolverItemRevisao(itemId, produtoId);
         return { nomeProduto };
       },
@@ -112,22 +116,32 @@ async function resolverContextoRevisao(params) {
     item,
     acionavel,
     lote,
-    async resolver(produtoId) {
+    async resolver(produtoId, { aceitarDuplicata = false } = {}) {
       const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
       const nomeProduto = produtoDoc.data()?.nome;
-      if (await produtoJaTemRegistro({ produtoId, mercado: lote.mercado, data: lote.dataDaNota })) {
+      if (!aceitarDuplicata && await produtoJaTemRegistro({ produtoId, mercado: lote.mercado, data: lote.dataDaNota })) {
         return { nomeProduto, jaRegistrado: true };
       }
-      const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
-      await registrarPreco({
-        produtoId,
-        mercado: lote.mercado,
-        preco: item.precoExtraido,
-        data: lote.dataDaNota,
-        listaAtiva,
-      });
+      if (!aceitarDuplicata) {
+        const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
+        await registrarPreco({
+          produtoId,
+          mercado: lote.mercado,
+          preco: item.precoExtraido,
+          data: lote.dataDaNota,
+          listaAtiva,
+        });
+      }
+      // duplicataAceita marca o item como já tratado sem que finalizarLote
+      // grave o preço de novo (produtoIdResolvido normalmente significa
+      // "grava na finalização" — aqui já foi decidido que não deve).
       await atualizarItemDoLote(loteId, indice, {
-        revisao: { status: "resolvido", produtoIdResolvido: produtoId, aguardandoNomeNovo: false },
+        revisao: {
+          status: "resolvido",
+          produtoIdResolvido: produtoId,
+          aguardandoNomeNovo: false,
+          duplicataAceita: aceitarDuplicata,
+        },
       });
       return { nomeProduto };
     },
@@ -173,17 +187,35 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
   const preco = `R$ ${ctx.item.precoExtraido.toFixed(2).replace(".", ",")}`;
 
   if (jaRegistrado) {
-    // Não grava e não avança — o item continua pendente, o usuário decide
-    // (escolher outro produto, corrigir nome, deixar pra depois) na mesma
-    // tela em vez de perder a revisão silenciosamente.
+    // Não grava e não avança sozinho — o usuário decide: aceitar que é
+    // duplicata mesmo (marca resolvido sem gravar de novo) ou escolher outra
+    // opção na tela original (que continua intocada por baixo).
     await telegram.enviarMensagem(
       chatId,
-      `⚠️ "${nomeProduto}" já tem preço registrado nesse mercado/data — não grave de novo. Escolha outra opção ou deixe para depois.`
+      `⚠️ "${nomeProduto}" já tem preço registrado nesse mercado/data.`,
+      { reply_markup: { inline_keyboard: [[
+        { text: "✅ Aceitar (não gravar de novo)", callback_data: `rv_dup:${params.join(":")}` },
+      ]] } }
     );
     return;
   }
 
   await telegram.enviarMensagem(chatId, `✅ Preço registrado! (${nomeProduto} — ${preco})`);
+  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
+}
+
+async function aceitarDuplicata(telegram, chatId, params, messageId) {
+  const produtoId = params[params.length - 1];
+  const escopoParams = params.slice(0, -1);
+  const ctx = await resolverContextoRevisao(escopoParams);
+
+  if (!ctx.acionavel) {
+    await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
+    return;
+  }
+
+  const { nomeProduto } = await ctx.resolver(produtoId, { aceitarDuplicata: true });
+  await telegram.enviarMensagem(chatId, `✅ Ok, "${nomeProduto}" fica como já registrado — não grava de novo.`);
   await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
 }
 
@@ -298,7 +330,7 @@ async function finalizarLote(telegram, chatId, loteId) {
   let paraFila = 0;
 
   for (const item of lote.itens) {
-    if (item.statusMatch === "descartado") {
+    if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) {
       continue;
     } else if (item.statusMatch === "match" && item.confirmado) {
       await registrarPreco({

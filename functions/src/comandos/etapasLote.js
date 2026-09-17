@@ -30,10 +30,14 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
   // produtoIdResolvido (o produto ainda não existe), então vai para a fila.
   // Itens jaRegistrado nunca chegam aqui como "match" — sair da etapa 2 pra
   // frente já os descarta automaticamente (ver navegarEtapa em callback.js).
+  // duplicataAceita é um "resolvido" que não deve gravar de novo — mesmo
+  // critério de finalizarLote.
   const comMatch = lote.itens.filter((i) => i.statusMatch === "match");
-  const resolvidos = lote.itens.filter((i) => i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido);
+  const resolvidos = lote.itens.filter((i) =>
+    i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido && !i.revisao.duplicataAceita
+  );
   const paraFilaOutros = lote.itens.filter((i) =>
-    i.statusMatch !== "match" && i.statusMatch !== "descartado" &&
+    i.statusMatch !== "match" && i.statusMatch !== "descartado" && !i.revisao?.duplicataAceita &&
     !(i.revisao?.status === "resolvido" && i.revisao.produtoIdResolvido)
   );
 
