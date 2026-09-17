@@ -20,6 +20,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
   const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [erroDuplicado, setErroDuplicado] = useState(false);
 
   const [editandoAdmin, setEditandoAdmin] = useState(false);
   const [adminNome, setAdminNome] = useState(produto.nome || "");
@@ -101,6 +102,18 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
 
   const handleRegistrar = async () => {
     if (!mercado.trim() || !preco) return;
+    setErroDuplicado(false);
+
+    const mercadoTrim = mercado.trim();
+    const jaExiste = historico.some((h) => {
+      const diaHistorico = h.data?.toDate?.()?.toISOString().slice(0, 10);
+      return h.mercado === mercadoTrim && diaHistorico === data;
+    });
+    if (jaExiste) {
+      setErroDuplicado(true);
+      return;
+    }
+
     setSalvando(true);
     try {
       const dataRegistro = data
@@ -360,7 +373,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
             list="mercados-catalogo"
             placeholder="Digite ou escolha um mercado"
             value={mercado}
-            onChange={(e) => setMercado(e.target.value)}
+            onChange={(e) => { setMercado(e.target.value); setErroDuplicado(false); }}
             autoComplete="off"
             style={{
               width: "100%",
@@ -460,7 +473,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
           <input
             type="date"
             value={data}
-            onChange={(e) => setData(e.target.value)}
+            onChange={(e) => { setData(e.target.value); setErroDuplicado(false); }}
             style={{
               width: "100%",
               boxSizing: "border-box",
@@ -502,6 +515,12 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
               color: "var(--text)",
             }}
           />
+
+          {erroDuplicado && (
+            <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: "0 0 10px" }}>
+              ⚠️ Já existe um preço registrado nesse mercado e data.
+            </p>
+          )}
 
           <button
             onClick={handleRegistrar}

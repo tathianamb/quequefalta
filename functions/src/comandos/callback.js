@@ -6,7 +6,7 @@ import {
   atualizarItemDoLote,
   definirEtapaDoLote,
 } from "../firestore/lotes.js";
-import { registrarPreco, obterListaAtivaDoUsuario } from "../firestore/historico.js";
+import { registrarPreco, obterListaAtivaDoUsuario, produtoJaTemRegistro } from "../firestore/historico.js";
 import {
   adicionarNaFilaDeRevisao,
   buscarItemRevisaoPorId,
@@ -63,6 +63,11 @@ async function resolverContextoRevisao(params) {
       item,
       acionavel,
       async resolver(produtoId) {
+        const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
+        const nomeProduto = produtoDoc.data()?.nome;
+        if (await produtoJaTemRegistro({ produtoId, mercado: item.mercado, data: item.dataDaNota })) {
+          return { nomeProduto, jaRegistrado: true };
+        }
         const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
         await registrarPreco({
           produtoId,
@@ -72,8 +77,7 @@ async function resolverContextoRevisao(params) {
           listaAtiva,
         });
         await resolverItemRevisao(itemId, produtoId);
-        const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
-        return { nomeProduto: produtoDoc.data()?.nome };
+        return { nomeProduto };
       },
       async marcarAguardandoNome() {
         await marcarAguardandoNomeNovo(itemId);
@@ -109,6 +113,11 @@ async function resolverContextoRevisao(params) {
     acionavel,
     lote,
     async resolver(produtoId) {
+      const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
+      const nomeProduto = produtoDoc.data()?.nome;
+      if (await produtoJaTemRegistro({ produtoId, mercado: lote.mercado, data: lote.dataDaNota })) {
+        return { nomeProduto, jaRegistrado: true };
+      }
       const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
       await registrarPreco({
         produtoId,
@@ -120,8 +129,7 @@ async function resolverContextoRevisao(params) {
       await atualizarItemDoLote(loteId, indice, {
         revisao: { status: "resolvido", produtoIdResolvido: produtoId, aguardandoNomeNovo: false },
       });
-      const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
-      return { nomeProduto: produtoDoc.data()?.nome };
+      return { nomeProduto };
     },
     async marcarAguardandoNome() {
       await atualizarItemDoLote(loteId, indice, {
@@ -161,8 +169,20 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
     return;
   }
 
-  const { nomeProduto } = await ctx.resolver(produtoId);
+  const { nomeProduto, jaRegistrado } = await ctx.resolver(produtoId);
   const preco = `R$ ${ctx.item.precoExtraido.toFixed(2).replace(".", ",")}`;
+
+  if (jaRegistrado) {
+    // Não grava e não avança — o item continua pendente, o usuário decide
+    // (escolher outro produto, corrigir nome, deixar pra depois) na mesma
+    // tela em vez de perder a revisão silenciosamente.
+    await telegram.enviarMensagem(
+      chatId,
+      `⚠️ "${nomeProduto}" já tem preço registrado nesse mercado/data — não grave de novo. Escolha outra opção ou deixe para depois.`
+    );
+    return;
+  }
+
   await telegram.enviarMensagem(chatId, `✅ Preço registrado! (${nomeProduto} — ${preco})`);
   await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
 }
