@@ -16,9 +16,16 @@ export async function produtoJaTemRegistro({ produtoId, mercado, data }) {
   return historico.some((h) => h.mercado === mercado && paraDataIso(h.data) === data);
 }
 
-export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva }) {
+export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva, nomeNota }) {
   const db = getFirestore();
   const dataRegistro = data ? new Date(`${data}T12:00:00`) : new Date();
+  // O nome como veio na nota (nome comercial + peso/volume, ex: "Queijo Prato
+  // Lanche Frimesa") ajuda a identificar a marca/variante exata depois — o
+  // catálogo agrupa produtos de forma genérica (ex: "Queijo Prato"), então
+  // essa informação se perderia sem ficar registrada na observação.
+  const observacao = nomeNota
+    ? `Registrado via Telegram — nota: "${nomeNota}"`
+    : "Registrado via Telegram";
 
   await db
     .collection("catalogo")
@@ -28,7 +35,7 @@ export async function registrarPreco({ produtoId, mercado, preco, data, listaAti
         mercado,
         preco,
         data: dataRegistro,
-        observacao: "Registrado via Telegram",
+        observacao,
         listaAtiva,
       }),
     });

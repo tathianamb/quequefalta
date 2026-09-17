@@ -80,6 +80,7 @@ async function resolverContextoRevisao(params) {
             preco: item.precoExtraido,
             data: item.dataDaNota,
             listaAtiva,
+            nomeNota: item.nomeExtraido,
           });
         }
         await resolverItemRevisao(itemId, produtoId);
@@ -135,6 +136,7 @@ async function resolverContextoRevisao(params) {
           preco: item.precoExtraido,
           data: lote.dataDaNota,
           listaAtiva,
+          nomeNota: item.nomeExpandido || item.nomeExtraido,
         });
       }
       // duplicataAceita marca o item como já tratado sem que finalizarLote
@@ -356,6 +358,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         data: lote.dataDaNota,
         listaAtiva,
+        nomeNota: item.nomeExpandido || item.nomeExtraido,
       });
       gravados++;
     } else if (item.revisao?.status === "resolvido" && item.revisao.produtoIdResolvido) {
@@ -365,6 +368,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         data: lote.dataDaNota,
         listaAtiva,
+        nomeNota: item.nomeExpandido || item.nomeExtraido,
       });
       gravados++;
     } else {

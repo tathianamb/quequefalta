@@ -21,7 +21,7 @@ export function useSugestoes(usuario) {
           mercado: sugestao.mercadoSugerido || '',
           preco: sugestao.precoSugerido,
           data: sugestao.dataSugerida ? new Date(`${sugestao.dataSugerida}T12:00:00`) : new Date(),
-          observacao: 'Registrado via Telegram',
+          observacao: `Registrado via Telegram — nota: "${sugestao.nome}"`,
           listaAtiva: sugestao.listaAtiva || null,
         }]
       : []
