@@ -15,6 +15,6 @@ export function formatarLinhaItem(item) {
     item.statusMatch === "descartado" ? "🗑️" :
     item.statusMatch === "match" && item.jaRegistrado ? "⚠️" :
     item.statusMatch === "match" ? "✅" :
-    "⚠️";
+    "❌";
   return `${prefixo} ${descreverItem(item)}`;
 }
