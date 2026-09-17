@@ -43,6 +43,7 @@ export async function criarLote({
       statusMatch: item.match.melhorMatch ? "match" : "sem_match",
       confirmado: true,
       revisao: null,
+      jaRegistrado: item.jaRegistrado || false,
     })),
     criadoEm: FieldValue.serverTimestamp(),
     atualizadoEm: FieldValue.serverTimestamp(),

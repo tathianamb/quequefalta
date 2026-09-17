@@ -231,14 +231,19 @@ async function navegarEtapa(telegram, chatId, loteId, direcao, messageId) {
 }
 
 async function removerMatch(telegram, chatId, loteId, indice, messageId) {
-  await atualizarItemDoLote(loteId, indice, {
-    statusMatch: "sem_match",
-    produtoIdCasado: null,
-    nomeProdutoCasado: null,
-  });
-
   const lote = await buscarLotePorId(loteId);
-  await mostrarEtapa(telegram, chatId, lote, messageId);
+  const item = lote?.itens.find((i) => i.indice === indice);
+
+  // Um item já registrado nesse mercado/data não precisa de revisão nenhuma —
+  // removê-lo descarta de vez (não vira pendente em /revisar), diferente do
+  // caso normal de "match errado", que ainda precisa ser resolvido.
+  await atualizarItemDoLote(loteId, indice, item?.jaRegistrado
+    ? { statusMatch: "descartado" }
+    : { statusMatch: "sem_match", produtoIdCasado: null, nomeProdutoCasado: null }
+  );
+
+  const loteAtualizado = await buscarLotePorId(loteId);
+  await mostrarEtapa(telegram, chatId, loteAtualizado, messageId);
 }
 
 async function finalizarLote(telegram, chatId, loteId) {
@@ -254,7 +259,9 @@ async function finalizarLote(telegram, chatId, loteId) {
   let paraFila = 0;
 
   for (const item of lote.itens) {
-    if (item.statusMatch === "match" && item.confirmado) {
+    if (item.statusMatch === "descartado") {
+      continue;
+    } else if (item.statusMatch === "match" && item.confirmado) {
       await registrarPreco({
         produtoId: item.produtoIdCasado,
         mercado: lote.mercado,

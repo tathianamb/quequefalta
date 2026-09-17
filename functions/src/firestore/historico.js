@@ -1,5 +1,21 @@
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
+// Datas de histórico são gravadas ao meio-dia (ver registrarPreco) justamente
+// para que a conversão de volta a "YYYY-MM-DD" não vire o dia por causa de
+// fuso horário — toISOString() é usado em vez de métodos locais para não
+// depender do fuso do processo (Cloud Functions roda em UTC).
+function paraDataIso(data) {
+  const d = data?.toDate ? data.toDate() : new Date(data);
+  return d.toISOString().slice(0, 10);
+}
+
+export async function produtoJaTemRegistro({ produtoId, mercado, data }) {
+  const db = getFirestore();
+  const doc = await db.collection("catalogo").doc(produtoId).get();
+  const historico = doc.data()?.historico || [];
+  return historico.some((h) => h.mercado === mercado && paraDataIso(h.data) === data);
+}
+
 export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva }) {
   const db = getFirestore();
   const dataRegistro = data ? new Date(`${data}T12:00:00`) : new Date();
