@@ -80,8 +80,9 @@ async function resolverContextoRevisao(params) {
       },
       async sugerirProduto() {
         const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
-        await criarSugestaoDeProduto({ nome: item.nomeExtraido, uid: item.uid, listaAtiva });
+        const { jaExistia } = await criarSugestaoDeProduto({ nome: item.nomeExtraido, uid: item.uid, listaAtiva });
         await marcarItemComoSugerido(itemId);
+        return { jaExistia };
       },
     };
   }
@@ -122,10 +123,11 @@ async function resolverContextoRevisao(params) {
     },
     async sugerirProduto() {
       const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
-      await criarSugestaoDeProduto({ nome: item.nomeExtraido, uid: lote.uid, listaAtiva });
+      const { jaExistia } = await criarSugestaoDeProduto({ nome: item.nomeExtraido, uid: lote.uid, listaAtiva });
       await atualizarItemDoLote(loteId, indice, {
         revisao: { status: "resolvido", produtoIdResolvido: null, aguardandoNomeNovo: false },
       });
+      return { jaExistia };
     },
   };
 }
@@ -174,11 +176,11 @@ async function sugerirProduto(telegram, chatId, params) {
     await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
     return;
   }
-  await ctx.sugerirProduto();
-  await telegram.enviarMensagem(
-    chatId,
-    `📨 "${ctx.item.nomeExtraido}" foi enviado como sugestão de produto novo — um admin vai revisar. Assim que for aprovado, você pode registrar o preço de novo.`
-  );
+  const { jaExistia } = await ctx.sugerirProduto();
+  const mensagem = jaExistia
+    ? `📨 "${ctx.item.nomeExtraido}" já tinha sido sugerido antes — aguardando aprovação de um admin. Assim que for aprovado, você pode registrar o preço de novo.`
+    : `📨 "${ctx.item.nomeExtraido}" foi enviado como sugestão de produto novo — um admin vai revisar. Assim que for aprovado, você pode registrar o preço de novo.`;
+  await telegram.enviarMensagem(chatId, mensagem);
   await mostrarProximoAposAcao(telegram, chatId, params, ctx);
 }
 

@@ -1,7 +1,7 @@
 const LIMIAR_MATCH_AUTOMATICO = 0.6;
 const LIMIAR_SUGESTAO = 0.3;
 
-function normalizar(texto) {
+export function normalizar(texto) {
   return texto
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
