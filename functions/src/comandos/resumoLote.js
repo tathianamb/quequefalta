@@ -1,7 +1,8 @@
 export function formatarLinhaItem(item) {
   const preco = `R$ ${item.precoExtraido.toFixed(2).replace(".", ",")}`;
+  const nomeNota = item.nomeExpandido || item.nomeExtraido;
   if (item.statusMatch === "match") {
-    return `✅ ${item.nomeProdutoCasado} — ${preco}`;
+    return `✅ ${item.nomeProdutoCasado} (nota: "${nomeNota}") — ${preco}`;
   }
-  return `⚠️ ${item.nomeExpandido || item.nomeExtraido} (sem match no catálogo) — ${preco}`;
+  return `⚠️ ${nomeNota} (sem match no catálogo) — ${preco}`;
 }
