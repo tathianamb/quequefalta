@@ -173,7 +173,7 @@ Pasting a table creates a `lotesNotaFiscal` document and walks the user through 
 3. **Revisão dos itens sem match** — reuses the same item-by-item mechanic as `/revisar`/`/adiados` (see below), scoped to `lote.itens[]` instead of the global queue.
 4. **Finalizar** — preview of how many prices will be recorded vs. sent to the review queue, then `lote_fin` commits.
 
-All button-driven navigation **edits the existing message** (via `enviarOuEditar` + `messageId`) instead of sending a new one, to avoid flooding the chat — only one-off confirmations (e.g. "✅ Preço registrado!") are sent as new messages.
+All button-driven navigation **edits the existing message** (via `enviarOuEditar` + `messageId`) instead of sending a new one, to avoid flooding the chat. One-off confirmations (e.g. "✅ Preço registrado!") are no longer sent as separate messages either — they're passed as a `prefixo` string that gets prepended to the next screen's text in the same edit (`mostrarEtapa`/`mostrarEtapa3`/`mostrarProximoDaMesmaLista` all take an optional trailing `prefixo` arg). The one case that still requires a free-text reply ("✏️ Corrigir nome") necessarily sends the question as a new message (Telegram can't "edit and await a reply"), but once the user answers, `telegramWebhook.js` deletes both the question and the user's answer (`telegram.apagarMensagem`, best-effort) and edits the original screen — so a rename leaves no trace in the chat history, matching every other revision action.
 
 ### Duplicate-price protection
 
@@ -181,11 +181,15 @@ Before a batch is created, each matched item is checked against the target produ
 
 The same check runs again when a product is chosen manually in step 3 or via `/revisar`/`/adiados`; if it would duplicate, the bot offers an explicit "✅ Aceitar (não gravar de novo)" button rather than silently registering — accepting marks the item resolved without writing a new `historico` entry (`revisao.duplicataAceita: true`), which `finalizarLote` and the step-4 preview count both special-case to exclude from "will be recorded."
 
+Every `registrarPreco()` call also takes an optional `nomeNota`, written into the `historico` entry's `observacao` (e.g. `Registrado via Telegram — nota: "Queijo Prato Lanche Frimesa"`) — the catalog product name is often more generic than what's printed on the receipt, so this preserves the exact wording/brand from the note.
+
 ### Global review queue (`/revisar`, `/adiados`)
 
 Items with no catalog match that aren't resolved during a batch land in `filaRevisaoNotas` (status `pendente` or `ignorado`) and can be resolved later, independent of the batch that created them. `revisar.js` abstracts the item-by-item mechanic behind a "source" interface (`buscarProximo()`/`contar()`) so the same UI code serves both this global queue and step 3 of the batch flow.
 
-Item-by-item review offers: pick a suggested catalog match, correct the parsed name (free-text reply), suggest it as a brand-new product (creates a `sugestoes` doc, deduped by normalized name against existing pending suggestions), or defer it.
+Item-by-item review offers: pick a suggested catalog match, correct the parsed name (free-text reply), suggest it as a brand-new product, or defer it.
+
+**"Suggest new product" timing differs by context.** In the global queue, tapping it creates the `sugestoes` doc immediately (deduped by normalized name against existing pending suggestions). Inside a batch (step 3), it's deferred: the tap only marks `revisao.sugestaoPendente: true` on the lote item (reversible — nothing is written outside the lote yet) and the item drops out of step-3 review. The `sugestoes` doc is only actually created inside `finalizarLote` when the batch is confirmed at step 4, alongside registering the other items' prices. This exists because an accidental tap (e.g. meaning to hit "Corrigir nome") used to leave an orphaned suggestion in Firestore with no easy undo; canceling the whole batch (`/cancelar`) is currently the only way to back out of a pending one before finalizing.
 
 ### `callback_data` size constraint
 
