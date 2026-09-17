@@ -20,7 +20,7 @@ export function tecladoEtapa1(loteId) {
 
 export function tecladoEtapa2(loteId, itensComMatch) {
   const botoesRemover = itensComMatch.map((item) => [
-    { text: `❌ ${descreverItem(item)}`, callback_data: `lote_rm:${loteId}:${item.indice}` },
+    { text: `❌${item.jaRegistrado ? " ⚠️" : ""} ${descreverItem(item)}`, callback_data: `lote_rm:${loteId}:${item.indice}` },
   ]);
   return { inline_keyboard: [...botoesRemover, ...botoesNavegacao(loteId, 2)] };
 }
