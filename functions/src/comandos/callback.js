@@ -40,7 +40,7 @@ export async function tratarCallback(telegram, callbackQuery) {
   } else if (acao === "rv_res") {
     await resolverRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_cor") {
-    await corrigirRevisao(telegram, chatId, params);
+    await corrigirRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_ign") {
     await ignorarRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_sug") {
@@ -86,8 +86,8 @@ async function resolverContextoRevisao(params) {
         await resolverItemRevisao(itemId, produtoId);
         return { nomeProduto };
       },
-      async marcarAguardandoNome() {
-        await marcarAguardandoNomeNovo(itemId);
+      async marcarAguardandoNome(messageId) {
+        await marcarAguardandoNomeNovo(itemId, messageId);
       },
       async ignorar() {
         await ignorarItemRevisao(itemId);
@@ -152,9 +152,9 @@ async function resolverContextoRevisao(params) {
       });
       return { nomeProduto };
     },
-    async marcarAguardandoNome() {
+    async marcarAguardandoNome(messageId) {
       await atualizarItemDoLote(loteId, indice, {
-        revisao: { status: null, produtoIdResolvido: null, aguardandoNomeNovo: true },
+        revisao: { status: null, produtoIdResolvido: null, aguardandoNomeNovo: true, messageIdAguardandoNome: messageId },
       });
     },
     async ignorar() {
@@ -238,13 +238,16 @@ async function aceitarDuplicata(telegram, chatId, params, messageIdAviso) {
   await mostrarProximoAposAcao(telegram, chatId, params, ctx, candidata.messageIdOriginal);
 }
 
-async function corrigirRevisao(telegram, chatId, params) {
+async function corrigirRevisao(telegram, chatId, params, messageId) {
   const ctx = await resolverContextoRevisao(params);
   if (!ctx.acionavel) {
     await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
     return;
   }
-  await ctx.marcarAguardandoNome();
+  // Guarda o messageId da tela atual junto com o estado "aguardando nome" —
+  // quando a resposta em texto livre chegar (telegramWebhook.js), ela edita
+  // essa mesma mensagem em vez de acumular mensagens novas no chat.
+  await ctx.marcarAguardandoNome(messageId);
   await telegram.enviarMensagem(chatId, `Digite o nome correto para "${ctx.item.nomeExtraido}":`);
 }
 

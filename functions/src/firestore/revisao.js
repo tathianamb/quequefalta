@@ -63,9 +63,12 @@ export async function atualizarNomeItemRevisao(itemId, novoNome) {
   });
 }
 
-export async function marcarAguardandoNomeNovo(itemId) {
+export async function marcarAguardandoNomeNovo(itemId, messageId) {
   const db = getFirestore();
-  await db.collection("filaRevisaoNotas").doc(itemId).update({ aguardandoNomeNovo: true });
+  await db.collection("filaRevisaoNotas").doc(itemId).update({
+    aguardandoNomeNovo: true,
+    messageIdAguardandoNome: messageId,
+  });
 }
 
 // Guarda o produto candidato e a mensagem original enquanto o usuário decide
