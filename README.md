@@ -28,10 +28,13 @@ Uma planilha Google foi criada como solução intermediária, com estrutura rica
 - Lista de compras montada a partir dos produtos do catálogo
 - Visualização da lista agrupada por categoria
 - Checkbox rápido para marcar item como comprado ("tem em casa")
-- Registro de preço e mercado a partir do detalhe do produto (data automática)
+- Registro de preço e mercado a partir do detalhe do produto (data automática), com bloqueio de registro duplicado (mesmo mercado e data)
 - Histórico de preços por produto e por mercado, com destaque do **melhor preço**
 - Acesso a qualquer item do catálogo para registrar preço, mesmo fora da lista
-- Sugestão de novos produtos pelos usuários, com fluxo de aprovação por dois administradores
+- Sugestão de novos produtos pelos usuários, com fluxo de aprovação por um administrador
+- Receitas: cadastro (inclusive colando um texto para preenchimento automático), lista de ingredientes com checklist do que já está em casa, e atalho para adicionar os que faltam à lista
+- Grupos de substituição: agrupar produtos intercambiáveis (ex.: leite integral/desnatado/sem lactose) para uso nas receitas
+- Registro de preços pelo Telegram: colar a tabela de uma compra no bot para dar entrada nos preços sem abrir o app
 - Múltiplas listas por usuário e **compartilhamento por link**
 - Sincronização em tempo real entre os participantes de uma lista
 - Tema claro/escuro (com opção de seguir o sistema)
@@ -93,6 +96,24 @@ sugestoes                  # novos produtos propostos
     ├── nome / categoria / subcategoria / grupoSubstituicao
     ├── status             # pendente | aprovado | rejeitado
     └── aprovadores []     # uid do admin que aprovou
+
+receitas
+└── {receitaId}
+    ├── nome / foto / tempoPreparo / porcoes / dificuldade
+    ├── ingredientes []    # produtoId OU grupoSubstituicaoId OU nomeTemp (não catalogado) + quantidade/unidade
+    ├── passos []
+    ├── status             # pendente | aprovada | rejeitada
+    └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm
+
+grupoSubstituicao          # conjuntos de produtos intercambiáveis (ex.: "leite")
+└── {grupoId}
+    └── nome / nomeNorm / criadoEm
+
+codigosVinculo             # código de 6 dígitos gerado no app para vincular o Telegram (expira em 10 min)
+telegramVinculos           # chatId ↔ conta vinculada
+
+lotesNotaFiscal            # lote de nota fiscal em processamento pelo bot do Telegram
+filaRevisaoNotas           # fila global de itens sem match aguardando revisão (bot do Telegram)
 ```
 
 ### Mercados cadastrados (fixos)
@@ -106,7 +127,7 @@ sugestoes                  # novos produtos propostos
 
 ## 🖥️ Telas
 
-A interface usa navegação por **duas abas** (barra inferior) e um **menu lateral**.
+A interface usa navegação por **três abas** (barra inferior) e um **menu lateral**.
 
 ### 1. Lista de Compras (aba principal)
 - Exibe os itens com `comprado = false`, agrupados por categoria
@@ -122,20 +143,27 @@ A interface usa navegação por **duas abas** (barra inferior) e um **menu later
 - Toque adiciona o produto à lista ativa
 - Atalho para **sugerir produto** quando algo não existe no catálogo
 
-### 3. Detalhe do Produto (bottom sheet)
+### 3. Receitas
+- Lista de receitas aprovadas, com foto, tempo de preparo e porções
+- Detalhe: checklist de ingredientes (o que já está em casa) e passo a passo, com atalho para adicionar os que faltam à lista
+- Cadastro manual ou colando um texto de receita para preenchimento automático
+- Ingredientes podem referenciar um produto do catálogo, um grupo de substituição, ou um nome ainda não catalogado (aguarda aprovação)
+
+### 4. Detalhe do Produto (bottom sheet)
 - Informações completas do produto
-- Registro de preço: seleção de mercado (4 opções) + campo de preço (data automática)
+- Registro de preço: seleção de mercado (4 opções) + campo de preço (data automática), com aviso se já houver um preço registrado no mesmo mercado e data
 - Destaque do **melhor preço registrado** e em qual mercado
 - Histórico de preços com datas
 
-### 4. Menu lateral
+### 5. Menu lateral
 - Alternância de tema claro/escuro
 - Troca entre listas e **compartilhamento da lista por link** (Web Share API)
+- Vínculo com o bot do Telegram (gera um código de 6 dígitos para linkar a conta)
 - Acesso ao **Painel de Administração** (apenas admins)
 
-### 5. Painel de Administração (admins)
-- Revisão das sugestões de produtos
-- Aprovação em duas etapas (precisa de dois admins) antes de entrar no catálogo
+### 6. Painel de Administração (admins)
+- Revisão das sugestões de produtos e de receitas
+- Aprovação de um administrador já é suficiente para entrar no catálogo
 - Edição e remoção de sugestões
 
 ---
@@ -152,10 +180,13 @@ Na hora de ir ao mercado
 
 Durante a compra
   └── Abrir o item → informar mercado + preço (data automática)
+      ou colar a tabela da compra no bot do Telegram (mercado + itens
+      de uma vez), sem precisar abrir o app
 
 A qualquer momento
   └── Abrir o Catálogo para consultar histórico, registrar preço
       ou sugerir um produto novo
+  └── Abrir Receitas para ver o que dá pra fazer com o que já tem em casa
 
 Para compartilhar
   └── Menu → compartilhar link da lista → o convidado confirma o acesso
@@ -176,6 +207,7 @@ Para compartilhar
 | Sync em tempo real | Firestore (`onSnapshot`) | Atualizações instantâneas entre dispositivos |
 | Offline | Service Worker + cache local | Visualização e marcação sem internet |
 | CI/CD | GitHub Actions | Build e deploy automáticos no push para `main` |
+| Bot do Telegram | Firebase Cloud Functions (Node 20) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
 
 ---
 
@@ -188,6 +220,7 @@ Para compartilhar
 - O catálogo e as sugestões são **globais** (compartilhados por todos)
 - Administradores definidos em `src/config/admins.js` por e-mail
 - Domínio `usuario.github.io/quequefalta` cadastrado como domínio autorizado no Firebase
+- O bot do Telegram é vinculado à conta via código de 6 dígitos gerado no Menu (expira em 10 minutos); o chat do Telegram fica associado ao `uid` do usuário
 
 ---
 
@@ -226,6 +259,18 @@ Os produtos da planilha (`scripts/Lista_Completa_Supermercado.tsv`) são importa
 node scripts/importar-catalogo.mjs
 ```
 
+### Bot do Telegram (`functions/`)
+Codebase separada (Firebase Cloud Functions, Node 20, ESM), sem `lint`/`test`/`build` configurados. Antes de publicar uma mudança:
+
+```bash
+cd functions
+node --check src/caminho/do/arquivo.js                          # checagem de sintaxe
+node -e "import('./index.js').then(()=>console.log('OK'))"      # confirma que os módulos carregam
+firebase deploy --only functions:telegramWebhook                # deploy (única função exportada)
+```
+
+Depende de dois secrets do Firebase (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`), provisionados via `firebase functions:secrets:set`.
+
 ---
 
 ## 🛠️ Estrutura do Projeto
@@ -237,26 +282,47 @@ src/
 ├── config/
 │   ├── firebase.js          # inicialização do Firebase
 │   ├── lista.js             # criação, entrada e troca de listas
-│   └── admins.js            # e-mails com acesso de admin
+│   ├── admins.js            # e-mails com acesso de admin
+│   └── telegram.js          # geração/remoção do código de vínculo do Telegram
 ├── hooks/
 │   ├── useLista.js          # itens da lista ativa (tempo real)
 │   ├── useCatalogo.js       # catálogo global (tempo real)
-│   ├── useSugestoes.js      # sugestões + aprovação por dois admins
+│   ├── useSugestoes.js      # sugestões de produto + aprovação por um admin
+│   ├── useReceitas.js       # receitas + aprovação por um admin
+│   ├── useGrupoSubstituicao.js  # grupos de produtos intercambiáveis
+│   ├── useTelegramVinculo.js    # estado do vínculo com o bot do Telegram
+│   ├── useBackStack.js      # navegação por "voltar" sem router
 │   └── useTema.js           # tema claro/escuro
 ├── pages/
 │   ├── Login.jsx
-│   ├── Home.jsx             # abas Lista e Catálogo
-│   └── Catalogo.jsx
+│   ├── Home.jsx             # abas Lista, Catálogo e Receitas
+│   └── Catalogo.jsx         # stub/não utilizado
 ├── components/
-│   ├── Menu.jsx             # menu lateral, troca/compartilhamento de listas
+│   ├── Menu.jsx             # menu lateral, troca/compartilhamento de listas, vínculo Telegram
 │   ├── CategoriaGrupo.jsx
 │   ├── ProdutoItem.jsx
 │   ├── DetalhesProduto.jsx  # preços e histórico
 │   ├── FiltroCategoria.jsx
-│   └── AdminPanel.jsx       # revisão de sugestões
+│   ├── AdminPanel.jsx       # revisão de sugestões
+│   └── receitas/
+│       ├── ReceitaLista.jsx
+│       ├── ReceitaDetalhe.jsx
+│       ├── ReceitaFormulario.jsx
+│       └── ReceitaTexto.jsx # colar texto de receita para preenchimento automático
 └── utils/
     ├── categorias.js        # cores e ordem das categorias
-    └── estilos.js           # tokens de tipografia, raio e botões
+    ├── estilos.js           # tokens de tipografia, raio e botões
+    └── parseReceita.js      # extrai ingredientes/passos de um texto colado
+
+functions/                    # Cloud Functions do bot do Telegram (codebase separada)
+├── index.js                  # exporta telegramWebhook
+└── src/
+    ├── telegramWebhook.js    # handler HTTP, roteamento dos updates
+    ├── comandos/              # handlers de comando e callback
+    ├── firestore/             # acesso a lotesNotaFiscal, filaRevisaoNotas etc.
+    ├── matching/              # fuzzy match do item da nota contra o catálogo
+    ├── parser/                # interpretação da tabela colada
+    └── telegram/              # cliente da Bot API e teclados inline
 ```
 
 ---
@@ -274,6 +340,9 @@ O Service Worker (gerado pelo `vite-plugin-pwa`, `registerType: 'autoUpdate'`) c
 
 ### Sugestões de produtos
 Quando um usuário sugere um produto, ele entra como `pendente`. Com a aprovação de um admin, o produto é criado no catálogo e a sugestão fica `aprovado`.
+
+### Bot do Telegram
+Cloud Function única (`telegramWebhook`), que recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao colar a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
 
 ---
 
