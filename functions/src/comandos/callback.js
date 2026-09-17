@@ -204,8 +204,10 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
     return;
   }
 
-  await telegram.enviarMensagem(chatId, `✅ Preço registrado! (${nomeProduto} — ${preco})`);
-  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
+  // Confirmação vira o prefixo da próxima tela em vez de mensagem separada —
+  // numa nota com muitos itens sem match, cada correção deixava 1 mensagem
+  // nova; com várias seguidas isso virava um histórico bem longo.
+  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId, `✅ Preço registrado! (${nomeProduto} — ${preco})\n\n`);
 }
 
 async function aceitarDuplicata(telegram, chatId, params, messageIdAviso) {
@@ -228,7 +230,8 @@ async function aceitarDuplicata(telegram, chatId, params, messageIdAviso) {
     { reply_markup: { inline_keyboard: [] } }
   );
   // Edita a mensagem original (com os botões de sugestão), não o aviso de
-  // duplicata — evita as duas telas acumulando no histórico.
+  // duplicata — evita as duas telas acumulando no histórico. A confirmação
+  // acima já ficou registrada no aviso, então não repete como prefixo aqui.
   await mostrarProximoAposAcao(telegram, chatId, params, ctx, candidata.messageIdOriginal);
 }
 
@@ -249,13 +252,10 @@ async function ignorarRevisao(telegram, chatId, params, messageId) {
   const ctx = await resolverContextoRevisao(params);
   if (!ctx.item) return;
   await ctx.ignorar();
-  await telegram.enviarMensagem(
-    chatId,
-    params[0] === "fila" && ctx.item.status === "ignorado"
-      ? "Continua adiado."
-      : "Deixado para depois."
-  );
-  await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId);
+  const mensagem = params[0] === "fila" && ctx.item.status === "ignorado"
+    ? "Continua adiado."
+    : "Deixado para depois.";
+  await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId, `${mensagem}\n\n`);
 }
 
 async function sugerirProduto(telegram, chatId, params, messageId) {
@@ -272,17 +272,16 @@ async function sugerirProduto(telegram, chatId, params, messageId) {
     // No lote, a sugestão só é criada de fato ao confirmar a etapa 4 — até
     // lá é só uma marcação reversível (voltar/corrigir nome desfaz).
     : `📨 "${ctx.item.nomeExtraido}" vai ser enviado como sugestão de produto novo ao finalizar (etapa 4).`;
-  await telegram.enviarMensagem(chatId, mensagem);
-  await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId);
+  await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId, `${mensagem}\n\n`);
 }
 
-async function mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId) {
+async function mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId, prefixo = "") {
   if (params[0] === "fila") {
-    await mostrarProximoDaMesmaLista(telegram, chatId, ctx.item, messageId);
+    await mostrarProximoDaMesmaLista(telegram, chatId, ctx.item, messageId, prefixo);
     return;
   }
   const loteAtualizado = await buscarLotePorId(ctx.lote.id);
-  await mostrarEtapa(telegram, chatId, loteAtualizado, messageId);
+  await mostrarEtapa(telegram, chatId, loteAtualizado, messageId, prefixo);
 }
 
 async function cancelarLote(telegram, chatId, loteId) {

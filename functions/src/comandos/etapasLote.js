@@ -3,27 +3,27 @@ import { mostrarEtapa3 as mostrarEtapa3Revisao } from "./revisar.js";
 import { tecladoEtapa1, tecladoEtapa2, tecladoEtapa4 } from "../telegram/teclados.js";
 import { enviarOuEditar } from "../telegram/enviarOuEditar.js";
 
-async function mostrarEtapa1(telegram, chatId, lote, messageId) {
+async function mostrarEtapa1(telegram, chatId, lote, messageId, prefixo = "") {
   const resumo = lote.itens.map(formatarLinhaItem).join("\n");
   await enviarOuEditar(
     telegram,
     chatId,
     messageId,
-    `Etapa 1/4 — Resumo\n\nMercado: ${lote.mercado}\n\n${resumo}`,
+    `${prefixo}Etapa 1/4 — Resumo\n\nMercado: ${lote.mercado}\n\n${resumo}`,
     { reply_markup: tecladoEtapa1(lote.id) }
   );
 }
 
-async function mostrarEtapa2(telegram, chatId, lote, messageId) {
+async function mostrarEtapa2(telegram, chatId, lote, messageId, prefixo = "") {
   const itensComMatch = lote.itens.filter((i) => i.statusMatch === "match");
   const texto = itensComMatch.length
     ? "Etapa 2/4 — Revisão dos itens com match\n\nClique no item que está errado para tirá-lo do match automático (ele passa a contar como sem match):"
     : "Etapa 2/4 — Revisão dos itens com match\n\nNenhum item com match automático.";
 
-  await enviarOuEditar(telegram, chatId, messageId, texto, { reply_markup: tecladoEtapa2(lote.id, itensComMatch) });
+  await enviarOuEditar(telegram, chatId, messageId, `${prefixo}${texto}`, { reply_markup: tecladoEtapa2(lote.id, itensComMatch) });
 }
 
-async function mostrarEtapa4(telegram, chatId, lote, messageId) {
+async function mostrarEtapa4(telegram, chatId, lote, messageId, prefixo = "") {
   // Mesmo critério usado em finalizarLote (callback.js): "resolvido" só conta
   // como preço a gravar se já existe um produtoIdResolvido — sugestaoPendente
   // é o item marcado "sugerir novo produto" na etapa 3, que só vira uma
@@ -61,12 +61,16 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId) {
     telegram,
     chatId,
     messageId,
-    `Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheSugeridos}${detalheFila}\n\nConfirma?`,
+    `${prefixo}Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheSugeridos}${detalheFila}\n\nConfirma?`,
     { reply_markup: tecladoEtapa4(lote.id) }
   );
 }
 
-export function mostrarEtapa(telegram, chatId, lote, messageId) {
+// `prefixo` antepõe uma confirmação pontual (ex: "✅ Preço registrado! (...)")
+// ao texto da etapa, em vez de mandá-la como mensagem separada — reduz o
+// histórico quando várias correções acontecem em sequência (uma nota com
+// muitos itens sem match podia virar dezenas de mensagens novas).
+export function mostrarEtapa(telegram, chatId, lote, messageId, prefixo = "") {
   const passos = {
     1: mostrarEtapa1,
     2: mostrarEtapa2,
@@ -74,5 +78,5 @@ export function mostrarEtapa(telegram, chatId, lote, messageId) {
     4: mostrarEtapa4,
   };
   const passo = passos[lote.etapaAtual || 1];
-  return passo(telegram, chatId, lote, messageId);
+  return passo(telegram, chatId, lote, messageId, prefixo);
 }
