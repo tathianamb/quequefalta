@@ -68,6 +68,17 @@ export async function marcarAguardandoNomeNovo(itemId) {
   await db.collection("filaRevisaoNotas").doc(itemId).update({ aguardandoNomeNovo: true });
 }
 
+// Guarda o produto candidato e a mensagem original enquanto o usuário decide
+// se aceita a duplicata detectada — evita ter que embutir esses dados no
+// callback_data do botão "Aceitar" (loteId/itemId já quase estouram os 64
+// bytes do Telegram sozinhos).
+export async function marcarAguardandoConfirmacaoDuplicata(itemId, produtoIdCandidato, messageIdOriginal) {
+  const db = getFirestore();
+  await db.collection("filaRevisaoNotas").doc(itemId).update({
+    duplicataCandidata: { produtoIdCandidato, messageIdOriginal },
+  });
+}
+
 export async function buscarItemAguardandoNome(uid) {
   const db = getFirestore();
   const snap = await db

@@ -14,6 +14,7 @@ import {
   ignorarItemRevisao,
   marcarAguardandoNomeNovo,
   marcarItemComoSugerido,
+  marcarAguardandoConfirmacaoDuplicata,
 } from "../firestore/revisao.js";
 import { criarSugestaoDeProduto } from "../firestore/sugestoes.js";
 import { mostrarProximoDaMesmaLista } from "./revisar.js";
@@ -45,7 +46,7 @@ export async function tratarCallback(telegram, callbackQuery) {
   } else if (acao === "rv_sug") {
     await sugerirProduto(telegram, chatId, params, messageId);
   } else if (acao === "rv_dup") {
-    await aceitarDuplicata(telegram, chatId, params, messageId);
+    await aceitarDuplicata(telegram, chatId, params);
   }
 }
 
@@ -64,10 +65,11 @@ async function resolverContextoRevisao(params) {
     return {
       item,
       acionavel,
-      async resolver(produtoId, { aceitarDuplicata = false } = {}) {
+      async resolver(produtoId, messageId, { aceitarDuplicata = false } = {}) {
         const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
         const nomeProduto = produtoDoc.data()?.nome;
         if (!aceitarDuplicata && await produtoJaTemRegistro({ produtoId, mercado: item.mercado, data: item.dataDaNota })) {
+          await marcarAguardandoConfirmacaoDuplicata(itemId, produtoId, messageId);
           return { nomeProduto, jaRegistrado: true };
         }
         if (!aceitarDuplicata) {
@@ -116,10 +118,13 @@ async function resolverContextoRevisao(params) {
     item,
     acionavel,
     lote,
-    async resolver(produtoId, { aceitarDuplicata = false } = {}) {
+    async resolver(produtoId, messageId, { aceitarDuplicata = false } = {}) {
       const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
       const nomeProduto = produtoDoc.data()?.nome;
       if (!aceitarDuplicata && await produtoJaTemRegistro({ produtoId, mercado: lote.mercado, data: lote.dataDaNota })) {
+        await atualizarItemDoLote(loteId, indice, {
+          revisao: { status: null, produtoIdResolvido: null, aguardandoNomeNovo: false, duplicataCandidata: { produtoIdCandidato: produtoId, messageIdOriginal: messageId } },
+        });
         return { nomeProduto, jaRegistrado: true };
       }
       if (!aceitarDuplicata) {
@@ -183,18 +188,21 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
     return;
   }
 
-  const { nomeProduto, jaRegistrado } = await ctx.resolver(produtoId);
+  const { nomeProduto, jaRegistrado } = await ctx.resolver(produtoId, messageId);
   const preco = `R$ ${ctx.item.precoExtraido.toFixed(2).replace(".", ",")}`;
 
   if (jaRegistrado) {
     // Não grava e não avança sozinho — o usuário decide: aceitar que é
     // duplicata mesmo (marca resolvido sem gravar de novo) ou escolher outra
-    // opção na tela original (que continua intocada por baixo).
+    // opção na tela original (que continua intocada por baixo). O produto
+    // candidato e o messageId da tela original ficam salvos no próprio item
+    // (duplicataCandidata) em vez de no callback_data — loteId/itemId do
+    // Firestore (~20 chars) já deixam pouca folga nos 64 bytes do Telegram.
     await telegram.enviarMensagem(
       chatId,
       `⚠️ "${nomeProduto}" já tem preço registrado nesse mercado/data.`,
       { reply_markup: { inline_keyboard: [[
-        { text: "✅ Aceitar (não gravar de novo)", callback_data: `rv_dup:${params.join(":")}` },
+        { text: "✅ Aceitar (não gravar de novo)", callback_data: `rv_dup:${escopoParams.join(":")}` },
       ]] } }
     );
     return;
@@ -204,19 +212,19 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
   await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
 }
 
-async function aceitarDuplicata(telegram, chatId, params, messageId) {
-  const produtoId = params[params.length - 1];
-  const escopoParams = params.slice(0, -1);
-  const ctx = await resolverContextoRevisao(escopoParams);
-
-  if (!ctx.acionavel) {
+async function aceitarDuplicata(telegram, chatId, params) {
+  const ctx = await resolverContextoRevisao(params);
+  const candidata = ctx.item?.revisao?.duplicataCandidata || ctx.item?.duplicataCandidata;
+  if (!candidata) {
     await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
     return;
   }
 
-  const { nomeProduto } = await ctx.resolver(produtoId, { aceitarDuplicata: true });
+  const { nomeProduto } = await ctx.resolver(candidata.produtoIdCandidato, candidata.messageIdOriginal, { aceitarDuplicata: true });
   await telegram.enviarMensagem(chatId, `✅ Ok, "${nomeProduto}" fica como já registrado — não grava de novo.`);
-  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
+  // Edita a mensagem original (com os botões de sugestão), não o aviso de
+  // duplicata — evita as duas telas acumulando no histórico.
+  await mostrarProximoAposAcao(telegram, chatId, params, ctx, candidata.messageIdOriginal);
 }
 
 async function corrigirRevisao(telegram, chatId, params) {
