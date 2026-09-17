@@ -700,7 +700,7 @@ function Menu({
 
             <select
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
+              onChange={(e) => { setCategoria(e.target.value); setSubcategoria(""); }}
               style={{
                 padding: "14px",
                 borderRadius: RAIO.md,
@@ -723,10 +723,10 @@ function Menu({
               <option value="Outro">Outro</option>
             </select>
 
-            <input
+            <select
               value={subcategoria}
               onChange={(e) => setSubcategoria(e.target.value)}
-              placeholder="Subcategoria (opcional)"
+              disabled={!categoria}
               style={{
                 padding: "14px",
                 borderRadius: RAIO.md,
@@ -734,10 +734,24 @@ function Menu({
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
-                color: "var(--text)",
+                color: subcategoria ? "var(--text)" : "var(--text-soft)",
                 outline: "none",
+                opacity: !categoria ? 0.5 : 1,
               }}
-            />
+            >
+              <option value="">Subcategoria (opcional)</option>
+              {[...new Set(
+                catalogo
+                  .filter((p) => p.categoria === categoria && p.subcategoria)
+                  .map((p) => p.subcategoria)
+              )]
+                .sort((a, b) => a.localeCompare(b, "pt-BR"))
+                .map((sc) => (
+                  <option key={sc} value={sc}>
+                    {sc}
+                  </option>
+                ))}
+            </select>
 
             <button
               onClick={handleSugestao}

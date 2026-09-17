@@ -57,6 +57,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
 
   const cor = corDaCategoria(produto.categoria);
 
+  const subcategoriasDaCategoria = useMemo(() => {
+    return [...new Set(
+      catalogo
+        .filter((p) => p.categoria === adminCategoria && p.subcategoria)
+        .map((p) => p.subcategoria)
+    )].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [catalogo, adminCategoria]);
+
   const mercadosConhecidos = useMemo(() => {
     const set = new Set(MERCADOS_BASE);
     catalogo.forEach((p) =>
@@ -163,19 +171,26 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
               />
               <select
                 value={adminCategoria}
-                onChange={(e) => setAdminCategoria(e.target.value)}
+                onChange={(e) => { setAdminCategoria(e.target.value); setAdminSubcategoria(""); }}
                 style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
               >
                 {[...ORDEM_CATEGORIAS].sort((a, b) => a.localeCompare(b, "pt-BR")).map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
-              <input
+              <select
                 value={adminSubcategoria}
                 onChange={(e) => setAdminSubcategoria(e.target.value)}
-                placeholder="Subcategoria"
-                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
-              />
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: adminSubcategoria ? "var(--text)" : "var(--text-soft)", outline: "none" }}
+              >
+                <option value="">Subcategoria</option>
+                {adminSubcategoria && !subcategoriasDaCategoria.includes(adminSubcategoria) && (
+                  <option value={adminSubcategoria}>{adminSubcategoria}</option>
+                )}
+                {subcategoriasDaCategoria.map((sc) => (
+                  <option key={sc} value={sc}>{sc}</option>
+                ))}
+              </select>
               <div>
                 <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "6px" }}>Grupo de Substituição</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
