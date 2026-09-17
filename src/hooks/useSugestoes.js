@@ -16,12 +16,22 @@ export function useSugestoes(usuario) {
   const pendentes = sugestoes.filter(s => s.status === 'pendente')
 
   const aprovar = async (sugestao) => {
+    const historico = sugestao.precoSugerido != null
+      ? [{
+          mercado: sugestao.mercadoSugerido || '',
+          preco: sugestao.precoSugerido,
+          data: sugestao.dataSugerida ? new Date(`${sugestao.dataSugerida}T12:00:00`) : new Date(),
+          observacao: 'Registrado via Telegram',
+          listaAtiva: sugestao.listaAtiva || null,
+        }]
+      : []
+
     await addDoc(collection(db, 'catalogo'), {
       nome: sugestao.nome,
       categoria: sugestao.categoria,
       subcategoria: sugestao.subcategoria || '',
       grupoSubstituicao: sugestao.grupoSubstituicao || [],
-      historico: [],
+      historico,
       receitas: [],
       criadoEm: serverTimestamp(),
     })

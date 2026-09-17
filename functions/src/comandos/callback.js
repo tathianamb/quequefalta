@@ -80,7 +80,14 @@ async function resolverContextoRevisao(params) {
       },
       async sugerirProduto() {
         const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
-        const { jaExistia } = await criarSugestaoDeProduto({ nome: item.nomeExtraido, uid: item.uid, listaAtiva });
+        const { jaExistia } = await criarSugestaoDeProduto({
+          nome: item.nomeExtraido,
+          uid: item.uid,
+          listaAtiva,
+          preco: item.precoExtraido,
+          mercado: item.mercado,
+          data: item.dataDaNota,
+        });
         await marcarItemComoSugerido(itemId);
         return { jaExistia };
       },
@@ -123,7 +130,14 @@ async function resolverContextoRevisao(params) {
     },
     async sugerirProduto() {
       const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
-      const { jaExistia } = await criarSugestaoDeProduto({ nome: item.nomeExtraido, uid: lote.uid, listaAtiva });
+      const { jaExistia } = await criarSugestaoDeProduto({
+        nome: item.nomeExtraido,
+        uid: lote.uid,
+        listaAtiva,
+        preco: item.precoExtraido,
+        mercado: lote.mercado,
+        data: lote.dataDaNota,
+      });
       await atualizarItemDoLote(loteId, indice, {
         revisao: { status: "resolvido", produtoIdResolvido: null, aguardandoNomeNovo: false },
       });

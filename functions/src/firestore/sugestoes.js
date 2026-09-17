@@ -11,7 +11,7 @@ async function jaExisteSugestaoPendente(nome) {
   return snap.docs.some((d) => normalizar(d.data().nome) === alvo);
 }
 
-export async function criarSugestaoDeProduto({ nome, uid, listaAtiva }) {
+export async function criarSugestaoDeProduto({ nome, uid, listaAtiva, preco, mercado, data }) {
   if (await jaExisteSugestaoPendente(nome)) {
     return { jaExistia: true };
   }
@@ -26,6 +26,12 @@ export async function criarSugestaoDeProduto({ nome, uid, listaAtiva }) {
     subcategoria: "",
     sugeridoPor: email,
     listaAtiva,
+    // Preço da nota que originou a sugestão — usado para já criar o produto
+    // com o primeiro registro de histórico quando a sugestão for aprovada
+    // (sem isso, o preço que motivou a sugestão seria perdido para sempre).
+    precoSugerido: preco ?? null,
+    mercadoSugerido: mercado ?? null,
+    dataSugerida: data ?? null,
     criadoEm: FieldValue.serverTimestamp(),
     status: "pendente",
   });
