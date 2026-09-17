@@ -86,8 +86,8 @@ async function resolverContextoRevisao(params) {
         await resolverItemRevisao(itemId, produtoId);
         return { nomeProduto };
       },
-      async marcarAguardandoNome(messageId) {
-        await marcarAguardandoNomeNovo(itemId, messageId);
+      async marcarAguardandoNome(messageId, messageIdPergunta) {
+        await marcarAguardandoNomeNovo(itemId, messageId, messageIdPergunta);
       },
       async ignorar() {
         await ignorarItemRevisao(itemId);
@@ -152,9 +152,15 @@ async function resolverContextoRevisao(params) {
       });
       return { nomeProduto };
     },
-    async marcarAguardandoNome(messageId) {
+    async marcarAguardandoNome(messageId, messageIdPergunta) {
       await atualizarItemDoLote(loteId, indice, {
-        revisao: { status: null, produtoIdResolvido: null, aguardandoNomeNovo: true, messageIdAguardandoNome: messageId },
+        revisao: {
+          status: null,
+          produtoIdResolvido: null,
+          aguardandoNomeNovo: true,
+          messageIdAguardandoNome: messageId,
+          messageIdPergunta,
+        },
       });
     },
     async ignorar() {
@@ -241,11 +247,12 @@ async function corrigirRevisao(telegram, chatId, params, messageId) {
     await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
     return;
   }
-  // Guarda o messageId da tela atual junto com o estado "aguardando nome" —
-  // quando a resposta em texto livre chegar (telegramWebhook.js), ela edita
-  // essa mesma mensagem em vez de acumular mensagens novas no chat.
-  await ctx.marcarAguardandoNome(messageId);
-  await telegram.enviarMensagem(chatId, `Digite o nome correto para "${ctx.item.nomeExtraido}":`);
+  const pergunta = await telegram.enviarMensagem(chatId, `Digite o nome correto para "${ctx.item.nomeExtraido}":`);
+  // Guarda o messageId da tela original (nunca editada) e o da própria
+  // pergunta — quando a resposta em texto livre chegar (telegramWebhook.js),
+  // ela apaga a pergunta e a resposta do usuário, e edita a tela original em
+  // vez de deixar rastro da troca de pergunta/resposta no meio do chat.
+  await ctx.marcarAguardandoNome(messageId, pergunta.message_id);
 }
 
 async function ignorarRevisao(telegram, chatId, params, messageId) {

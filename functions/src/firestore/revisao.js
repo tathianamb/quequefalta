@@ -63,11 +63,12 @@ export async function atualizarNomeItemRevisao(itemId, novoNome) {
   });
 }
 
-export async function marcarAguardandoNomeNovo(itemId, messageId) {
+export async function marcarAguardandoNomeNovo(itemId, messageId, messageIdPergunta) {
   const db = getFirestore();
   await db.collection("filaRevisaoNotas").doc(itemId).update({
     aguardandoNomeNovo: true,
     messageIdAguardandoNome: messageId,
+    messageIdPergunta,
   });
 }
 

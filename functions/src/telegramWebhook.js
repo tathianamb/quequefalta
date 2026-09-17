@@ -24,6 +24,11 @@ function podeSerTabela(texto) {
   return texto.split("\n").filter((l) => l.trim()).length >= 2;
 }
 
+function apagarSeExistir(telegram, chatId, messageId) {
+  if (!messageId) return Promise.resolve();
+  return telegram.apagarMensagem(chatId, messageId).catch(() => {});
+}
+
 const PEDIR_VINCULO =
   "Vincule sua conta primeiro: gere um código no app (Menu → Vincular Telegram) e mande /vincular 123456 aqui.";
 
@@ -84,23 +89,26 @@ async function processarUpdate(telegram, update) {
 
   const itemLoteAguardandoNome = loteEmAberto?.itens.find((i) => i.revisao?.aguardandoNomeNovo);
   if (itemLoteAguardandoNome) {
-    const messageIdOriginal = itemLoteAguardandoNome.revisao?.messageIdAguardandoNome;
+    const { messageIdAguardandoNome: messageIdOriginal, messageIdPergunta } = itemLoteAguardandoNome.revisao || {};
     await atualizarItemDoLote(loteEmAberto.id, itemLoteAguardandoNome.indice, {
       nomeExtraido: texto.trim(),
       revisao: null,
     });
-    // Edita a tela original (com os botões de sugestão) em vez de mandar uma
-    // mensagem nova — o nome novo já aparece ali na próxima pergunta, sem
-    // precisar de uma confirmação "Nome atualizado" separada (numa correção
-    // atrás da outra, isso rapidamente virava um histórico longo).
+    // Apaga a pergunta ("Digite o nome correto...") e a resposta do usuário —
+    // só o bloco principal (tela original, nunca editada até aqui) segue o
+    // fluxo normal, sem deixar rastro da troca de pergunta/resposta no chat.
+    await apagarSeExistir(telegram, chatId, messageIdPergunta);
+    await apagarSeExistir(telegram, chatId, update.message.message_id);
     await mostrarEtapa(telegram, chatId, await buscarLoteEmAberto(chatId), messageIdOriginal);
     return;
   }
 
   const itemAguardandoNome = await buscarItemAguardandoNome(uid);
   if (itemAguardandoNome) {
-    const messageIdOriginal = itemAguardandoNome.messageIdAguardandoNome;
+    const { messageIdAguardandoNome: messageIdOriginal, messageIdPergunta } = itemAguardandoNome;
     await atualizarNomeItemRevisao(itemAguardandoNome.id, texto.trim());
+    await apagarSeExistir(telegram, chatId, messageIdPergunta);
+    await apagarSeExistir(telegram, chatId, update.message.message_id);
     await mostrarItemRenomeadoDaFila(telegram, chatId, itemAguardandoNome.id, messageIdOriginal);
     return;
   }
