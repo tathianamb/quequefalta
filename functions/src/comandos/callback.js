@@ -46,7 +46,7 @@ export async function tratarCallback(telegram, callbackQuery) {
   } else if (acao === "rv_sug") {
     await sugerirProduto(telegram, chatId, params, messageId);
   } else if (acao === "rv_dup") {
-    await aceitarDuplicata(telegram, chatId, params);
+    await aceitarDuplicata(telegram, chatId, params, messageId);
   }
 }
 
@@ -212,7 +212,7 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
   await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
 }
 
-async function aceitarDuplicata(telegram, chatId, params) {
+async function aceitarDuplicata(telegram, chatId, params, messageIdAviso) {
   const ctx = await resolverContextoRevisao(params);
   const candidata = ctx.item?.revisao?.duplicataCandidata || ctx.item?.duplicataCandidata;
   if (!candidata) {
@@ -221,7 +221,16 @@ async function aceitarDuplicata(telegram, chatId, params) {
   }
 
   const { nomeProduto } = await ctx.resolver(candidata.produtoIdCandidato, candidata.messageIdOriginal, { aceitarDuplicata: true });
-  await telegram.enviarMensagem(chatId, `✅ Ok, "${nomeProduto}" fica como já registrado — não grava de novo.`);
+  // Edita o próprio aviso (removendo o botão já usado) em vez de mandar uma
+  // confirmação nova — evita acumular uma mensagem extra por item aceito.
+  // editMessageText sem reply_markup mantém o teclado anterior, então o
+  // array vazio precisa ser explícito para o botão "Aceitar" sumir.
+  await telegram.editarMensagem(
+    chatId,
+    messageIdAviso,
+    `✅ Ok, "${nomeProduto}" não será registrado novamente.`,
+    { reply_markup: { inline_keyboard: [] } }
+  );
   // Edita a mensagem original (com os botões de sugestão), não o aviso de
   // duplicata — evita as duas telas acumulando no histórico.
   await mostrarProximoAposAcao(telegram, chatId, params, ctx, candidata.messageIdOriginal);
