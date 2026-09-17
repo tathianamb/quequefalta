@@ -36,13 +36,13 @@ export async function tratarCallback(telegram, callbackQuery) {
   } else if (acao === "lote_canc") {
     await cancelarLote(telegram, chatId, params[0]);
   } else if (acao === "rv_res") {
-    await resolverRevisao(telegram, chatId, params);
+    await resolverRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_cor") {
     await corrigirRevisao(telegram, chatId, params);
   } else if (acao === "rv_ign") {
-    await ignorarRevisao(telegram, chatId, params);
+    await ignorarRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_sug") {
-    await sugerirProduto(telegram, chatId, params);
+    await sugerirProduto(telegram, chatId, params, messageId);
   }
 }
 
@@ -146,7 +146,7 @@ async function resolverContextoRevisao(params) {
   };
 }
 
-async function resolverRevisao(telegram, chatId, params) {
+async function resolverRevisao(telegram, chatId, params, messageId) {
   const produtoId = params[params.length - 1];
   const escopoParams = params.slice(0, -1);
   const ctx = await resolverContextoRevisao(escopoParams);
@@ -158,7 +158,7 @@ async function resolverRevisao(telegram, chatId, params) {
 
   await ctx.resolver(produtoId);
   await telegram.enviarMensagem(chatId, "✅ Preço registrado!");
-  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx);
+  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId);
 }
 
 async function corrigirRevisao(telegram, chatId, params) {
@@ -171,7 +171,7 @@ async function corrigirRevisao(telegram, chatId, params) {
   await telegram.enviarMensagem(chatId, `Digite o nome correto para "${ctx.item.nomeExtraido}":`);
 }
 
-async function ignorarRevisao(telegram, chatId, params) {
+async function ignorarRevisao(telegram, chatId, params, messageId) {
   const ctx = await resolverContextoRevisao(params);
   if (!ctx.item) return;
   await ctx.ignorar();
@@ -181,10 +181,10 @@ async function ignorarRevisao(telegram, chatId, params) {
       ? "Continua adiado."
       : "Deixado para depois."
   );
-  await mostrarProximoAposAcao(telegram, chatId, params, ctx);
+  await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId);
 }
 
-async function sugerirProduto(telegram, chatId, params) {
+async function sugerirProduto(telegram, chatId, params, messageId) {
   const ctx = await resolverContextoRevisao(params);
   if (!ctx.acionavel) {
     await telegram.enviarMensagem(chatId, "Esse item já foi resolvido.");
@@ -195,16 +195,16 @@ async function sugerirProduto(telegram, chatId, params) {
     ? `📨 "${ctx.item.nomeExtraido}" já tinha sido sugerido antes — aguardando aprovação de um admin. Assim que for aprovado, você pode registrar o preço de novo.`
     : `📨 "${ctx.item.nomeExtraido}" foi enviado como sugestão de produto novo — um admin vai revisar. Assim que for aprovado, você pode registrar o preço de novo.`;
   await telegram.enviarMensagem(chatId, mensagem);
-  await mostrarProximoAposAcao(telegram, chatId, params, ctx);
+  await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId);
 }
 
-async function mostrarProximoAposAcao(telegram, chatId, params, ctx) {
+async function mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId) {
   if (params[0] === "fila") {
-    await mostrarProximoDaMesmaLista(telegram, chatId, ctx.item);
+    await mostrarProximoDaMesmaLista(telegram, chatId, ctx.item, messageId);
     return;
   }
   const loteAtualizado = await buscarLotePorId(ctx.lote.id);
-  await mostrarEtapa(telegram, chatId, loteAtualizado);
+  await mostrarEtapa(telegram, chatId, loteAtualizado, messageId);
 }
 
 async function cancelarLote(telegram, chatId, loteId) {
