@@ -1,5 +1,5 @@
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODELO = "gemini-2.0-flash";
+const MODELO = "gemini-3.6-flash";
 
 const TENTATIVAS_MAXIMAS = 3; // 1 tentativa original + 2 retries
 const BACKOFF_MS = 5000;

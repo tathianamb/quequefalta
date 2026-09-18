@@ -79,7 +79,10 @@ export async function criarCardapioDoDia(uid, dataIso, { chatId, promptContexto,
       status: "aguardando_feedback",
       promptContexto,
       respostaAtual: resposta,
-      historico: [{ tipo: "geracao_inicial", prompt, resposta, em: FieldValue.serverTimestamp() }],
+      // FieldValue.serverTimestamp() não pode ser usado dentro de um array —
+      // Firestore rejeita o write inteiro. Usamos Date() do processo, que é
+      // suficiente para ordenar o histórico dentro de uma mesma conversa.
+      historico: [{ tipo: "geracao_inicial", prompt, resposta, em: new Date() }],
       aguardandoFeedback: true,
       messageId: null,
       erro: null,
@@ -111,7 +114,7 @@ export async function registrarFeedbackCardapio(cardapioId, { feedbackUsuario, p
         feedbackUsuario,
         prompt,
         resposta,
-        em: FieldValue.serverTimestamp(),
+        em: new Date(),
       }),
       atualizadoEm: FieldValue.serverTimestamp(),
     });
