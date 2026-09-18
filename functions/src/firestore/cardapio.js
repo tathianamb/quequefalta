@@ -8,7 +8,7 @@ export async function buscarPerfilCasa(uid) {
   return { id: doc.id, ...doc.data() };
 }
 
-export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horarioEnvio, chatId }) {
+export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horarioEnvio, refeicoes, chatId }) {
   const db = getFirestore();
   const ref = db.collection("perfilCasa").doc(uid);
   const existe = (await ref.get()).exists;
@@ -18,6 +18,7 @@ export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horari
       pessoas,
       observacoesGerais,
       horarioEnvio,
+      refeicoes,
       chatId: String(chatId),
       ...(existe ? {} : { criadoEm: FieldValue.serverTimestamp() }),
       atualizadoEm: FieldValue.serverTimestamp(),

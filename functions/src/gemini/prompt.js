@@ -17,9 +17,10 @@ function formatarItensEmCasa(itensEmCasa) {
   return itensEmCasa.map((i) => i.nome).join(", ");
 }
 
-function cabecalho({ pessoas, observacoesGerais, itensEmCasa }) {
+function cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
+  const refeicoesStr = refeicoes?.join(", ") || "café da manhã, almoço e jantar";
   return [
-    "Você é um assistente de cardápio para uma casa no Brasil. Sugira um cardápio para o dia seguinte (café da manhã, almoço e jantar), em português, de forma direta e objetiva.",
+    `Você é um assistente de cardápio para uma casa no Brasil. Sugira um cardápio para o dia seguinte (${refeicoesStr}), em português, de forma direta e objetiva.`,
     "",
     "Pessoas da casa:",
     formatarPessoas(pessoas),
@@ -35,11 +36,11 @@ function cabecalho({ pessoas, observacoesGerais, itensEmCasa }) {
     .join("\n");
 }
 
-export function montarPromptInicial({ pessoas, observacoesGerais, itensEmCasa }) {
-  return `${cabecalho({ pessoas, observacoesGerais, itensEmCasa })}\n\nSugira o cardápio agora.`;
+export function montarPromptInicial({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
+  return `${cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa })}\n\nSugira o cardápio agora.`;
 }
 
-export function montarPromptRefinamento({ pessoas, observacoesGerais, itensEmCasa, historico, feedbackNovo }) {
+export function montarPromptRefinamento({ pessoas, observacoesGerais, refeicoes, itensEmCasa, historico, feedbackNovo }) {
   const rodadasAnteriores = (historico || [])
     .map((h, indice) => {
       if (h.tipo === "geracao_inicial") {
@@ -50,7 +51,7 @@ export function montarPromptRefinamento({ pessoas, observacoesGerais, itensEmCas
     .join("\n\n");
 
   return [
-    cabecalho({ pessoas, observacoesGerais, itensEmCasa }),
+    cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }),
     "",
     "Histórico desta conversa até agora:",
     rodadasAnteriores,

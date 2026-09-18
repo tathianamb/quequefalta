@@ -29,7 +29,7 @@ export async function tratarCasa(telegram, chatId, uid, textoComando) {
   }
 
   const perfilAnterior = await buscarPerfilCasa(uid);
-  const { pessoas, observacoesGerais, horarioEnvio, erros } = parsearPerfilCasa(corpo, perfilAnterior);
+  const { pessoas, observacoesGerais, horarioEnvio, refeicoes, erros } = parsearPerfilCasa(corpo, perfilAnterior);
 
   if (!pessoas.length && !perfilAnterior?.pessoas?.length) {
     await telegram.enviarMensagem(
@@ -40,7 +40,7 @@ export async function tratarCasa(telegram, chatId, uid, textoComando) {
   }
 
   const pessoasFinais = pessoas.length ? pessoas : perfilAnterior.pessoas;
-  await salvarPerfilCasa(uid, { pessoas: pessoasFinais, observacoesGerais, horarioEnvio, chatId });
+  await salvarPerfilCasa(uid, { pessoas: pessoasFinais, observacoesGerais, horarioEnvio, refeicoes, chatId });
 
   const perfilSalvo = await buscarPerfilCasa(uid);
   const aviso = erros.length ? `\n\n⚠️ ${erros.join("\n")}` : "";
@@ -82,6 +82,7 @@ export async function gerarCardapioInicial(telegram, gemini, uid, chatId, { forc
   const promptContexto = {
     pessoas: perfil?.pessoas || [],
     observacoesGerais: perfil?.observacoesGerais || "",
+    refeicoes: perfil?.refeicoes || ["café da manhã", "almoço", "jantar"],
     itensEmCasa,
   };
   const prompt = montarPromptInicial(promptContexto);
@@ -114,6 +115,7 @@ export async function processarFeedbackCardapio(telegram, gemini, cardapio, text
   const prompt = montarPromptRefinamento({
     pessoas: cardapio.promptContexto.pessoas,
     observacoesGerais: cardapio.promptContexto.observacoesGerais,
+    refeicoes: cardapio.promptContexto.refeicoes,
     itensEmCasa: cardapio.promptContexto.itensEmCasa,
     historico: cardapio.historico,
     feedbackNovo: textoFeedback,
