@@ -4,6 +4,7 @@ import { criarClienteTelegram } from "./telegram/api.js";
 import { criarClienteGemini } from "./gemini/api.js";
 import { tratarVincular } from "./comandos/vincular.js";
 import { tratarTabela } from "./comandos/tabela.js";
+import { tratarHelp } from "./comandos/help.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
@@ -24,12 +25,6 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 // O Firebase CLI grava secrets via stdin no Windows sempre com \r\n ao final,
 // então todo secret lido aqui precisa ser saneado antes de usar.
 const limpar = (valor) => valor.trim();
-
-// Uma tabela sempre tem várias linhas (mercado+data, cabeçalho opcional, itens) —
-// mensagens de 1 linha nunca são tabela, então tratamos como texto solto direto.
-function podeSerTabela(texto) {
-  return texto.split("\n").filter((l) => l.trim()).length >= 2;
-}
 
 const PEDIR_VINCULO =
   "Vincule sua conta primeiro: gere um código no app (Menu → Vincular Telegram) e mande /vincular 123456 aqui.";
@@ -56,7 +51,7 @@ async function processarUpdate(telegram, gemini, update) {
     await telegram.enviarMensagem(
       chatId,
       uid
-        ? "Você já está vinculado! Cole a tabela da sua compra (mercado + data na primeira linha, itens copiados da planilha) para registrar os preços."
+        ? "Você já está vinculado! Mande /help para ver os comandos disponíveis."
         : "Olá! Para começar, gere um código no app QueQueFalta (Menu → Vincular Telegram) e mande /vincular 123456 aqui."
     );
     return;
@@ -75,7 +70,7 @@ async function processarUpdate(telegram, gemini, update) {
       return;
     }
     await marcarLoteCancelado(loteEmAberto.id);
-    await telegram.enviarMensagem(chatId, "Lote cancelado. Nada foi gravado. Pode mandar uma nova tabela.");
+    await telegram.enviarMensagem(chatId, "Lote cancelado. Nada foi gravado. Pode mandar /nota com uma nova tabela.");
     return;
   }
 
@@ -101,6 +96,30 @@ async function processarUpdate(telegram, gemini, update) {
 
   if (texto.startsWith("/pergunta")) {
     await tratarPergunta(telegram, gemini, chatId, uid, texto);
+    return;
+  }
+
+  if (texto === "/help") {
+    await tratarHelp(telegram, chatId);
+    return;
+  }
+
+  if (texto.startsWith("/nota")) {
+    const textoTabela = texto.replace(/^\/nota/, "").trim();
+    if (loteEmAberto) {
+      await telegram.enviarMensagem(chatId, "Ainda tem um lote aguardando sua confirmação.", {
+        reply_markup: tecladoLotePendente(loteEmAberto.id),
+      });
+      return;
+    }
+    if (!textoTabela) {
+      await telegram.enviarMensagem(
+        chatId,
+        "Cole a tabela junto, na mesma mensagem: /nota seguido do mercado + data na primeira linha e os itens abaixo."
+      );
+      return;
+    }
+    await tratarTabela(telegram, chatId, uid, textoTabela);
     return;
   }
 
@@ -143,22 +162,7 @@ async function processarUpdate(telegram, gemini, update) {
     return;
   }
 
-  if (podeSerTabela(texto)) {
-    if (loteEmAberto) {
-      await telegram.enviarMensagem(chatId, "Ainda tem um lote aguardando sua confirmação.", {
-        reply_markup: tecladoLotePendente(loteEmAberto.id),
-      });
-      return;
-    }
-
-    await tratarTabela(telegram, chatId, uid, texto);
-    return;
-  }
-
-  await telegram.enviarMensagem(
-    chatId,
-    "Não entendi essa mensagem. Cole a tabela da sua compra (mercado + data na primeira linha, itens abaixo) para registrar os preços."
-  );
+  await tratarHelp(telegram, chatId);
 }
 
 export const telegramWebhook = onRequest(
