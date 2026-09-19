@@ -188,12 +188,16 @@ export async function marcarMessageId(cardapioId, messageId) {
   });
 }
 
-export async function buscarCardapioAguardandoFeedback(chatId) {
+// Usado só pelo comando explícito /feedback_cardapio — sem o filtro
+// aguardandoFeedback, já que o usuário está pedindo feedback por vontade
+// própria, não porque o bot ficou "escutando" qualquer texto livre (isso
+// causava um bug real: um cardápio nunca respondido sequestrava qualquer
+// mensagem de texto futura, de qualquer fluxo, indefinidamente).
+export async function buscarCardapioMaisRecente(chatId) {
   const db = getFirestore();
   const snap = await db
     .collection("cardapiosDiarios")
     .where("chatId", "==", String(chatId))
-    .where("aguardandoFeedback", "==", true)
     .orderBy("criadoEm", "desc")
     .limit(1)
     .get();

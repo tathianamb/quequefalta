@@ -6,6 +6,7 @@ import {
   marcarErroCardapio,
   registrarFeedbackCardapio,
   marcarMessageId,
+  buscarCardapioMaisRecente,
 } from "../firestore/cardapio.js";
 import { montarPromptInicial, montarPromptRefinamento } from "../gemini/prompt.js";
 import { mensagemDeErro } from "../gemini/erros.js";
@@ -67,9 +68,29 @@ export async function gerarCardapioInicial(telegram, gemini, uid, chatId, { forc
   }
 
   const cardapioId = await criarCardapioDoDia(uid, dataIso, { chatId, promptContexto, prompt, resposta });
-  const mensagemTexto = `🍽️ Sugestão de cardápio para amanhã:\n\n${resposta}\n\nResponda com um feedback (ex: "sem peixe amanhã") para eu ajustar a sugestão.`;
+  const mensagemTexto = `🍽️ Sugestão de cardápio para amanhã:\n\n${resposta}\n\nMande /feedback_cardapio seguido do seu feedback (ex: "/feedback_cardapio sem peixe amanhã") para eu ajustar a sugestão.`;
   const mensagemEnviada = await telegram.enviarMensagem(chatId, mensagemTexto);
   await marcarMessageId(cardapioId, mensagemEnviada.message_id);
+}
+
+export async function tratarFeedbackCardapio(telegram, gemini, chatId, textoComando) {
+  const textoFeedback = textoComando.replace(/^\/feedback_cardapio/, "").trim();
+
+  if (!textoFeedback) {
+    await telegram.enviarMensagem(
+      chatId,
+      'Use: /feedback_cardapio seguido do seu feedback, ex: "/feedback_cardapio sem peixe amanhã".'
+    );
+    return;
+  }
+
+  const cardapio = await buscarCardapioMaisRecente(chatId);
+  if (!cardapio) {
+    await telegram.enviarMensagem(chatId, "Nenhum cardápio foi gerado ainda. Mande /cardapio primeiro.");
+    return;
+  }
+
+  await processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback);
 }
 
 export async function processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback) {
@@ -95,6 +116,6 @@ export async function processarFeedbackCardapio(telegram, gemini, cardapio, text
 
   await registrarFeedbackCardapio(cardapio.id, { feedbackUsuario: textoFeedback, prompt, resposta });
 
-  const mensagemTexto = `🍽️ Cardápio ajustado:\n\n${resposta}\n\nResponda com outro feedback se quiser ajustar de novo.`;
+  const mensagemTexto = `🍽️ Cardápio ajustado:\n\n${resposta}\n\nMande /feedback_cardapio de novo se quiser ajustar mais.`;
   await telegram.editarMensagem(cardapio.chatId, cardapio.messageId, mensagemTexto);
 }

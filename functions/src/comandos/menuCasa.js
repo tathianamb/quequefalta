@@ -194,7 +194,7 @@ export async function confirmarRefeicoesEMostrar(telegram, chatId, uid, messageI
 // Aceita "," ou ";" como separador entre restrições — ambos são de uso
 // natural em português, e exigir só um dos dois já causou o usuário digitar
 // tudo junto como uma restrição só sem perceber (separou por vírgula).
-function parsearLinhaPessoa(texto) {
+export function parsearLinhaPessoa(texto) {
   const separador = texto.indexOf(":");
   if (separador === -1) return { nome: texto.trim(), restricoes: [], preferencias: [] };
 
@@ -236,7 +236,6 @@ export async function processarTextoAguardado(telegram, chatId, uid, textoUsuari
   } else {
     const dadosPessoa = parsearLinhaPessoa(textoUsuario);
     const indice = aguardando.tipo === "pessoa_incluir" ? (perfil.pessoas?.length || 0) : aguardando.indice;
-    console.log("processarTextoAguardado: gravando pessoa", { uid, indice, dadosPessoa, textoUsuario, aguardando });
     await atualizarPessoa(uid, indice, dadosPessoa);
   }
 

@@ -8,13 +8,13 @@ import { tratarHelp } from "./comandos/help.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
-import { tratarCardapioManual, processarFeedbackCardapio } from "./comandos/cardapio.js";
+import { tratarCardapioManual, tratarFeedbackCardapio } from "./comandos/cardapio.js";
 import { abrirMenuPrincipal, processarTextoAguardado } from "./comandos/menuCasa.js";
 import { tratarPergunta } from "./comandos/pergunta.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
 import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
 import { buscarItemAguardandoNome, atualizarNomeItemRevisao } from "./firestore/revisao.js";
-import { buscarCardapioAguardandoFeedback, buscarPerfilCasa } from "./firestore/cardapio.js";
+import { buscarPerfilCasa } from "./firestore/cardapio.js";
 import { tecladoLotePendente } from "./telegram/teclados.js";
 import { apagarSeExistir } from "./telegram/enviarOuEditar.js";
 
@@ -94,6 +94,11 @@ async function processarUpdate(telegram, gemini, update) {
     return;
   }
 
+  if (texto.startsWith("/feedback_cardapio")) {
+    await tratarFeedbackCardapio(telegram, gemini, chatId, texto);
+    return;
+  }
+
   if (texto.startsWith("/pergunta")) {
     await tratarPergunta(telegram, gemini, chatId, uid, texto);
     return;
@@ -149,13 +154,6 @@ async function processarUpdate(telegram, gemini, update) {
     return;
   }
 
-  const cardapioAguardandoFeedback = await buscarCardapioAguardandoFeedback(chatId);
-  if (cardapioAguardandoFeedback) {
-    await processarFeedbackCardapio(telegram, gemini, cardapioAguardandoFeedback, texto.trim());
-    await apagarSeExistir(telegram, chatId, update.message.message_id);
-    return;
-  }
-
   const perfilCasa = await buscarPerfilCasa(uid);
   if (perfilCasa?.menuState?.aguardandoTexto) {
     await processarTextoAguardado(telegram, chatId, uid, texto.trim(), update.message.message_id);
@@ -174,13 +172,6 @@ export const telegramWebhook = onRequest(
   },
   async (req, res) => {
     const update = req.body;
-    console.log("DIAGNOSTICO webhook recebido:", JSON.stringify({
-      temTexto: !!update.message?.text,
-      texto: update.message?.text,
-      temCallback: !!update.callback_query,
-      callbackData: update.callback_query?.data,
-      chatId: update.message?.chat?.id || update.callback_query?.message?.chat?.id,
-    }));
 
     const secretRecebido = req.get("X-Telegram-Bot-Api-Secret-Token");
     if (secretRecebido !== limpar(TELEGRAM_WEBHOOK_SECRET.value())) {
