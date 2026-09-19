@@ -173,13 +173,21 @@ export const telegramWebhook = onRequest(
     memory: "256MiB",
   },
   async (req, res) => {
+    const update = req.body;
+    console.log("DIAGNOSTICO webhook recebido:", JSON.stringify({
+      temTexto: !!update.message?.text,
+      texto: update.message?.text,
+      temCallback: !!update.callback_query,
+      callbackData: update.callback_query?.data,
+      chatId: update.message?.chat?.id || update.callback_query?.message?.chat?.id,
+    }));
+
     const secretRecebido = req.get("X-Telegram-Bot-Api-Secret-Token");
     if (secretRecebido !== limpar(TELEGRAM_WEBHOOK_SECRET.value())) {
       res.status(401).send("secret inválido");
       return;
     }
 
-    const update = req.body;
     const telegram = criarClienteTelegram(limpar(TELEGRAM_BOT_TOKEN.value()));
     const gemini = criarClienteGemini(limpar(GEMINI_API_KEY.value()));
 
