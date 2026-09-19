@@ -108,7 +108,7 @@ export async function abrirTelaRefeicoes(telegram, chatId, uid, messageId) {
 export async function pedirTextoPessoa(telegram, chatId, uid, indice, messageId) {
   const pergunta = await telegram.enviarMensagem(
     chatId,
-    'Digite: Nome: restrição1; restrição2\n\n(ex: "Tathiana: sem lactose; gosta de apimentado")'
+    'Digite: Nome: restrição1, restrição2\n\n(ex: "Tathiana: sem lactose, gosta de apimentado")'
   );
   await atualizarMenuState(uid, {
     aguardandoTexto: {
@@ -175,6 +175,9 @@ export async function confirmarRefeicoesEMostrar(telegram, chatId, uid, messageI
   await abrirMenuPrincipal(telegram, chatId, uid, messageId);
 }
 
+// Aceita "," ou ";" como separador entre restrições — ambos são de uso
+// natural em português, e exigir só um dos dois já causou o usuário digitar
+// tudo junto como uma restrição só sem perceber (separou por vírgula).
 function parsearLinhaPessoa(texto) {
   const separador = texto.indexOf(":");
   if (separador === -1) return { nome: texto.trim(), restricoes: [], preferencias: [] };
@@ -182,7 +185,7 @@ function parsearLinhaPessoa(texto) {
   const nome = texto.slice(0, separador).trim();
   const restricoes = texto
     .slice(separador + 1)
-    .split(";")
+    .split(/[,;]/)
     .map((r) => r.trim())
     .filter(Boolean);
   return { nome, restricoes, preferencias: [] };
