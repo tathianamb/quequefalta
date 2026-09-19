@@ -51,7 +51,7 @@ export function criarClienteGemini(apiKey) {
   }
 
   return {
-    gerarCardapio(prompt) {
+    gerarTexto(prompt) {
       return chamar(prompt);
     },
   };

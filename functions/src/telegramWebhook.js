@@ -7,12 +7,15 @@ import { tratarTabela } from "./comandos/tabela.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
-import { tratarCasa, tratarCardapioManual, processarFeedbackCardapio } from "./comandos/cardapio.js";
+import { tratarCardapioManual, processarFeedbackCardapio } from "./comandos/cardapio.js";
+import { abrirMenuPrincipal, processarTextoAguardado } from "./comandos/menuCasa.js";
+import { tratarPergunta } from "./comandos/pergunta.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
 import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
 import { buscarItemAguardandoNome, atualizarNomeItemRevisao } from "./firestore/revisao.js";
-import { buscarCardapioAguardandoFeedback } from "./firestore/cardapio.js";
+import { buscarCardapioAguardandoFeedback, buscarPerfilCasa } from "./firestore/cardapio.js";
 import { tecladoLotePendente } from "./telegram/teclados.js";
+import { apagarSeExistir } from "./telegram/enviarOuEditar.js";
 
 const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_WEBHOOK_SECRET = defineSecret("TELEGRAM_WEBHOOK_SECRET");
@@ -26,11 +29,6 @@ const limpar = (valor) => valor.trim();
 // mensagens de 1 linha nunca são tabela, então tratamos como texto solto direto.
 function podeSerTabela(texto) {
   return texto.split("\n").filter((l) => l.trim()).length >= 2;
-}
-
-function apagarSeExistir(telegram, chatId, messageId) {
-  if (!messageId) return Promise.resolve();
-  return telegram.apagarMensagem(chatId, messageId).catch(() => {});
 }
 
 const PEDIR_VINCULO =
@@ -92,12 +90,17 @@ async function processarUpdate(telegram, gemini, update) {
   }
 
   if (texto.startsWith("/casa")) {
-    await tratarCasa(telegram, chatId, uid, texto);
+    await abrirMenuPrincipal(telegram, chatId, uid, null);
     return;
   }
 
   if (texto === "/cardapio") {
     await tratarCardapioManual(telegram, gemini, chatId, uid);
+    return;
+  }
+
+  if (texto.startsWith("/pergunta")) {
+    await tratarPergunta(telegram, gemini, chatId, uid, texto);
     return;
   }
 
@@ -131,6 +134,12 @@ async function processarUpdate(telegram, gemini, update) {
   if (cardapioAguardandoFeedback) {
     await processarFeedbackCardapio(telegram, gemini, cardapioAguardandoFeedback, texto.trim());
     await apagarSeExistir(telegram, chatId, update.message.message_id);
+    return;
+  }
+
+  const perfilCasa = await buscarPerfilCasa(uid);
+  if (perfilCasa?.menuState?.aguardandoTexto) {
+    await processarTextoAguardado(telegram, chatId, uid, texto.trim(), update.message.message_id);
     return;
   }
 

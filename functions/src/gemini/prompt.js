@@ -36,6 +36,26 @@ function cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
     .join("\n");
 }
 
+export function montarPromptPergunta({ pessoas, observacoesGerais, itensEmCasa, pergunta }) {
+  return [
+    "Você é um assistente de cozinha para uma casa no Brasil, respondendo em português de forma direta e objetiva.",
+    "",
+    "Pessoas da casa:",
+    formatarPessoas(pessoas),
+    "",
+    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
+    "",
+    "Itens disponíveis em casa:",
+    formatarItensEmCasa(itensEmCasa),
+    "",
+    `Pergunta do usuário: "${pergunta}"`,
+    "",
+    "Responda diretamente à pergunta, considerando o contexto acima quando fizer sentido.",
+  ]
+    .filter((linha) => linha !== null)
+    .join("\n");
+}
+
 export function montarPromptInicial({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
   return `${cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa })}\n\nSugira o cardápio agora.`;
 }

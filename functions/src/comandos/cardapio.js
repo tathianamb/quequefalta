@@ -1,6 +1,5 @@
 import {
   buscarPerfilCasa,
-  salvarPerfilCasa,
   obterItensComprados,
   buscarCardapioDoDia,
   criarCardapioDoDia,
@@ -8,44 +7,8 @@ import {
   registrarFeedbackCardapio,
   marcarMessageId,
 } from "../firestore/cardapio.js";
-import { parsearPerfilCasa, formatarPerfilCasa } from "../parser/perfilCasa.js";
 import { montarPromptInicial, montarPromptRefinamento } from "../gemini/prompt.js";
-
-const MENSAGEM_ERRO_GEMINI = {
-  gemini_quota_excedida: "Cheguei ao limite de uso do Gemini por hoje. Tente de novo mais tarde.",
-};
-
-function mensagemDeErro(erro) {
-  return MENSAGEM_ERRO_GEMINI[erro.message] || "Não consegui gerar o cardápio agora. Tente de novo em instantes.";
-}
-
-export async function tratarCasa(telegram, chatId, uid, textoComando) {
-  const corpo = textoComando.replace(/^\/casa/, "").trim();
-
-  if (!corpo) {
-    const perfil = await buscarPerfilCasa(uid);
-    await telegram.enviarMensagem(chatId, formatarPerfilCasa(perfil));
-    return;
-  }
-
-  const perfilAnterior = await buscarPerfilCasa(uid);
-  const { pessoas, observacoesGerais, horarioEnvio, refeicoes, erros } = parsearPerfilCasa(corpo, perfilAnterior);
-
-  if (!pessoas.length && !perfilAnterior?.pessoas?.length) {
-    await telegram.enviarMensagem(
-      chatId,
-      'Não consegui reconhecer nenhuma pessoa no texto. Use o formato "Nome: restrições/preferências separadas por ;", uma pessoa por linha.'
-    );
-    return;
-  }
-
-  const pessoasFinais = pessoas.length ? pessoas : perfilAnterior.pessoas;
-  await salvarPerfilCasa(uid, { pessoas: pessoasFinais, observacoesGerais, horarioEnvio, refeicoes, chatId });
-
-  const perfilSalvo = await buscarPerfilCasa(uid);
-  const aviso = erros.length ? `\n\n⚠️ ${erros.join("\n")}` : "";
-  await telegram.enviarMensagem(chatId, `Perfil salvo!\n\n${formatarPerfilCasa(perfilSalvo)}${aviso}`);
-}
+import { mensagemDeErro } from "../gemini/erros.js";
 
 export async function tratarCardapioManual(telegram, gemini, chatId, uid) {
   const perfil = await buscarPerfilCasa(uid);
@@ -89,7 +52,7 @@ export async function gerarCardapioInicial(telegram, gemini, uid, chatId, { forc
 
   let resposta;
   try {
-    resposta = await gemini.gerarCardapio(prompt);
+    resposta = await gemini.gerarTexto(prompt);
   } catch (erro) {
     console.error("Erro ao gerar cardápio inicial:", erro);
     const cardapioId = await criarCardapioDoDia(uid, dataIso, {
@@ -123,7 +86,7 @@ export async function processarFeedbackCardapio(telegram, gemini, cardapio, text
 
   let resposta;
   try {
-    resposta = await gemini.gerarCardapio(prompt);
+    resposta = await gemini.gerarTexto(prompt);
   } catch (erro) {
     console.error("Erro ao refinar cardápio:", erro);
     await telegram.editarMensagem(cardapio.chatId, cardapio.messageId, mensagemDeErro(erro));

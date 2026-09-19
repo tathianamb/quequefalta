@@ -19,6 +19,8 @@ import {
 import { criarSugestaoDeProduto } from "../firestore/sugestoes.js";
 import { mostrarProximoDaMesmaLista } from "./revisar.js";
 import { mostrarEtapa } from "./etapasLote.js";
+import { tratarCallbackCasa } from "./menuCasa.js";
+import { resolverUidPorChatId } from "../firestore/vinculos.js";
 
 export async function tratarCallback(telegram, callbackQuery) {
   const chatId = callbackQuery.message.chat.id;
@@ -47,6 +49,9 @@ export async function tratarCallback(telegram, callbackQuery) {
     await sugerirProduto(telegram, chatId, params, messageId);
   } else if (acao === "rv_dup") {
     await aceitarDuplicata(telegram, chatId, params, messageId);
+  } else if (acao.startsWith("casa_")) {
+    const uid = await resolverUidPorChatId(chatId);
+    await tratarCallbackCasa(telegram, chatId, uid, acao, params, messageId);
   }
 }
 

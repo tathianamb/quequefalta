@@ -27,6 +27,53 @@ export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horari
   );
 }
 
+// menuState só existe enquanto há navegação do menu /casa em curso — update
+// com dot-path grava só as chaves passadas, sem precisar reconstruir o objeto
+// inteiro a cada clique de botão.
+export async function atualizarMenuState(uid, { tela, messageId, aguardandoTexto, refeicoesRascunho }) {
+  const db = getFirestore();
+  const patch = {};
+  if (tela !== undefined) patch["menuState.tela"] = tela;
+  if (messageId !== undefined) patch["menuState.messageId"] = messageId;
+  if (aguardandoTexto !== undefined) patch["menuState.aguardandoTexto"] = aguardandoTexto;
+  if (refeicoesRascunho !== undefined) patch["menuState.refeicoesRascunho"] = refeicoesRascunho;
+  await db.collection("perfilCasa").doc(uid).set(patch, { merge: true });
+}
+
+export async function limparAguardandoTexto(uid) {
+  const db = getFirestore();
+  await db.collection("perfilCasa").doc(uid).set({ menuState: { aguardandoTexto: null } }, { merge: true });
+}
+
+// Mesmo padrão de atualizarItemDoLote (lotes.js): lê, mapeia por índice,
+// grava de volta numa transação. indice === pessoas.length empurra no fim
+// (inclusão); qualquer outro índice substitui a pessoa existente (edição).
+export async function atualizarPessoa(uid, indice, dadosPessoa) {
+  const db = getFirestore();
+  const ref = db.collection("perfilCasa").doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    const pessoas = doc.data()?.pessoas || [];
+    const novasPessoas =
+      indice < pessoas.length
+        ? pessoas.map((p, i) => (i === indice ? dadosPessoa : p))
+        : [...pessoas, dadosPessoa];
+    tx.set(ref, { pessoas: novasPessoas, atualizadoEm: FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
+export async function removerPessoa(uid, indice) {
+  const db = getFirestore();
+  const ref = db.collection("perfilCasa").doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    const pessoas = (doc.data()?.pessoas || []).filter((_, i) => i !== indice);
+    tx.set(ref, { pessoas, atualizadoEm: FieldValue.serverTimestamp() }, { merge: true });
+  });
+}
+
 export async function buscarPerfisParaHorario(horarioAtual) {
   const db = getFirestore();
   const snap = await db.collection("perfilCasa").where("horarioEnvio", "==", horarioAtual).get();
