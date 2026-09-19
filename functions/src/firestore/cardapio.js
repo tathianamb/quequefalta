@@ -27,17 +27,27 @@ export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horari
   );
 }
 
-// menuState só existe enquanto há navegação do menu /casa em curso — update
-// com dot-path grava só as chaves passadas, sem precisar reconstruir o objeto
-// inteiro a cada clique de botão.
+// menuState só existe enquanto há navegação do menu /casa em curso. Dot-path
+// só vira "grava dentro do mapa aninhado" com .update() — com .set(patch,
+// {merge:true}) as chaves com ponto são gravadas como nome de campo literal
+// (ex: um campo chamado "menuState.tela", e não menuState.tela dentro de um
+// mapa menuState), o que deixava perfil.menuState sempre undefined e o
+// webhook nunca via aguardandoTexto (bug real: qualquer edição no /casa
+// "sumia" e caía no fallback de /help).
 export async function atualizarMenuState(uid, { tela, messageId, aguardandoTexto, refeicoesRascunho }) {
   const db = getFirestore();
+  const ref = db.collection("perfilCasa").doc(uid);
+  const doc = await ref.get();
   const patch = {};
   if (tela !== undefined) patch["menuState.tela"] = tela;
   if (messageId !== undefined) patch["menuState.messageId"] = messageId;
   if (aguardandoTexto !== undefined) patch["menuState.aguardandoTexto"] = aguardandoTexto;
   if (refeicoesRascunho !== undefined) patch["menuState.refeicoesRascunho"] = refeicoesRascunho;
-  await db.collection("perfilCasa").doc(uid).set(patch, { merge: true });
+  if (doc.exists) {
+    await ref.update(patch);
+  } else {
+    await ref.set(patch);
+  }
 }
 
 export async function limparAguardandoTexto(uid) {
