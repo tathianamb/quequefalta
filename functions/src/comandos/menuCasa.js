@@ -106,9 +106,25 @@ export async function abrirTelaRefeicoes(telegram, chatId, uid, messageId) {
 }
 
 export async function pedirTextoPessoa(telegram, chatId, uid, indice, messageId) {
+  const instrucao = 'Digite: Nome: restrição1, restrição2\n\n(ex: "Tathiana: sem lactose, gosta de apimentado")';
+
+  // Na edição, mostra o valor atual pronto para copiar/editar — sem isso, o
+  // usuário precisa redigitar tudo do zero, senão perde o que já estava lá
+  // (atualizarPessoa substitui a pessoa inteira pelo texto novo).
+  let textoAtual = null;
+  if (indice !== null) {
+    const perfil = await buscarPerfilCasa(uid);
+    const pessoa = perfil?.pessoas?.[indice];
+    if (pessoa) {
+      textoAtual = `${pessoa.nome}: ${[...(pessoa.restricoes || []), ...(pessoa.preferencias || [])].join(", ")}`;
+    }
+  }
+
   const pergunta = await telegram.enviarMensagem(
     chatId,
-    'Digite: Nome: restrição1, restrição2\n\n(ex: "Tathiana: sem lactose, gosta de apimentado")'
+    textoAtual
+      ? `${instrucao}\n\nValor atual (copie e edite):\n${textoAtual}`
+      : instrucao
   );
   await atualizarMenuState(uid, {
     aguardandoTexto: {
@@ -194,7 +210,18 @@ function parsearLinhaPessoa(texto) {
 export async function processarTextoAguardado(telegram, chatId, uid, textoUsuario, messageIdUsuario) {
   const perfil = await buscarPerfilCasa(uid);
   const aguardando = perfil?.menuState?.aguardandoTexto;
-  if (!aguardando) return;
+  if (!aguardando) {
+    // Não deveria acontecer (o webhook só chama esta função quando já viu
+    // aguardandoTexto setado), mas se acontecer por qualquer motivo (estado
+    // mudou entre a checagem do webhook e esta leitura, por exemplo), é
+    // melhor avisar do que falhar em silêncio — o usuário fica sem saber se
+    // o que digitou foi salvo ou não.
+    await telegram.enviarMensagem(
+      chatId,
+      "Não consegui associar essa mensagem a uma edição pendente. Toque em ✏️ de novo e tente mandar o texto mais uma vez."
+    );
+    return;
+  }
 
   const messageIdOriginal = perfil.menuState.messageId;
 
@@ -209,6 +236,7 @@ export async function processarTextoAguardado(telegram, chatId, uid, textoUsuari
   } else {
     const dadosPessoa = parsearLinhaPessoa(textoUsuario);
     const indice = aguardando.tipo === "pessoa_incluir" ? (perfil.pessoas?.length || 0) : aguardando.indice;
+    console.log("processarTextoAguardado: gravando pessoa", { uid, indice, dadosPessoa, textoUsuario, aguardando });
     await atualizarPessoa(uid, indice, dadosPessoa);
   }
 
