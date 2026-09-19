@@ -17,6 +17,20 @@ function formatarItensEmCasa(itensEmCasa) {
   return itensEmCasa.map((i) => i.nome).join(", ");
 }
 
+const EXEMPLO_RESPOSTA = [
+  "### Café da manhã",
+  "- Pão com ovo mexido e fatias de mamão.",
+  "",
+  "### Almoço",
+  "- Arroz, feijão e frango grelhado com legumes refogados.",
+  "",
+  "### Jantar",
+  "- Sopa de legumes com torradas.",
+  "",
+  "### Sugestão de compra",
+  "- Ovos, mamão, frango, torradas (não estavam disponíveis em casa, mas completam bem o cardápio).",
+].join("\n");
+
 function cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
   const refeicoesStr = refeicoes?.join(", ") || "café da manhã, almoço e jantar";
   return [
@@ -30,7 +44,11 @@ function cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
     "Itens disponíveis em casa:",
     formatarItensEmCasa(itensEmCasa),
     "",
-    "Você pode sugerir qualquer prato viável, não precisa se limitar apenas aos itens listados — priorize usar o que já tem em casa quando fizer sentido, mas complete com ingredientes básicos se necessário.",
+    "O cardápio deve usar apenas os itens disponíveis em casa listados acima. Se algo mais ajudaria a completar ou melhorar os pratos, não inclua no cardápio em si — liste em uma seção separada \"Sugestão de compra\" ao final.",
+    "",
+    "Exemplo de formato de resposta esperado (conteúdo ilustrativo, não use estas pessoas/itens):",
+    "",
+    EXEMPLO_RESPOSTA,
   ]
     .filter((linha) => linha !== null)
     .join("\n");

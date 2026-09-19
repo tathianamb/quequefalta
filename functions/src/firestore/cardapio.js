@@ -80,10 +80,22 @@ export async function buscarPerfisParaHorario(horarioAtual) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// Categorias do catálogo (ver src/utils/categorias.js no frontend) que não
+// são alimento — excluídas do contexto do cardápio para o Gemini não tentar
+// "aproveitar" shampoo ou detergente numa receita.
+const CATEGORIAS_NAO_ALIMENTARES = new Set([
+  "Limpeza",
+  "Utensílios de Cozinha",
+  "Higiene Pessoal",
+  "Farmácia Básica",
+  "Pet Shop",
+]);
+
 // Junta os itens marcados como comprado=true na lista ativa do usuário com
 // nome/categoria do catálogo — o item da lista só guarda produtoId, os
 // demais dados vivem só em catalogo/{produtoId} (mesmo padrão de join em
-// memória usado em revisar.js para fuzzy match).
+// memória usado em revisar.js para fuzzy match). Itens de categorias
+// não-alimentares (limpeza, higiene, etc.) são excluídos do resultado.
 export async function obterItensComprados(uid) {
   const db = getFirestore();
   const listaAtiva = await obterListaAtivaDoUsuario(uid);
@@ -101,7 +113,7 @@ export async function obterItensComprados(uid) {
   return itensSnap.docs
     .map((doc) => {
       const produto = catalogoPorId.get(doc.data().produtoId);
-      if (!produto) return null;
+      if (!produto || CATEGORIAS_NAO_ALIMENTARES.has(produto.categoria)) return null;
       return { nome: produto.nome, categoria: produto.categoria };
     })
     .filter(Boolean);

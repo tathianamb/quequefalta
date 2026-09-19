@@ -27,7 +27,10 @@ export async function tratarCallback(telegram, callbackQuery) {
   const messageId = callbackQuery.message.message_id;
   const [acao, ...params] = callbackQuery.data.split(":");
 
-  await telegram.responderCallback(callbackQuery.id);
+  // Best-effort: é só o "spinner" de loading do botão no cliente Telegram.
+  // Um callback com mais de ~15s (ex: Firestore lento) já chega aqui expirado
+  // ("query is too old") — isso não pode abortar a ação real do botão.
+  await telegram.responderCallback(callbackQuery.id).catch(() => {});
 
   if (acao === "lote_ant") {
     await navegarEtapa(telegram, chatId, params[0], -1, messageId);
