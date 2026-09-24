@@ -8,6 +8,8 @@ import {
   Share2,
   X,
   Download,
+  Check,
+  Home as HomeIcon,
 } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
@@ -16,7 +18,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
 import { useTelegramVinculo } from "../hooks/useTelegramVinculo";
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
+import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
 
 const TELEGRAM_BOT_USERNAME = "quequefalta_bot";
 
@@ -35,6 +37,7 @@ function Menu({
   setModoAdmin,
   telaInicial,
   catalogo,
+  itensEmCasa = [],
 }) {
   const [tela, setTela] = useState(telaInicial || "menu");
   const [nome, setNome] = useState("");
@@ -45,6 +48,7 @@ function Menu({
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [codigoVinculo, setCodigoVinculo] = useState(null);
   const [gerandoCodigo, setGerandoCodigo] = useState(false);
+  const [categoriasExportar, setCategoriasExportar] = useState([]);
 
   const { vinculado, gerarCodigo, desvincular } = useTelegramVinculo(usuario);
 
@@ -84,6 +88,46 @@ function Menu({
     const a = document.createElement("a");
     a.href = url;
     a.download = "catalogo.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const categoriasEmCasa = [
+    ...new Set(itensEmCasa.map((i) => i.categoria).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  const toggleCategoriaExportar = (cat) => {
+    setCategoriasExportar((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
+  };
+
+  const exportarEmCasa = () => {
+    const itens =
+      categoriasExportar.length === 0
+        ? itensEmCasa
+        : itensEmCasa.filter((i) => categoriasExportar.includes(i.categoria));
+
+    const escapar = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n")
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+    };
+    const linhas = [
+      ["nome", "categoria", "subcategoria"].join(","),
+      ...[...itens]
+        .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
+        .map((p) =>
+          [escapar(p.nome), escapar(p.categoria), escapar(p.subcategoria)].join(","),
+        ),
+    ];
+    const blob = new Blob(["﻿" + linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "em-casa.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -522,6 +566,25 @@ function Menu({
                     </div>
                   </div>
                 )}
+                <div
+                  onClick={() => setTela("exportar-casa")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "14px 16px",
+                    background: "var(--bg)",
+                    borderRadius: RAIO.md,
+                    cursor: "pointer",
+                  }}
+                >
+                  <HomeIcon size={18} color="var(--text-soft)" />
+                  <span style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)", flex: 1 }}>
+                    Exportar o que tem em casa
+                  </span>
+                  <span style={{ color: "var(--text-soft)" }}>›</span>
+                </div>
+
                 {isAdmin && (
                   <div
                     onClick={exportarCatalogo}
@@ -895,6 +958,116 @@ function Menu({
                   }}
                 >
                   {gerandoCodigo ? "Gerando..." : "Gerar código"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Tela Exportar em casa */}
+        {tela === "exportar-casa" && (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "4px",
+              }}
+            >
+              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
+                Exportar o que tem em casa
+              </p>
+              <X
+                size={22}
+                color="var(--text-soft)"
+                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  setTela("menu");
+                  setCategoriasExportar([]);
+                }}
+              />
+            </div>
+
+            {itensEmCasa.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--text-soft)",
+                  ...TIPOGRAFIA.corpo,
+                  marginBottom: "4px",
+                }}
+              >
+                Nenhum item marcado como comprado ainda.
+              </p>
+            ) : (
+              <>
+                <p
+                  style={{
+                    color: "var(--text-soft)",
+                    ...TIPOGRAFIA.corpo,
+                    marginBottom: "4px",
+                  }}
+                >
+                  Escolha as categorias que quer exportar. Deixe sem seleção
+                  para exportar tudo.
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "10px",
+                  }}
+                >
+                  {categoriasEmCasa.map((cat) => {
+                    const selecionado = categoriasExportar.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => toggleCategoriaExportar(cat)}
+                        style={{
+                          padding: "8px 10px",
+                          border: `1.5px solid ${selecionado ? "#FEC60155" : COR.borda + "55"}`,
+                          background: selecionado ? "#FEC60122" : "var(--card)",
+                          color: selecionado ? "var(--text)" : "var(--text-soft)",
+                          borderRadius: RAIO.pill,
+                          fontFamily: "Nunito, sans-serif",
+                          fontWeight: FONTE.medio,
+                          fontSize: FONTE.md,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        {selecionado && <Check size={14} color="var(--laranja)" />}
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={exportarEmCasa}
+                  style={{
+                    padding: "14px",
+                    ...BOTAO_PRIMARIO,
+                    cursor: "pointer",
+                    marginTop: "4px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Download size={18} />
+                  {categoriasExportar.length === 0
+                    ? "Exportar tudo"
+                    : `Exportar (${categoriasExportar.length} categoria${categoriasExportar.length > 1 ? "s" : ""})`}
                 </button>
               </>
             )}

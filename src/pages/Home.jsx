@@ -993,6 +993,7 @@ function Home({
           setModoAdmin={setModoAdmin}
           telaInicial={telaMenu}
           catalogo={catalogo}
+          itensEmCasa={lista.filter((i) => i.comprado)}
         />
       )}
 
