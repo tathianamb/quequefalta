@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   BookOpen,
   ChefHat,
+  Lightbulb,
   Search,
   X,
   Plus,
@@ -31,6 +32,10 @@ import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
 import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
 import { ReceitaTexto } from "../components/receitas/ReceitaTexto";
+import { useDicas } from "../hooks/useDicas";
+import { DicaLista } from "../components/dicas/DicaLista";
+import { DicaDetalhe } from "../components/dicas/DicaDetalhe";
+import { DicaFormulario } from "../components/dicas/DicaFormulario";
 import FiltroCategoria from "../components/FiltroCategoria";
 import {
   TIPOGRAFIA,
@@ -98,6 +103,16 @@ function Home({
   const [receitaEditando, setReceitaEditando] = useState(null); // receita pendente sendo editada
   const [ordenacaoReceitas, setOrdenacaoReceitas] = useState("relevancia"); // "relevancia" | "az" | "za"
   const [ordenacaoAberta, setOrdenacaoAberta] = useState(false);
+  const {
+    dicas,
+    carregando: carregandoDicas,
+    criar: criarDica,
+    atualizar: atualizarDica,
+    deletar: deletarDica,
+  } = useDicas(usuario);
+  const [telaDica, setTelaDica] = useState("lista"); // "lista" | "detalhe" | "formulario"
+  const [dicaSelecionadaId, setDicaSelecionadaId] = useState(null);
+  const [editandoDica, setEditandoDica] = useState(false); // formulário edita a dica selecionada (senão cria nova)
 
   const { pushBack } = useBackStack();
 
@@ -155,6 +170,22 @@ function Home({
       const faltamB = (b.ingredientes ?? []).filter(i => i.produtoId && !idsEmCasa.has(i.produtoId)).length;
       return faltamA - faltamB;
     });
+  })();
+
+  const dicaSelecionada = dicas.find((d) => d.id === dicaSelecionadaId) ?? null;
+  // Se a dica aberta sumir (excluída aqui ou por outro admin), volta pra lista.
+  const telaDicaEfetiva =
+    (telaDica === "detalhe" || (telaDica === "formulario" && editandoDica)) && !dicaSelecionada
+      ? "lista"
+      : telaDica;
+  const dicasFiltradas = (() => {
+    const termo = busca.toLowerCase();
+    if (!termo) return dicas;
+    return dicas.filter(
+      (d) =>
+        (d.titulo ?? "").toLowerCase().includes(termo) ||
+        (d.texto ?? "").toLowerCase().includes(termo),
+    );
   })();
 
   const abrirProduto = (item) => {
@@ -268,7 +299,7 @@ function Home({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={
-                aba === "lista" ? "Buscar na lista..." : aba === "catalogo" ? "Buscar no catálogo..." : "Buscar receitas..."
+                aba === "lista" ? "Buscar na lista..." : aba === "catalogo" ? "Buscar no catálogo..." : aba === "dicas" ? "Buscar dicas..." : "Buscar receitas..."
               }
               style={{
                 border: "none",
@@ -292,7 +323,7 @@ function Home({
         </div>
 
         {/* Filtro categorias — lista e catálogo */}
-        {aba !== "receitas" && <FiltroCategoria
+        {(aba === "lista" || aba === "catalogo") && <FiltroCategoria
           categoriasFiltro={grupoFiltro}
           setCategoriasFiltro={setGrupoFiltro}
           categorias={aba === "catalogo"
@@ -369,6 +400,29 @@ function Home({
                 <Plus size={14} /> Nova receita
               </button>
             )}
+          </div>
+        )}
+
+        {/* Nova dica — só admins, na listagem de dicas */}
+        {aba === "dicas" && telaDicaEfetiva === "lista" && admin && (
+          <div style={{ padding: "0 16px 12px", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={() => {
+                setEditandoDica(false);
+                setTelaDica("formulario");
+                pushBack(() => setTelaDica("lista"));
+              }}
+              style={{
+                ...BOTAO_SECUNDARIO,
+                padding: "6px 14px",
+                fontSize: "13px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <Plus size={14} /> Nova dica
+            </button>
           </div>
         )}
       </div>
@@ -960,6 +1014,57 @@ function Home({
         </div>
       )}
 
+      {/* Aba Dicas */}
+      {aba === "dicas" && (
+        <div style={{ padding: "20px 16px 96px" }}>
+          {telaDicaEfetiva === "lista" && (
+            <DicaLista
+              dicas={dicasFiltradas}
+              carregando={carregandoDicas}
+              busca={busca}
+              onVerDica={(d) => {
+                setDicaSelecionadaId(d.id);
+                setTelaDica("detalhe");
+                pushBack(() => { setDicaSelecionadaId(null); setTelaDica("lista"); });
+              }}
+            />
+          )}
+          {telaDicaEfetiva === "detalhe" && (
+            <DicaDetalhe
+              dica={dicaSelecionada}
+              isAdmin={admin}
+              onVoltar={() => { setDicaSelecionadaId(null); setTelaDica("lista"); }}
+              onEditar={() => {
+                setEditandoDica(true);
+                setTelaDica("formulario");
+                pushBack(() => setTelaDica("detalhe"));
+              }}
+            />
+          )}
+          {telaDicaEfetiva === "formulario" && (
+            <DicaFormulario
+              key={editandoDica ? dicaSelecionada.id : "nova"}
+              dicaInicial={editandoDica ? dicaSelecionada : null}
+              onVoltar={() => setTelaDica(editandoDica ? "detalhe" : "lista")}
+              onSalvar={async (dados) => {
+                if (editandoDica) {
+                  await atualizarDica(dicaSelecionada, dados);
+                  setTelaDica("detalhe");
+                } else {
+                  await criarDica(dados);
+                  setTelaDica("lista");
+                }
+              }}
+              onExcluir={async () => {
+                await deletarDica(dicaSelecionada);
+                setDicaSelecionadaId(null);
+                setTelaDica("lista");
+              }}
+            />
+          )}
+        </div>
+      )}
+
       {/* Modal detalhes */}
       {produtoSelecionado && (
         <DetalhesProduto
@@ -1017,9 +1122,10 @@ function Home({
         }}
       >
         {[
-          { id: "lista", label: "Lista de compras", icon: ShoppingCart, badge: 0 },
+          { id: "lista", label: "Lista", icon: ShoppingCart, badge: 0 },
           { id: "catalogo", label: "Catálogo", icon: BookOpen, badge: admin && modoAdmin ? sugestoesPendentes.length : 0 },
           { id: "receitas", label: "Receitas", icon: ChefHat, badge: admin && modoAdmin ? receitasPendentes.length : 0 },
+          { id: "dicas", label: "Dicas", icon: Lightbulb, badge: 0 },
         ].map(({ id, label, icon: Icon, badge }) => (
           <button
             key={id}
@@ -1032,6 +1138,7 @@ function Home({
                   setCategoriasFiltro([]);
                   setGrupoFiltro([]);
                   if (abaAtual !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
+                  if (abaAtual !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); }
                 });
               }
               setAba(id);
@@ -1039,6 +1146,7 @@ function Home({
               setCategoriasFiltro([]);
               setGrupoFiltro([]);
               if (id !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
+              if (id !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); }
             }}
             style={{
               flex: 1,

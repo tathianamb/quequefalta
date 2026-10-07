@@ -68,6 +68,7 @@ All Firestore reads use `onSnapshot` listeners inside custom hooks:
 - `src/hooks/useSugestoes.js` — product suggestions + one-admin approval flow. Exposes `aprovar`, `rejeitar`, `atualizar`, `deletar`.
 - `src/hooks/useReceitas.js` — recipes (`receitas/`) with a similar approval flow. Exposes `receitas`, `aprovadas`, `pendentes`, `sugerir`, `aprovar`, `rejeitar`, `atualizar`, `deletar`. `sugerir()` auto-approves unless an ingredient references an uncatalogued product (`nomeTemp`), in which case it goes to `pendente`.
 - `src/hooks/useGrupoSubstituicao.js` — named sets of interchangeable products (e.g. "leite" grouping whole/skim/lactose-free), stored in `grupoSubstituicao/`. Exposes `buscar(termo)` and `criar(nome)` (dedupes before creating).
+- `src/hooks/useDicas.js` — blog-style tips (`dicas/`), newest first. Exposes `dicas`, `criar`, `atualizar`, `deletar`. Admin-only writes, no approval flow.
 - `src/hooks/useTelegramVinculo.js` — watches `usuarios/{uid}.telegramChatId` to reflect Telegram account linking in real time. Exposes `vinculado`, `gerarCodigo()`, `desvincular()`.
 - `src/hooks/useTema.js` — light/dark/system theme; persists to localStorage and injects CSS variables on `document.root`.
 
@@ -102,6 +103,10 @@ receitas/{receitaId}
   ├── status: 'pendente' | 'aprovada' | 'rejeitada'
   └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm  # single admin uid, not an array
 
+dicas/{dicaId}
+  ├── titulo, texto       # texto uses a light Markdown subset (see src/utils/textoDica.js)
+  └── criadaPor, autorNome, criadaEm, atualizadaEm
+
 grupoSubstituicao/{grupoId}
   └── nome, nomeNorm (accent/case-normalized), criadoEm
 
@@ -120,7 +125,7 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 
 ### Pages
 
-- `src/pages/Home.jsx` — main screen after login. **Three-tab** bottom nav (`lista` / `catalogo` / `receitas`), search, category filter (`FiltroCategoria`), product detail modal (`DetalhesProduto`), admin suggestions panel, and `Menu` bottom sheet. The recipes tab has its own internal sub-navigation (`telaReceita`: lista/detalhe/texto/formulario) driven by `useBackStack`.
+- `src/pages/Home.jsx` — main screen after login. **Four-tab** bottom nav (`lista` / `catalogo` / `receitas` / `dicas`) — labels must stay short to fit 4 across at 360px, search, category filter (`FiltroCategoria`), product detail modal (`DetalhesProduto`), admin suggestions panel, and `Menu` bottom sheet. The recipes tab has its own internal sub-navigation (`telaReceita`: lista/detalhe/texto/formulario) driven by `useBackStack`. The tips tab works the same way with `telaDica` (lista/detalhe/formulario).
 - `src/pages/Login.jsx` — Google sign-in via `signInWithPopup`.
 - `src/pages/Catalogo.jsx` — stub/unused.
 
@@ -132,6 +137,7 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 - `DetalhesProduto.jsx` — product detail modal with price history, price registration form (list context only, blocks duplicate mercado+data registration), and admin attribute/name/category editing.
 - `FiltroCategoria.jsx` — multi-select category filter modal with optional `botoesExtras` slot.
 - `AdminPanel.jsx` — toggle for admin edit mode.
+- `dicas/DicaLista.jsx`, `DicaDetalhe.jsx`, `DicaFormulario.jsx` — tips list, reading view, and admin write/edit form with preview. Text formatting (`## subtítulo`, `- item`, `1. passo`, `**negrito**`) is parsed by `src/utils/textoDica.js` and rendered as React elements (no `dangerouslySetInnerHTML`).
 - `receitas/ReceitaLista.jsx`, `ReceitaDetalhe.jsx`, `ReceitaFormulario.jsx`, `ReceitaTexto.jsx` — recipe browsing, detail (ingredient checklist with substitution-group support, "add missing to list"), creation/edit form, and a paste-to-parse screen (`src/utils/parseReceita.js` pre-fills the form from free text).
 
 ### Design tokens & styling
