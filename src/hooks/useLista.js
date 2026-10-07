@@ -28,7 +28,12 @@ export function useLista(listaAtiva, catalogo = []) {
   const lista = itensRaw
     .map((item) => {
       const prod = catalogo.find((p) => p.id === item.produtoId);
-      if (!prod) return item; // fallback para itens antigos sem match
+      if (!prod) {
+        // Produto excluído do catálogo: o item fica órfão (só tem produtoId,
+        // sem nome) e quebraria a busca/ordenação — omite. Itens antigos que
+        // guardam o próprio nome continuam aparecendo como fallback.
+        return item.nome ? item : null;
+      }
       return {
         id: item.id,
         produtoId: item.produtoId,
@@ -42,6 +47,7 @@ export function useLista(listaAtiva, catalogo = []) {
         receitas: prod.receitas ?? [],
       };
     })
+    .filter(Boolean)
     .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"));
 
   const adicionarItem = async (produto) => {

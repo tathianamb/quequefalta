@@ -103,7 +103,7 @@ function Home({
 
   const filtrar = (arr) =>
     arr.filter((p) => {
-      const buscaOk = p.nome.toLowerCase().includes(busca.toLowerCase());
+      const buscaOk = (p.nome ?? "").toLowerCase().includes(busca.toLowerCase());
       const categoriaOk =
         categoriasFiltro.length === 0 || categoriasFiltro.includes(p.categoria);
       const grupoOk =
@@ -171,6 +171,10 @@ function Home({
   };
 
   const deletarProdutoCatalogo = async (produto) => {
+    // Remove também da lista ativa, para não deixar item órfão apontando
+    // para um produto que não existe mais.
+    const item = lista.find((i) => i.produtoId === produto.id);
+    if (item) await removerItem(item);
     await deleteDoc(doc(db, "catalogo", produto.id));
     setProdutoSelecionado(null);
   };
