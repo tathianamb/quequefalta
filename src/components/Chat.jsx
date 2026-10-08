@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, Send, Trash2, Copy, Check } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
@@ -10,10 +10,39 @@ const SUGESTOES = [
   'O que posso fazer com o que está na despensa?',
 ]
 
+// Clipboard API exige contexto seguro; o fallback com textarea cobre o resto.
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto)
+    return true
+  } catch {
+    try {
+      const area = document.createElement('textarea')
+      area.value = texto
+      area.style.position = 'fixed'
+      area.style.opacity = '0'
+      document.body.appendChild(area)
+      area.select()
+      const ok = document.execCommand('copy')
+      document.body.removeChild(area)
+      return ok
+    } catch {
+      return false
+    }
+  }
+}
+
 export default function Chat({ onFechar }) {
   const { mensagens, enviando, enviar, limpar, marcarLida } = useChat()
   const [texto, setTexto] = useState('')
+  const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
   const fimRef = useRef(null)
+
+  const copiar = async (indice, conteudo) => {
+    if (!(await copiarTexto(conteudo))) return
+    setCopiada(indice)
+    setTimeout(() => setCopiada((atual) => (atual === indice ? null : atual)), 1800)
+  }
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -116,7 +145,7 @@ export default function Chat({ onFechar }) {
           {mensagens.map((m, i) => {
             const doUsuario = m.papel === 'usuario'
             return (
-              <div key={i} style={{ display: 'flex', justifyContent: doUsuario ? 'flex-end' : 'flex-start' }}>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: doUsuario ? 'flex-end' : 'flex-start', gap: '4px' }}>
                 <div
                   style={{
                     maxWidth: '88%',
@@ -133,6 +162,20 @@ export default function Chat({ onFechar }) {
                 >
                   {doUsuario || m.erro ? m.texto : <TextoDica texto={m.texto} />}
                 </div>
+                {!doUsuario && !m.erro && (
+                  <button
+                    onClick={() => copiar(i, m.texto)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px',
+                      color: copiada === i ? COR.sucesso : 'var(--text-soft)',
+                      fontFamily: 'Nunito, sans-serif', fontSize: FONTE.sm, fontWeight: FONTE.semibold,
+                    }}
+                  >
+                    {copiada === i ? <Check size={14} /> : <Copy size={14} />}
+                    {copiada === i ? 'Copiado' : 'Copiar'}
+                  </button>
+                )}
               </div>
             )
           })}
