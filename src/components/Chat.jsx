@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, Send, Trash2, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Send, Trash2, Copy, Check, Loader2 } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
@@ -33,7 +33,8 @@ async function copiarTexto(texto) {
 }
 
 export default function Chat({ onFechar }) {
-  const { mensagens, enviando, enviar, limpar, marcarLida } = useChat()
+  const { mensagens, enviando, bloqueadoAte, enviar, limpar, marcarLida } = useChat()
+  const [agora, setAgora] = useState(() => Date.now())
   const [texto, setTexto] = useState('')
   const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
   const fimRef = useRef(null)
@@ -49,10 +50,23 @@ export default function Chat({ onFechar }) {
     marcarLida() // resposta que chega com o chat aberto já nasce lida
   }, [mensagens, enviando, marcarLida])
 
-  const onSubmit = (e) => {
+  // Reavalia o bloqueio quando a espera termina (não há outro evento que
+  // force um novo render nesse momento).
+  useEffect(() => {
+    const restante = bloqueadoAte - Date.now()
+    if (restante <= 0) return
+    const t = setTimeout(() => setAgora(Date.now()), restante + 50)
+    return () => clearTimeout(t)
+  }, [bloqueadoAte])
+
+  const aguardando = enviando || agora < bloqueadoAte
+
+  const onSubmit = async (e) => {
     e.preventDefault()
-    enviar(texto)
+    if (aguardando || !texto.trim()) return
+    const conteudo = texto
     setTexto('')
+    if (!(await enviar(conteudo))) setTexto(conteudo)
   }
 
   return (
@@ -124,6 +138,7 @@ export default function Chat({ onFechar }) {
                 <button
                   key={s}
                   onClick={() => enviar(s)}
+                  disabled={aguardando}
                   style={{
                     textAlign: 'left',
                     padding: '12px 14px',
@@ -229,7 +244,7 @@ export default function Chat({ onFechar }) {
           />
           <button
             type="submit"
-            disabled={!texto.trim() || enviando}
+            disabled={!texto.trim() || aguardando}
             aria-label="Enviar"
             style={{
               width: '42px',
@@ -237,14 +252,16 @@ export default function Chat({ onFechar }) {
               borderRadius: RAIO.full,
               border: 'none',
               background: 'linear-gradient(135deg, var(--amarelo), var(--laranja))',
-              opacity: !texto.trim() || enviando ? 0.5 : 1,
-              cursor: !texto.trim() || enviando ? 'default' : 'pointer',
+              opacity: !texto.trim() || aguardando ? 0.5 : 1,
+              cursor: !texto.trim() || aguardando ? 'default' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Send size={18} color="#212529" />
+            {aguardando
+              ? <Loader2 size={18} color="#212529" style={{ animation: 'girar 1s linear infinite' }} />
+              : <Send size={18} color="#212529" />}
           </button>
         </form>
       </div>

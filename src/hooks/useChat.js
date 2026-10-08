@@ -10,6 +10,12 @@ import { auth, functions } from '../config/firebase'
 const perguntarChat = httpsCallable(functions, 'perguntarChat')
 
 const MAX_SALVAS = 40
+// Espelha a espera do servidor (functions/src/firestore/travaGemini.js): depois
+// de cada pergunta o envio fica travado um tempo, maior se deu erro. Aqui só
+// serve para desabilitar o botão; quem garante o limite é o servidor.
+const ESPERA_SUCESSO_MS = 10 * 1000
+const ESPERA_FALHA_MS = 30 * 1000
+
 const MSG_ERRO_PADRAO = 'Não consegui responder agora. Tente de novo em instantes.'
 
 const uidAtual = () => auth.currentUser?.uid || 'anon'
@@ -47,7 +53,7 @@ function mensagemDoErro(erro) {
 }
 
 let uid = null
-let estado = { mensagens: [], enviando: false, naoLida: false }
+let estado = { mensagens: [], enviando: false, naoLida: false, bloqueadoAte: 0 }
 const ouvintes = new Set()
 
 function atualizar(parcial) {
@@ -61,7 +67,7 @@ function sincronizarUsuario() {
   const atual = uidAtual()
   if (atual !== uid) {
     uid = atual
-    estado = { mensagens: lerConversa(uid), enviando: false, naoLida: false }
+    estado = { mensagens: lerConversa(uid), enviando: false, naoLida: false, bloqueadoAte: 0 }
   }
 }
 
@@ -78,7 +84,7 @@ function obterEstado() {
 async function enviar(conteudo) {
   sincronizarUsuario()
   const mensagem = conteudo.trim()
-  if (!mensagem || estado.enviando) return
+  if (!mensagem || estado.enviando || Date.now() < estado.bloqueadoAte) return false
 
   const uidDoEnvio = uid
   // Mensagens de erro não entram no contexto enviado ao modelo.
@@ -89,17 +95,25 @@ async function enviar(conteudo) {
   atualizar({ mensagens: [...estado.mensagens, { papel: 'usuario', texto: mensagem }], enviando: true })
 
   let resposta
+  let falhou = false
   try {
     const { data } = await perguntarChat({ mensagem, historico })
     resposta = { papel: 'assistente', texto: data.resposta }
   } catch (erro) {
     console.error('Erro no chat:', erro)
     resposta = { papel: 'assistente', texto: mensagemDoErro(erro), erro: true }
+    falhou = true
   }
 
   // Se o usuário trocou de conta no meio do caminho, a resposta não é dele.
-  if (uid !== uidDoEnvio) return
-  atualizar({ mensagens: [...estado.mensagens, resposta], enviando: false, naoLida: true })
+  if (uid !== uidDoEnvio) return true
+  atualizar({
+    mensagens: [...estado.mensagens, resposta],
+    enviando: false,
+    naoLida: true,
+    bloqueadoAte: Date.now() + (falhou ? ESPERA_FALHA_MS : ESPERA_SUCESSO_MS),
+  })
+  return true
 }
 
 function limpar() {
@@ -112,6 +126,6 @@ function marcarLida() {
 }
 
 export function useChat() {
-  const { mensagens, enviando, naoLida } = useSyncExternalStore(assinar, obterEstado)
-  return { mensagens, enviando, naoLida, enviar, limpar, marcarLida }
+  const { mensagens, enviando, naoLida, bloqueadoAte } = useSyncExternalStore(assinar, obterEstado)
+  return { mensagens, enviando, naoLida, bloqueadoAte, enviar, limpar, marcarLida }
 }
