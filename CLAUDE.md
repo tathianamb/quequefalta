@@ -141,7 +141,7 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 - `DetalhesProduto.jsx` — product detail modal with price history, price registration form (list context only, blocks duplicate mercado+data registration), and admin attribute/name/category editing.
 - `FiltroCategoria.jsx` — multi-select category filter modal with optional `botoesExtras` slot.
 - `AdminPanel.jsx` — toggle for admin edit mode.
-- `dicas/DicaLista.jsx`, `DicaDetalhe.jsx`, `DicaFormulario.jsx` — tips list, reading view, and admin write/edit form with preview. Text formatting (`## subtítulo`, `- item`, `1. passo`, `**negrito**`) is parsed by `src/utils/textoDica.js` and rendered as React elements (no `dangerouslySetInnerHTML`).
+- `dicas/DicaLista.jsx`, `DicaDetalhe.jsx`, `DicaFormulario.jsx` — tips list, reading view, and admin write/edit form with preview. Text formatting (`## subtítulo`, `- item`, `1. passo`, `**negrito**`, `[texto](https://...)` and bare `https://` URLs) is parsed by `src/utils/textoDica.js` and rendered as React elements (no `dangerouslySetInnerHTML`). Only `http(s)` URLs become links.
 - `receitas/ReceitaLista.jsx`, `ReceitaDetalhe.jsx`, `ReceitaFormulario.jsx`, `ReceitaTexto.jsx` — recipe browsing, detail (ingredient checklist with substitution-group support, "add missing to list"), creation/edit form, and a paste-to-parse screen (`src/utils/parseReceita.js` pre-fills the form from free text).
 
 ### Design tokens & styling

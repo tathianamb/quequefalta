@@ -22,6 +22,7 @@ const PLACEHOLDER = `Escreva a dica aqui. Dá pra formatar assim:
 - item de lista
 1. passo numerado
 **negrito**
+[texto do link](https://endereco.com)
 
 Deixe uma linha em branco entre os parágrafos.`
 

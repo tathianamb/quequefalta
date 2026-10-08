@@ -4,9 +4,23 @@ import { TIPOGRAFIA, BOTAO_SECUNDARIO } from '../../utils/estilos'
 import { blocosDoTexto, trechosDaLinha, dataDaDica } from '../../utils/textoDica'
 
 function Linha({ texto }) {
-  return trechosDaLinha(texto).map((t, i) =>
-    t.negrito ? <strong key={i} style={{ fontWeight: 800 }}>{t.texto}</strong> : <Fragment key={i}>{t.texto}</Fragment>
-  )
+  return trechosDaLinha(texto).map((t, i) => {
+    if (t.href) {
+      return (
+        <a
+          key={i}
+          href={t.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--laranja)', fontWeight: 600, textDecoration: 'underline', overflowWrap: 'anywhere' }}
+        >
+          {t.texto}
+        </a>
+      )
+    }
+    if (t.negrito) return <strong key={i} style={{ fontWeight: 800 }}>{t.texto}</strong>
+    return <Fragment key={i}>{t.texto}</Fragment>
+  })
 }
 
 function Paragrafo({ texto }) {
