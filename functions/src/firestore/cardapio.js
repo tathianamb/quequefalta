@@ -145,14 +145,17 @@ export async function obterItensComprados(uid) {
   const listaAtiva = await obterListaAtivaDoUsuario(uid);
   if (!listaAtiva) return [];
 
-  const [itensSnap, catalogoSnap] = await Promise.all([
-    db.collection("listas").doc(listaAtiva).collection("lista").where("comprado", "==", true).get(),
-    db.collection("catalogo").get(),
-  ]);
+  const itensSnap = await db.collection("listas").doc(listaAtiva).collection("lista").where("comprado", "==", true).get();
 
   if (itensSnap.empty) return [];
 
-  const catalogoPorId = new Map(catalogoSnap.docs.map((d) => [d.id, d.data()]));
+  // Lê só os produtos que estão na lista (e não o catálogo inteiro, ~500
+  // docs): cada mensagem do chat/bot chega aqui, e a leitura completa gastava
+  // a cota diária de leituras do Firestore muito rápido.
+  const idsProdutos = [...new Set(itensSnap.docs.map((d) => d.data().produtoId).filter(Boolean))];
+  if (!idsProdutos.length) return [];
+  const produtosSnap = await db.getAll(...idsProdutos.map((id) => db.collection("catalogo").doc(id)));
+  const catalogoPorId = new Map(produtosSnap.filter((d) => d.exists).map((d) => [d.id, d.data()]));
 
   return itensSnap.docs
     .map((doc) => {
