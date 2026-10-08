@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft, Send, Trash2 } from 'lucide-react'
-import { functions } from '../config/firebase'
+import { auth, functions } from '../config/firebase'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
 
@@ -13,22 +13,53 @@ const SUGESTOES = [
   'O que posso fazer com o que está na despensa?',
 ]
 
+const MAX_SALVAS = 40
+
+// Só a última conversa, por usuário, neste aparelho. localStorage pode lançar
+// (janela privada, dados bloqueados), então a conversa segue funcionando sem ele.
+const chaveSalva = () => `quequefalta.chat.${auth.currentUser?.uid || 'anon'}`
+
+function lerConversa() {
+  try {
+    const salvas = JSON.parse(localStorage.getItem(chaveSalva()))
+    return Array.isArray(salvas)
+      ? salvas.filter((m) => (m?.papel === 'usuario' || m?.papel === 'assistente') && typeof m.texto === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
+function gravarConversa(mensagens) {
+  try {
+    if (mensagens.length) localStorage.setItem(chaveSalva(), JSON.stringify(mensagens.slice(-MAX_SALVAS)))
+    else localStorage.removeItem(chaveSalva())
+  } catch {
+    // sem armazenamento: a conversa vale só enquanto o chat está aberto
+  }
+}
+
 const MSG_ERRO_PADRAO = 'Não consegui responder agora. Tente de novo em instantes.'
 
 // Erros do servidor vêm como HttpsError com a mensagem já em português;
 // falhas de rede/permissão caem no texto padrão.
 function mensagemDoErro(erro) {
-  if (erro?.code === 'functions/internal' || erro?.code === 'functions/invalid-argument') {
-    return erro.message || MSG_ERRO_PADRAO
-  }
+  const temMensagemDoServidor =
+    (erro?.code === 'functions/internal' || erro?.code === 'functions/invalid-argument') &&
+    erro.message && erro.message.toLowerCase() !== 'internal'
+  if (temMensagemDoServidor) return erro.message
   return MSG_ERRO_PADRAO
 }
 
 export default function Chat({ onFechar }) {
-  const [mensagens, setMensagens] = useState([]) // { papel: 'usuario'|'assistente', texto, erro? }
+  const [mensagens, setMensagens] = useState(lerConversa) // { papel: 'usuario'|'assistente', texto, erro? }
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
   const fimRef = useRef(null)
+
+  useEffect(() => {
+    gravarConversa(mensagens)
+  }, [mensagens])
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
