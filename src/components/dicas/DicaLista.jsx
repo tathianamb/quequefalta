@@ -30,9 +30,17 @@ function CardDica({ dica, onClick }) {
   )
 }
 
-export function DicaLista({ dicas, carregando, busca, onVerDica }) {
+export function DicaLista({ dicas, carregando, erro, busca, onVerDica }) {
   if (carregando) {
     return <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
+  }
+
+  if (erro) {
+    return (
+      <p style={{ ...TIPOGRAFIA.corpo, textAlign: 'center', color: 'var(--text-soft)', padding: '40px 20px' }}>
+        Não foi possível carregar as dicas. Tente novamente mais tarde.
+      </p>
+    )
   }
 
   if (dicas.length === 0) {

@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() {
+      return request.auth != null;
+    }
+
+    function participaDaLista(listaId) {
+      return request.auth.uid in 
+        get(/databases/$(database)/documents/listas/$(listaId)).data.participantes;
+    }
+
+    match /catalogo/{produtoId} {
+      allow read: if logado();
+      allow write: if logado() && request.auth.token.email in [
+        'tm_barchi@hotmail.com',
+        'guiicamargo98@gmail.com'
+      ];
+    }
+
+    match /sugestoes/{sugestaoId} {
+      allow read, write: if logado();
+    }
+
+    match /usuarios/{userId} {
+      allow read, write: if logado() && request.auth.uid == userId;
+    }
+
+    match /listas/{listaId} {
+      // Qualquer logado pode ler — necessário para buscar lista pelo link
+      allow read: if logado();
+      
+      // Criador pode fazer tudo
+      // Participante pode atualizar
+      // Qualquer logado pode adicionar a si mesmo como participante
+      allow write: if logado() && (
+        request.auth.uid == listaId ||
+        participaDaLista(listaId) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantes'])
+      );
+
+      match /lista/{itemId} {
+        allow read, write: if logado() && participaDaLista(listaId);
+      }
+    }
+    
+    match /receitas/{receitaId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null
+        && request.auth.token.email in ['tm_barchi@hotmail.com', 'guiicamargo98@gmail.com'];
+    }
+
+    match /dicas/{dicaId} {
+      allow read: if logado();
+      allow write: if logado() && request.auth.token.email in [
+        'tm_barchi@hotmail.com',
+        'guiicamargo98@gmail.com'
+      ];
+    }
+  }
+}

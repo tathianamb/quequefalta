@@ -8,10 +8,12 @@ import { db } from '../config/firebase'
 export function useDicas(usuario) {
   const [dicas, setDicas] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState(false)
 
   useEffect(() => {
     const ref = collection(db, 'dicas')
     const unsub = onSnapshot(ref, (snap) => {
+      setErro(false)
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       // Mais recentes primeiro. criadaEm é null por um instante logo após
       // criar (serverTimestamp pendente) — trata como "agora" para a dica
@@ -19,6 +21,11 @@ export function useDicas(usuario) {
       const ms = (d) => d.criadaEm?.toMillis?.() ?? Date.now()
       docs.sort((a, b) => ms(b) - ms(a))
       setDicas(docs)
+      setCarregando(false)
+    }, (e) => {
+      // Sem isso, um erro de permissão deixava a aba presa em "Carregando...".
+      console.error('Erro ao carregar dicas:', e)
+      setErro(true)
       setCarregando(false)
     })
     return () => unsub()
@@ -46,5 +53,5 @@ export function useDicas(usuario) {
     await deleteDoc(doc(db, 'dicas', dica.id))
   }
 
-  return { dicas, carregando, criar, atualizar, deletar }
+  return { dicas, carregando, erro, criar, atualizar, deletar }
 }
