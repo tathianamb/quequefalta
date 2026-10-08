@@ -1,6 +1,7 @@
 import { buscarPerfilCasa, obterItensComprados } from "../firestore/cardapio.js";
 import { montarPromptPergunta } from "../gemini/prompt.js";
 import { mensagemDeErro } from "../gemini/erros.js";
+import { adquirirTravaGemini, liberarTravaGemini } from "../firestore/travaGemini.js";
 
 export async function tratarPergunta(telegram, gemini, chatId, uid, textoComando) {
   const pergunta = textoComando.replace(/^\/pergunta/, "").trim();
@@ -13,23 +14,32 @@ export async function tratarPergunta(telegram, gemini, chatId, uid, textoComando
     return;
   }
 
-  const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
-
-  const prompt = montarPromptPergunta({
-    pessoas: perfil?.pessoas || [],
-    observacoesGerais: perfil?.observacoesGerais || "",
-    itensEmCasa,
-    pergunta,
-  });
-
-  let resposta;
-  try {
-    resposta = await gemini.gerarTexto(prompt);
-  } catch (erro) {
-    console.error("Erro ao responder pergunta:", erro);
-    await telegram.enviarMensagem(chatId, mensagemDeErro(erro));
+  if (!(await adquirirTravaGemini(uid))) {
+    await telegram.enviarMensagem(chatId, "Ainda estou respondendo sua pergunta anterior. Aguarde um instante.");
     return;
   }
 
-  await telegram.enviarMensagem(chatId, resposta);
+  try {
+    const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
+
+    const prompt = montarPromptPergunta({
+      pessoas: perfil?.pessoas || [],
+      observacoesGerais: perfil?.observacoesGerais || "",
+      itensEmCasa,
+      pergunta,
+    });
+
+    let resposta;
+    try {
+      resposta = await gemini.gerarTexto(prompt);
+    } catch (erro) {
+      console.error("Erro ao responder pergunta:", erro);
+      await telegram.enviarMensagem(chatId, mensagemDeErro(erro));
+      return;
+    }
+
+    await telegram.enviarMensagem(chatId, resposta);
+  } finally {
+    await liberarTravaGemini(uid);
+  }
 }

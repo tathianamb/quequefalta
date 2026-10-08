@@ -4,6 +4,7 @@ import { criarClienteGemini } from "./gemini/api.js";
 import { montarPromptChat } from "./gemini/prompt.js";
 import { mensagemDeErro } from "./gemini/erros.js";
 import { buscarPerfilCasa, obterItensComprados } from "./firestore/cardapio.js";
+import { adquirirTravaGemini, liberarTravaGemini } from "./firestore/travaGemini.js";
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
@@ -39,24 +40,32 @@ export const perguntarChat = onCall(
       throw new HttpsError("invalid-argument", `Mensagem muito longa (máximo ${MAX_MENSAGEM} caracteres).`);
     }
 
-    const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
-
-    const prompt = montarPromptChat({
-      pessoas: perfil?.pessoas || [],
-      observacoesGerais: perfil?.observacoesGerais || "",
-      itensEmCasa,
-      historico: sanitizarHistorico(request.data?.historico),
-      mensagem,
-    });
-
-    // O secret pode vir com \r\n quando gravado pelo CLI no Windows.
-    const gemini = criarClienteGemini(GEMINI_API_KEY.value().trim());
+    if (!(await adquirirTravaGemini(uid))) {
+      throw new HttpsError("resource-exhausted", "Ainda estou respondendo sua pergunta anterior. Aguarde um instante.");
+    }
 
     try {
-      return { resposta: await gemini.gerarTexto(prompt) };
-    } catch (erro) {
-      console.error("Erro no chat do app:", erro);
-      throw new HttpsError("internal", mensagemDeErro(erro));
+      const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
+
+      const prompt = montarPromptChat({
+        pessoas: perfil?.pessoas || [],
+        observacoesGerais: perfil?.observacoesGerais || "",
+        itensEmCasa,
+        historico: sanitizarHistorico(request.data?.historico),
+        mensagem,
+      });
+
+      // O secret pode vir com quebra de linha no fim quando gravado pelo CLI no Windows.
+      const gemini = criarClienteGemini(GEMINI_API_KEY.value().trim());
+
+      try {
+        return { resposta: await gemini.gerarTexto(prompt) };
+      } catch (erro) {
+        console.error("Erro no chat do app:", erro);
+        throw new HttpsError("internal", mensagemDeErro(erro));
+      }
+    } finally {
+      await liberarTravaGemini(uid);
     }
   }
 );

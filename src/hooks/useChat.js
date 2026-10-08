@@ -41,7 +41,7 @@ function gravarConversa(uid, mensagens) {
 // falhas de rede/permissão (e o "internal" cru) caem no texto padrão.
 function mensagemDoErro(erro) {
   const temMensagemDoServidor =
-    (erro?.code === 'functions/internal' || erro?.code === 'functions/invalid-argument') &&
+    ['functions/internal', 'functions/invalid-argument', 'functions/resource-exhausted'].includes(erro?.code) &&
     erro.message && erro.message.toLowerCase() !== 'internal'
   return temMensagemDoServidor ? erro.message : MSG_ERRO_PADRAO
 }
