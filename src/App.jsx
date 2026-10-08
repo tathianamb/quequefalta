@@ -118,7 +118,7 @@ function App() {
               textAlign: "center",
             }}
           >
-            <p style={{ fontSize: "36px", marginBottom: "12px" }}>🛒</p>
+            <p style={{ fontSize: "36px", marginBottom: "12px" }}>👨‍👩‍👧</p>
             <p
               style={{
                 fontWeight: 900,
@@ -127,7 +127,7 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              Acessar lista compartilhada?
+              Entrar no grupo familiar?
             </p>
             <p
               style={{
@@ -137,7 +137,8 @@ function App() {
                 lineHeight: 1.5,
               }}
             >
-              Lista de <strong>{confirmandoLista.criadaPor}</strong>
+              Grupo de <strong>{confirmandoLista.criadaPor}</strong>.<br />
+              Vocês passam a dividir a lista de compras e as informações da casa (pessoas e observações).
             </p>
             <div style={{ display: "flex", gap: "12px" }}>
               <button

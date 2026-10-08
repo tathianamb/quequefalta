@@ -113,6 +113,10 @@ grupoSubstituicao/{grupoId}
 codigosVinculo/{codigo}   # 6-digit code generated in-app to link a Telegram chat, 10-min expiry
 telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 
+perfilCasa/{uid}          # configuração da casa, em duas camadas (ver "Grupo familiar")
+  ├── pessoas[], observacoesGerais       # da casa: lidas/gravadas em perfilCasa/{grupoId}
+  └── horarioEnvio, refeicoes, chatId, menuState   # pessoais: sempre em perfilCasa/{uid}
+
 lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
 ```
@@ -154,7 +158,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 
 ### Key behaviors
 
-- **List sharing**: `?lista=<id>` adds that list to the user's `listas[]` after an in-app confirmation.
+- **Grupo familiar** (antes "lista compartilhada"): `?lista=<id>` adds that list to the user's `listas[]` after an in-app confirmation, and quem entra passa a fazer parte da casa do dono. O id do grupo é o da lista ativa (== uid do dono), então `perfilCasa/{donoDaLista}` é o perfil do grupo, sem migração. `buscarPerfilCasa(uid)` (`functions/src/firestore/cardapio.js`) mescla as duas camadas e devolve o formato de sempre; pessoas e observações são editadas via `atualizarPessoa`/`removerPessoa`/`salvarObservacoesDoGrupo` (gravam no grupo) e horário/refeições via `salvarConfigPessoal` (grava em `perfilCasa/{uid}`). Trocar a lista ativa troca de grupo. Qualquer membro pode editar as pessoas do grupo pelo `/casa`.
 - **Offline**: Firestore SDK caches locally; the Service Worker (via `vite-plugin-pwa`, `registerType: 'autoUpdate'`) caches assets. Writes made offline are queued and synced on reconnect.
 - **Base path**: `vite.config.js` sets `base: '/quequefalta/'` — required for GitHub Pages and the PWA manifest's `start_url`.
 

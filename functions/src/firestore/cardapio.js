@@ -1,22 +1,47 @@
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { obterListaAtivaDoUsuario } from "./historico.js";
 
-export async function buscarPerfilCasa(uid) {
-  const db = getFirestore();
-  const doc = await db.collection("perfilCasa").doc(uid).get();
-  if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() };
+// Grupo familiar: quem entra na lista de alguém passa a fazer parte da casa
+// dessa pessoa. O id do grupo é o id da lista ativa (que é o uid do dono da
+// lista), então o documento perfilCasa/{donoDaLista} já existente serve de
+// perfil do grupo sem migração. Duas camadas:
+//   - da casa (pessoas, observacoesGerais): em perfilCasa/{grupoId}, comum a
+//     todos os membros;
+//   - pessoais (horarioEnvio, refeicoes, chatId, menuState): em
+//     perfilCasa/{uid}, porque cada membro recebe o cardápio no próprio
+//     Telegram e no próprio horário.
+// Para o dono do grupo (grupoId === uid) as duas camadas são o mesmo documento.
+export async function obterGrupoId(uid) {
+  return (await obterListaAtivaDoUsuario(uid)) || uid;
 }
 
-export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horarioEnvio, refeicoes, chatId }) {
+// Devolve as duas camadas já mescladas no formato de sempre, então quem só lê
+// o perfil (chat, /pergunta, /cardapio, telas do /casa) não precisa saber da
+// divisão.
+export async function buscarPerfilCasa(uid) {
+  const db = getFirestore();
+  const grupoId = await obterGrupoId(uid);
+  const pessoalDoc = await db.collection("perfilCasa").doc(uid).get();
+  const grupoDoc = grupoId === uid ? pessoalDoc : await db.collection("perfilCasa").doc(grupoId).get();
+
+  if (!pessoalDoc.exists && !grupoDoc.exists) return null;
+
+  const grupo = grupoDoc.data() || {};
+  return {
+    id: uid,
+    ...(pessoalDoc.data() || {}),
+    pessoas: grupo.pessoas || [],
+    observacoesGerais: grupo.observacoesGerais || "",
+  };
+}
+
+export async function salvarConfigPessoal(uid, { horarioEnvio, refeicoes, chatId }) {
   const db = getFirestore();
   const ref = db.collection("perfilCasa").doc(uid);
   const existe = (await ref.get()).exists;
 
   await ref.set(
     {
-      pessoas,
-      observacoesGerais,
       horarioEnvio,
       refeicoes,
       chatId: String(chatId),
@@ -25,6 +50,15 @@ export async function salvarPerfilCasa(uid, { pessoas, observacoesGerais, horari
     },
     { merge: true }
   );
+}
+
+export async function salvarObservacoesDoGrupo(uid, observacoesGerais) {
+  const db = getFirestore();
+  const grupoId = await obterGrupoId(uid);
+  await db
+    .collection("perfilCasa")
+    .doc(grupoId)
+    .set({ observacoesGerais, atualizadoEm: FieldValue.serverTimestamp() }, { merge: true });
 }
 
 // menuState só existe enquanto há navegação do menu /casa em curso. Dot-path
@@ -60,7 +94,7 @@ export async function limparAguardandoTexto(uid) {
 // (inclusão); qualquer outro índice substitui a pessoa existente (edição).
 export async function atualizarPessoa(uid, indice, dadosPessoa) {
   const db = getFirestore();
-  const ref = db.collection("perfilCasa").doc(uid);
+  const ref = db.collection("perfilCasa").doc(await obterGrupoId(uid));
 
   await db.runTransaction(async (tx) => {
     const doc = await tx.get(ref);
@@ -75,7 +109,7 @@ export async function atualizarPessoa(uid, indice, dadosPessoa) {
 
 export async function removerPessoa(uid, indice) {
   const db = getFirestore();
-  const ref = db.collection("perfilCasa").doc(uid);
+  const ref = db.collection("perfilCasa").doc(await obterGrupoId(uid));
 
   await db.runTransaction(async (tx) => {
     const doc = await tx.get(ref);

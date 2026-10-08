@@ -327,7 +327,7 @@ function Menu({
                   opacity: 0.6,
                 }}
               >
-                Minhas Listas
+                Grupo familiar
               </p>
               <div
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
@@ -364,8 +364,8 @@ function Menu({
                           }}
                         >
                           {propria
-                            ? "Minha lista"
-                            : `Lista de ${lista.criadaPor}`}
+                            ? "Meu grupo"
+                            : `Grupo de ${lista.criadaPor}`}
                         </p>
                         {ativa && (
                           <p
@@ -393,12 +393,12 @@ function Menu({
                               if (navigator.share) {
                                 await navigator.share({
                                   title: "QueQueFalta",
-                                  text: "Acesse minha lista de compras!",
+                                  text: "Entre no meu grupo familiar no QueQueFalta!",
                                   url,
                                 });
                               } else {
                                 await navigator.clipboard.writeText(url);
-                                alert("Link copiado!");
+                                alert("Link de convite copiado!");
                               }
                             }}
                             style={{
@@ -411,7 +411,7 @@ function Menu({
                             }}
                           >
                             <Share2 size={14} />
-                            Compartilhar
+                            Convidar
                           </button>
                         )}
                         {!propria && (
@@ -437,7 +437,7 @@ function Menu({
                               fontFamily: "Nunito, sans-serif",
                             }}
                           >
-                            Sair
+                            Sair do grupo
                           </button>
                         )}
                       </div>

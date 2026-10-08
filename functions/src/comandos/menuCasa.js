@@ -4,7 +4,8 @@ import {
   limparAguardandoTexto,
   atualizarPessoa,
   removerPessoa,
-  salvarPerfilCasa,
+  salvarConfigPessoal,
+  salvarObservacoesDoGrupo,
 } from "../firestore/cardapio.js";
 import {
   tecladoMenuPrincipal,
@@ -25,6 +26,7 @@ function formatarResumoPessoas(pessoas) {
 function textoTelaPrincipal(perfil) {
   return [
     "⚙️ Configuração da casa",
+    "Pessoas e observações valem para todo o grupo familiar; horário e refeições são só seus.",
     "",
     formatarResumoPessoas(perfil?.pessoas),
     "",
@@ -35,7 +37,7 @@ function textoTelaPrincipal(perfil) {
 }
 
 function textoTelaPessoas(perfil) {
-  return `👨‍👩‍👧 Pessoas da casa:\n\n${formatarResumoPessoas(perfil?.pessoas)}`;
+  return `👨‍👩‍👧 Pessoas da casa (grupo familiar):\n\n${formatarResumoPessoas(perfil?.pessoas)}`;
 }
 
 // Mesmo padrão de mostrarEtapa (etapasLote.js): dispatch por tela, cada uma
@@ -151,9 +153,7 @@ export async function removerPessoaEMostrar(telegram, chatId, uid, indice, messa
 
 export async function definirHorarioEMostrar(telegram, chatId, uid, hh, messageId) {
   const perfil = await buscarPerfilCasa(uid);
-  await salvarPerfilCasa(uid, {
-    pessoas: perfil?.pessoas || [],
-    observacoesGerais: perfil?.observacoesGerais || "",
+  await salvarConfigPessoal(uid, {
     refeicoes: perfil?.refeicoes || REFEICOES,
     horarioEnvio: `${hh}:00`,
     chatId,
@@ -180,9 +180,7 @@ export async function confirmarRefeicoesEMostrar(telegram, chatId, uid, messageI
     ? perfil.menuState.refeicoesRascunho
     : REFEICOES;
 
-  await salvarPerfilCasa(uid, {
-    pessoas: perfil?.pessoas || [],
-    observacoesGerais: perfil?.observacoesGerais || "",
+  await salvarConfigPessoal(uid, {
     horarioEnvio: perfil?.horarioEnvio || "22:00",
     refeicoes: refeicoesEscolhidas,
     chatId,
@@ -226,13 +224,7 @@ export async function processarTextoAguardado(telegram, chatId, uid, textoUsuari
   const messageIdOriginal = perfil.menuState.messageId;
 
   if (aguardando.tipo === "observacoes") {
-    await salvarPerfilCasa(uid, {
-      pessoas: perfil?.pessoas || [],
-      horarioEnvio: perfil?.horarioEnvio || "22:00",
-      refeicoes: perfil?.refeicoes || REFEICOES,
-      observacoesGerais: textoUsuario,
-      chatId,
-    });
+    await salvarObservacoesDoGrupo(uid, textoUsuario);
   } else {
     const dadosPessoa = parsearLinhaPessoa(textoUsuario);
     const indice = aguardando.tipo === "pessoa_incluir" ? (perfil.pessoas?.length || 0) : aguardando.indice;
