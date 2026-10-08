@@ -1,11 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { httpsCallable } from 'firebase/functions'
 import { ArrowLeft, Send, Trash2 } from 'lucide-react'
-import { auth, functions } from '../config/firebase'
+import { useChat } from '../hooks/useChat'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
-
-const perguntarChat = httpsCallable(functions, 'perguntarChat')
 
 const SUGESTOES = [
   'Sobremesa rápida com o que tenho em casa',
@@ -13,85 +10,20 @@ const SUGESTOES = [
   'O que posso fazer com o que está na despensa?',
 ]
 
-const MAX_SALVAS = 40
-
-// Só a última conversa, por usuário, neste aparelho. localStorage pode lançar
-// (janela privada, dados bloqueados), então a conversa segue funcionando sem ele.
-const chaveSalva = () => `quequefalta.chat.${auth.currentUser?.uid || 'anon'}`
-
-function lerConversa() {
-  try {
-    const salvas = JSON.parse(localStorage.getItem(chaveSalva()))
-    return Array.isArray(salvas)
-      ? salvas.filter((m) => (m?.papel === 'usuario' || m?.papel === 'assistente') && typeof m.texto === 'string')
-      : []
-  } catch {
-    return []
-  }
-}
-
-function gravarConversa(mensagens) {
-  try {
-    if (mensagens.length) localStorage.setItem(chaveSalva(), JSON.stringify(mensagens.slice(-MAX_SALVAS)))
-    else localStorage.removeItem(chaveSalva())
-  } catch {
-    // sem armazenamento: a conversa vale só enquanto o chat está aberto
-  }
-}
-
-const MSG_ERRO_PADRAO = 'Não consegui responder agora. Tente de novo em instantes.'
-
-// Erros do servidor vêm como HttpsError com a mensagem já em português;
-// falhas de rede/permissão caem no texto padrão.
-function mensagemDoErro(erro) {
-  const temMensagemDoServidor =
-    (erro?.code === 'functions/internal' || erro?.code === 'functions/invalid-argument') &&
-    erro.message && erro.message.toLowerCase() !== 'internal'
-  if (temMensagemDoServidor) return erro.message
-  return MSG_ERRO_PADRAO
-}
-
 export default function Chat({ onFechar }) {
-  const [mensagens, setMensagens] = useState(lerConversa) // { papel: 'usuario'|'assistente', texto, erro? }
+  const { mensagens, enviando, enviar, limpar, marcarLida } = useChat()
   const [texto, setTexto] = useState('')
-  const [enviando, setEnviando] = useState(false)
   const fimRef = useRef(null)
 
   useEffect(() => {
-    gravarConversa(mensagens)
-  }, [mensagens])
-
-  useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [mensagens, enviando])
-
-  const enviar = async (conteudo) => {
-    const mensagem = conteudo.trim()
-    if (!mensagem || enviando) return
-
-    // Mensagens de erro não entram no contexto enviado ao modelo.
-    const historico = mensagens
-      .filter((m) => !m.erro)
-      .map(({ papel, texto }) => ({ papel, texto }))
-
-    setMensagens((atual) => [...atual, { papel: 'usuario', texto: mensagem }])
-    setTexto('')
-    setEnviando(true)
-
-    try {
-      const { data } = await perguntarChat({ mensagem, historico })
-      setMensagens((atual) => [...atual, { papel: 'assistente', texto: data.resposta }])
-    } catch (erro) {
-      console.error('Erro no chat:', erro)
-      setMensagens((atual) => [...atual, { papel: 'assistente', texto: mensagemDoErro(erro), erro: true }])
-    } finally {
-      setEnviando(false)
-    }
-  }
+    marcarLida() // resposta que chega com o chat aberto já nasce lida
+  }, [mensagens, enviando, marcarLida])
 
   const onSubmit = (e) => {
     e.preventDefault()
     enviar(texto)
+    setTexto('')
   }
 
   return (
@@ -138,7 +70,7 @@ export default function Chat({ onFechar }) {
           </button>
           <h2 style={{ ...TIPOGRAFIA.h3, color: 'var(--text)' }}>Chat</h2>
           <button
-            onClick={() => setMensagens([])}
+            onClick={limpar}
             disabled={!mensagens.length || enviando}
             aria-label="Limpar conversa"
             style={{

@@ -10,6 +10,7 @@ import CategoriaGrupo from "../components/CategoriaGrupo";
 import DetalhesProduto from "../components/DetalhesProduto";
 import Menu from "../components/Menu";
 import Chat from "../components/Chat";
+import { useChat } from "../hooks/useChat";
 import {
   ChevronsUp,
   ChevronsDown,
@@ -76,6 +77,7 @@ function Home({
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const [chatAberto, setChatAberto] = useState(false);
+  const { naoLida: chatNaoLido, enviando: chatEnviando } = useChat();
   const {
     sugestoes,
     pendentes: sugestoesPendentes,
@@ -109,6 +111,7 @@ function Home({
   const {
     dicas,
     carregando: carregandoDicas,
+    erro: erroDicas,
     criar: criarDica,
     atualizar: atualizarDica,
     deletar: deletarDica,
@@ -282,6 +285,13 @@ function Home({
               aria-label="Chat"
             >
               <MessageCircle size={22} color="var(--text-soft)" />
+              {(chatNaoLido || chatEnviando) && !chatAberto && (
+                <div style={{
+                  position: "absolute", top: "-3px", right: "-4px",
+                  width: "10px", height: "10px", borderRadius: RAIO.full,
+                  background: chatNaoLido ? "var(--laranja)" : "var(--text-soft)",
+                }} />
+              )}
             </div>
             <div
               style={{ position: "relative", cursor: "pointer" }}
@@ -1031,6 +1041,7 @@ function Home({
             <DicaLista
               dicas={dicasFiltradas}
               carregando={carregandoDicas}
+              erro={erroDicas}
               busca={busca}
               onVerDica={(d) => {
                 setDicaSelecionadaId(d.id);
