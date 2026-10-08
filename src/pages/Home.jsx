@@ -9,6 +9,7 @@ import { useTema } from "../hooks/useTema";
 import CategoriaGrupo from "../components/CategoriaGrupo";
 import DetalhesProduto from "../components/DetalhesProduto";
 import Menu from "../components/Menu";
+import Chat from "../components/Chat";
 import {
   ChevronsUp,
   ChevronsDown,
@@ -20,6 +21,7 @@ import {
   X,
   Plus,
   Menu as MenuIcon,
+  MessageCircle,
   ArrowUpDown,
   Check,
 } from "lucide-react";
@@ -73,6 +75,7 @@ function Home({
   const [grupoFiltro, setGrupoFiltro] = useState([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [chatAberto, setChatAberto] = useState(false);
   const {
     sugestoes,
     pendentes: sugestoesPendentes,
@@ -273,6 +276,13 @@ function Home({
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{ position: "relative", cursor: "pointer" }}
+              onClick={() => { setChatAberto(true); pushBack(() => setChatAberto(false)); }}
+              aria-label="Chat"
+            >
+              <MessageCircle size={22} color="var(--text-soft)" />
+            </div>
             <div
               style={{ position: "relative", cursor: "pointer" }}
               onClick={() => { setMenuAberto(true); pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); }); }}
@@ -1105,6 +1115,9 @@ function Home({
           itensEmCasa={lista.filter((i) => i.comprado)}
         />
       )}
+
+      {/* Chat */}
+      {chatAberto && <Chat onFechar={() => setChatAberto(false)} />}
 
       {/* Navegação inferior */}
       <div
