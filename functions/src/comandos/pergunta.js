@@ -15,10 +15,11 @@ export async function tratarPergunta(telegram, gemini, chatId, uid, textoComando
   }
 
   if (!(await adquirirTravaGemini(uid))) {
-    await telegram.enviarMensagem(chatId, "Ainda estou respondendo sua pergunta anterior. Aguarde um instante.");
+    await telegram.enviarMensagem(chatId, "Aguarde alguns segundos antes de enviar outra pergunta.");
     return;
   }
 
+  let falhou = false;
   try {
     const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
 
@@ -34,12 +35,13 @@ export async function tratarPergunta(telegram, gemini, chatId, uid, textoComando
       resposta = await gemini.gerarTexto(prompt);
     } catch (erro) {
       console.error("Erro ao responder pergunta:", erro);
+      falhou = true;
       await telegram.enviarMensagem(chatId, mensagemDeErro(erro));
       return;
     }
 
     await telegram.enviarMensagem(chatId, resposta);
   } finally {
-    await liberarTravaGemini(uid);
+    await liberarTravaGemini(uid, { falhou });
   }
 }

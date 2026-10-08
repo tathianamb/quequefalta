@@ -41,9 +41,10 @@ export const perguntarChat = onCall(
     }
 
     if (!(await adquirirTravaGemini(uid))) {
-      throw new HttpsError("resource-exhausted", "Ainda estou respondendo sua pergunta anterior. Aguarde um instante.");
+      throw new HttpsError("resource-exhausted", "Aguarde alguns segundos antes de enviar outra pergunta.");
     }
 
+    let falhou = false;
     try {
       const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
 
@@ -62,10 +63,11 @@ export const perguntarChat = onCall(
         return { resposta: await gemini.gerarTexto(prompt) };
       } catch (erro) {
         console.error("Erro no chat do app:", erro);
+        falhou = true;
         throw new HttpsError("internal", mensagemDeErro(erro));
       }
     } finally {
-      await liberarTravaGemini(uid);
+      await liberarTravaGemini(uid, { falhou });
     }
   }
 );
