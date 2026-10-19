@@ -30,13 +30,39 @@ export async function buscarItemRevisaoPorId(itemId) {
   return { id: doc.id, ...doc.data() };
 }
 
-export async function resolverItemRevisao(itemId, produtoId) {
+// `registro` é a entrada exata gravada no historico (null quando a duplicata
+// foi aceita sem gravar) e `statusAnterior` é de qual lista o item saiu —
+// os dois existem só para o "↩️ Desfazer" conseguir reverter a escolha.
+export async function resolverItemRevisao(itemId, produtoId, { registro = null, statusAnterior = "pendente" } = {}) {
   const db = getFirestore();
   await db.collection("filaRevisaoNotas").doc(itemId).update({
     status: "resolvido",
     produtoIdResolvido: produtoId,
+    registro,
+    statusAnterior,
     resolvidoEm: FieldValue.serverTimestamp(),
   });
+}
+
+// Remove do historico o preço que a resolução gravou e devolve o item para a
+// lista de onde veio (pendente ou adiado), num único batch — ou as duas coisas
+// acontecem, ou nenhuma.
+export async function desfazerResolucaoItemRevisao(item) {
+  const db = getFirestore();
+  const batch = db.batch();
+  if (item.registro && item.produtoIdResolvido) {
+    batch.update(db.collection("catalogo").doc(item.produtoIdResolvido), {
+      historico: FieldValue.arrayRemove(item.registro),
+    });
+  }
+  batch.update(db.collection("filaRevisaoNotas").doc(item.id), {
+    status: item.statusAnterior || "pendente",
+    produtoIdResolvido: null,
+    registro: FieldValue.delete(),
+    statusAnterior: FieldValue.delete(),
+    duplicataCandidata: FieldValue.delete(),
+  });
+  await batch.commit();
 }
 
 export async function ignorarItemRevisao(itemId) {

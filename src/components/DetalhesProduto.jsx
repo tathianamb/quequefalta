@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { corDaCategoria, ORDEM_CATEGORIAS } from "../utils/categorias";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
@@ -138,6 +138,15 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
     } finally {
       setSalvando(false);
     }
+  };
+
+  // arrayRemove compara o objeto inteiro — `h` vem direto do snapshot (mesmos
+  // campos e Timestamp), então remove exatamente esse registro e nenhum outro.
+  const handleApagarRegistro = async (h) => {
+    const dia = h.data?.toDate ? h.data.toDate().toLocaleDateString("pt-BR") : "";
+    const precoTexto = `R$ ${h.preco.toFixed(2).replace(".", ",")}`;
+    if (!window.confirm(`Apagar o registro de ${precoTexto} no ${h.mercado} (${dia})?`)) return;
+    await updateDoc(doc(db, "catalogo", produto.id), { historico: arrayRemove(h) });
   };
 
   const melhor = melhorPreco();
@@ -594,6 +603,15 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                 <p style={{ fontWeight: FONTE.extrabold, fontSize: FONTE.xl }}>
                   R$ {h.preco.toFixed(2).replace(".", ",")}
                 </p>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleApagarRegistro(h)}
+                    aria-label="Apagar registro"
+                    style={{ marginLeft: "10px", padding: "6px", borderRadius: RAIO.sm, border: "none", background: COR.erroBg, color: COR.erro, cursor: "pointer", display: "flex", alignItems: "center" }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             ))}
           </div>

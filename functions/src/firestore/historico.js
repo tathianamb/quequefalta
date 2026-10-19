@@ -27,18 +27,14 @@ export async function registrarPreco({ produtoId, mercado, preco, data, listaAti
     ? `Registrado via Telegram — nota: "${nomeNota}"`
     : "Registrado via Telegram";
 
+  const entrada = { mercado, preco, data: dataRegistro, observacao, listaAtiva };
   await db
     .collection("catalogo")
     .doc(produtoId)
-    .update({
-      historico: FieldValue.arrayUnion({
-        mercado,
-        preco,
-        data: dataRegistro,
-        observacao,
-        listaAtiva,
-      }),
-    });
+    .update({ historico: FieldValue.arrayUnion(entrada) });
+  // Devolvido para quem precisar desfazer depois: arrayRemove exige o objeto
+  // idêntico ao gravado (ver desfazerResolucaoItemRevisao).
+  return entrada;
 }
 
 export async function obterListaAtivaDoUsuario(uid) {

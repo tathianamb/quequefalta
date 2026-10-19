@@ -6,7 +6,7 @@ import { tratarVincular } from "./comandos/vincular.js";
 import { tratarTabela } from "./comandos/tabela.js";
 import { tratarHelp } from "./comandos/help.js";
 import { tratarCallback } from "./comandos/callback.js";
-import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemRenomeadoDaFila } from "./comandos/revisar.js";
+import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemDaFilaPorId } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
 import { tratarCardapioManual, tratarFeedbackCardapio } from "./comandos/cardapio.js";
 import { abrirMenuPrincipal, processarTextoAguardado } from "./comandos/menuCasa.js";
@@ -150,7 +150,7 @@ async function processarUpdate(telegram, gemini, update) {
     await atualizarNomeItemRevisao(itemAguardandoNome.id, texto.trim());
     await apagarSeExistir(telegram, chatId, messageIdPergunta);
     await apagarSeExistir(telegram, chatId, update.message.message_id);
-    await mostrarItemRenomeadoDaFila(telegram, chatId, itemAguardandoNome.id, messageIdOriginal);
+    await mostrarItemDaFilaPorId(telegram, chatId, itemAguardandoNome.id, messageIdOriginal);
     return;
   }
 

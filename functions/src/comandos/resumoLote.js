@@ -13,6 +13,19 @@ export function descreverItem(item) {
   return `${nomeNota} (sem match no catálogo) — ${preco}`;
 }
 
+// Texto curto da decisão tomada na etapa 3 sobre um item sem match — usado no
+// botão "↩️" que desfaz essa decisão.
+export function descreverRevisao(item) {
+  const nomeNota = item.nomeExpandido || item.nomeExtraido;
+  const r = item.revisao || {};
+  if (r.sugestaoPendente) return `${nomeNota} (sugestão de produto novo)`;
+  if (r.status === "ignorado") return `${nomeNota} (deixado para depois)`;
+  const destino = r.nomeProdutoResolvido || "produto escolhido";
+  return r.duplicataAceita
+    ? `${nomeNota} → ${destino} (já tinha preço)`
+    : `${nomeNota} → ${destino}`;
+}
+
 export function formatarLinhaItem(item) {
   const prefixo =
     item.statusMatch === "descartado" ? "🗑️" :

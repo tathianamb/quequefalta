@@ -199,6 +199,8 @@ Items with no catalog match that aren't resolved during a batch land in `filaRev
 
 Item-by-item review offers: pick a suggested catalog match, correct the parsed name (free-text reply), suggest it as a brand-new product, or defer it.
 
+**Undo (`rv_desf`).** In the global queue, picking a product writes the price immediately; the exact `historico` entry is saved on the queue item (`registro`, plus `statusAnterior`) and the next screen carries a "↩️ Desfazer" button that `arrayRemove`s that entry and returns the item to its original list. Inside a batch, step 3 never writes — `produtoIdResolvido` is only committed by `finalizarLote` — so step 3 lists every already-decided item with a "↩️" button that just clears its `revisao`. For anything older, admins can delete individual `historico` entries in the app (trash icon in `DetalhesProduto`, admin mode).
+
 **"Suggest new product" timing differs by context.** In the global queue, tapping it creates the `sugestoes` doc immediately (deduped by normalized name against existing pending suggestions). Inside a batch (step 3), it's deferred: the tap only marks `revisao.sugestaoPendente: true` on the lote item (reversible — nothing is written outside the lote yet) and the item drops out of step-3 review. The `sugestoes` doc is only actually created inside `finalizarLote` when the batch is confirmed at step 4, alongside registering the other items' prices. This exists because an accidental tap (e.g. meaning to hit "Corrigir nome") used to leave an orphaned suggestion in Firestore with no easy undo; canceling the whole batch (`/cancelar`) is currently the only way to back out of a pending one before finalizing.
 
 ### `callback_data` size constraint

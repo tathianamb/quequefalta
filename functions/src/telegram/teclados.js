@@ -1,4 +1,4 @@
-import { descreverItem } from "../comandos/resumoLote.js";
+import { descreverItem, descreverRevisao } from "../comandos/resumoLote.js";
 
 export function tecladoLotePendente(loteId) {
   return {
@@ -25,10 +25,20 @@ export function tecladoEtapa2(loteId, itensComMatch) {
   return { inline_keyboard: [...botoesRemover, ...botoesNavegacao(loteId, 2)] };
 }
 
-export function tecladoEtapa3(loteId, itemAtual, sugestoes) {
-  if (!itemAtual) return { inline_keyboard: botoesNavegacao(loteId, 3) };
-  const tecladoItem = tecladoRevisaoItem(`lote:${loteId}:${itemAtual.indice}`, sugestoes);
-  return { inline_keyboard: [...tecladoItem.inline_keyboard, ...botoesNavegacao(loteId, 3)] };
+export function tecladoEtapa3(loteId, itemAtual, sugestoes, revisados = []) {
+  const botoesDesfazer = revisados.map((item) => [
+    { text: `↩️ ${descreverRevisao(item)}`, callback_data: `rv_desf:lote:${loteId}:${item.indice}` },
+  ]);
+  const tecladoItem = itemAtual
+    ? tecladoRevisaoItem(`lote:${loteId}:${itemAtual.indice}`, sugestoes).inline_keyboard
+    : [];
+  return { inline_keyboard: [...tecladoItem, ...botoesDesfazer, ...botoesNavegacao(loteId, 3)] };
+}
+
+// Botão "↩️ Desfazer" da fila global — aparece só na tela seguinte à
+// resolução (o preço ali já foi gravado; desfazer o remove do historico).
+export function linhaDesfazerFila(item) {
+  return [[{ text: `↩️ Desfazer "${item.nomeExtraido}"`, callback_data: `rv_desf:fila:${item.id}` }]];
 }
 
 export function tecladoEtapa4(loteId) {

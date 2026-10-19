@@ -15,9 +15,11 @@ import {
   marcarAguardandoNomeNovo,
   marcarItemComoSugerido,
   marcarAguardandoConfirmacaoDuplicata,
+  desfazerResolucaoItemRevisao,
 } from "../firestore/revisao.js";
 import { criarSugestaoDeProduto } from "../firestore/sugestoes.js";
-import { mostrarProximoDaMesmaLista } from "./revisar.js";
+import { mostrarProximoDaMesmaLista, mostrarItemDaFilaPorId } from "./revisar.js";
+import { linhaDesfazerFila } from "../telegram/teclados.js";
 import { mostrarEtapa } from "./etapasLote.js";
 import { tratarCallbackCasa } from "./menuCasa.js";
 import { resolverUidPorChatId } from "../firestore/vinculos.js";
@@ -52,6 +54,8 @@ export async function tratarCallback(telegram, callbackQuery) {
     await sugerirProduto(telegram, chatId, params, messageId);
   } else if (acao === "rv_dup") {
     await aceitarDuplicata(telegram, chatId, params, messageId);
+  } else if (acao === "rv_desf") {
+    await desfazerRevisao(telegram, chatId, params, messageId);
   } else if (acao.startsWith("casa_")) {
     const uid = await resolverUidPorChatId(chatId);
     await tratarCallbackCasa(telegram, chatId, uid, acao, params, messageId);
@@ -80,9 +84,10 @@ async function resolverContextoRevisao(params) {
           await marcarAguardandoConfirmacaoDuplicata(itemId, produtoId, messageId);
           return { nomeProduto, jaRegistrado: true };
         }
+        let registro = null;
         if (!aceitarDuplicata) {
           const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
-          await registrarPreco({
+          registro = await registrarPreco({
             produtoId,
             mercado: item.mercado,
             preco: item.precoExtraido,
@@ -91,8 +96,11 @@ async function resolverContextoRevisao(params) {
             nomeNota: item.nomeExtraido,
           });
         }
-        await resolverItemRevisao(itemId, produtoId);
+        await resolverItemRevisao(itemId, produtoId, { registro, statusAnterior: item.status });
         return { nomeProduto };
+      },
+      async desfazer() {
+        await desfazerResolucaoItemRevisao(item);
       },
       async marcarAguardandoNome(messageId, messageIdPergunta) {
         await marcarAguardandoNomeNovo(itemId, messageId, messageIdPergunta);
@@ -136,29 +144,24 @@ async function resolverContextoRevisao(params) {
         });
         return { nomeProduto, jaRegistrado: true };
       }
-      if (!aceitarDuplicata) {
-        const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
-        await registrarPreco({
-          produtoId,
-          mercado: lote.mercado,
-          preco: item.precoExtraido,
-          data: lote.dataDaNota,
-          listaAtiva,
-          nomeNota: item.nomeExpandido || item.nomeExtraido,
-        });
-      }
+      // Não grava agora: produtoIdResolvido significa "grava na finalização"
+      // (finalizarLote). Assim a escolha continua reversível pelo "↩️" da
+      // etapa 3, e cancelar o lote de fato não deixa nada gravado.
       // duplicataAceita marca o item como já tratado sem que finalizarLote
-      // grave o preço de novo (produtoIdResolvido normalmente significa
-      // "grava na finalização" — aqui já foi decidido que não deve).
+      // grave o preço de novo.
       await atualizarItemDoLote(loteId, indice, {
         revisao: {
           status: "resolvido",
           produtoIdResolvido: produtoId,
+          nomeProdutoResolvido: nomeProduto || null,
           aguardandoNomeNovo: false,
           duplicataAceita: aceitarDuplicata,
         },
       });
       return { nomeProduto };
+    },
+    async desfazer() {
+      await atualizarItemDoLote(loteId, indice, { revisao: null });
     },
     async marcarAguardandoNome(messageId, messageIdPergunta) {
       await atualizarItemDoLote(loteId, indice, {
@@ -221,7 +224,35 @@ async function resolverRevisao(telegram, chatId, params, messageId) {
   // Confirmação vira o prefixo da próxima tela em vez de mensagem separada —
   // numa nota com muitos itens sem match, cada correção deixava 1 mensagem
   // nova; com várias seguidas isso virava um histórico bem longo.
-  await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId, `✅ Preço registrado! (${nomeProduto} — ${preco})\n\n`);
+  if (escopoParams[0] === "fila") {
+    await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId, `✅ Preço registrado! (${nomeProduto} — ${preco})\n\n`, linhaDesfazerFila(ctx.item));
+  } else {
+    await mostrarProximoAposAcao(telegram, chatId, escopoParams, ctx, messageId, `✅ ${nomeProduto} — ${preco} (será gravado ao finalizar)\n\n`);
+  }
+}
+
+// "↩️" — desfaz a escolha feita para um item. Na fila global o preço já foi
+// gravado, então é removido do historico e o item volta para a lista de onde
+// veio; no lote nada foi gravado ainda, então basta limpar a revisão do item
+// (ele volta a aparecer como pendente na etapa 3).
+async function desfazerRevisao(telegram, chatId, params, messageId) {
+  const ctx = await resolverContextoRevisao(params);
+  const escopo = params[0];
+  const podeDesfazer = escopo === "fila"
+    ? ctx.item?.status === "resolvido" && ctx.item.registro !== undefined
+    : ctx.lote?.status === "aguardando_confirmacao" && ctx.item?.revisao?.status;
+  if (!podeDesfazer) {
+    await telegram.enviarMensagem(chatId, "Não dá mais para desfazer esse item.");
+    return;
+  }
+
+  await ctx.desfazer();
+  const prefixo = `↩️ Desfeito: "${ctx.item.nomeExpandido || ctx.item.nomeExtraido}" voltou para a revisão.\n\n`;
+  if (escopo === "fila") {
+    await mostrarItemDaFilaPorId(telegram, chatId, ctx.item.id, messageId, prefixo);
+    return;
+  }
+  await mostrarEtapa(telegram, chatId, await buscarLotePorId(ctx.lote.id), messageId, prefixo);
 }
 
 async function aceitarDuplicata(telegram, chatId, params, messageIdAviso) {
@@ -246,7 +277,8 @@ async function aceitarDuplicata(telegram, chatId, params, messageIdAviso) {
   // Edita a mensagem original (com os botões de sugestão), não o aviso de
   // duplicata — evita as duas telas acumulando no histórico. A confirmação
   // acima já ficou registrada no aviso, então não repete como prefixo aqui.
-  await mostrarProximoAposAcao(telegram, chatId, params, ctx, candidata.messageIdOriginal);
+  const linhasExtras = params[0] === "fila" ? linhaDesfazerFila(ctx.item) : [];
+  await mostrarProximoAposAcao(telegram, chatId, params, ctx, candidata.messageIdOriginal, "", linhasExtras);
 }
 
 async function corrigirRevisao(telegram, chatId, params, messageId) {
@@ -290,9 +322,9 @@ async function sugerirProduto(telegram, chatId, params, messageId) {
   await mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId, `${mensagem}\n\n`);
 }
 
-async function mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId, prefixo = "") {
+async function mostrarProximoAposAcao(telegram, chatId, params, ctx, messageId, prefixo = "", linhasExtras = []) {
   if (params[0] === "fila") {
-    await mostrarProximoDaMesmaLista(telegram, chatId, ctx.item, messageId, prefixo);
+    await mostrarProximoDaMesmaLista(telegram, chatId, ctx.item, messageId, prefixo, linhasExtras);
     return;
   }
   const loteAtualizado = await buscarLotePorId(ctx.lote.id);
