@@ -148,6 +148,25 @@ export function montarPromptChat({ pessoas, observacoesGerais, itensEmCasa, hist
     .join("\n");
 }
 
+// Contexto que o usuário leva para o Claude (claude.ai) pelo botão do chat.
+// Vai como mensagem do próprio usuário, por isso em primeira pessoa, e sem
+// pergunta: o app junta a pergunta digitada no fim.
+export function montarContextoExterno({ pessoas, observacoesGerais, itensEmCasa, agora }) {
+  return [
+    "Contexto da minha casa, exportado do app QueQueFalta (nossa lista de compras compartilhada):",
+    "",
+    "Pessoas da casa:",
+    formatarPessoas(pessoas),
+    "",
+    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
+    observacoesGerais ? "" : null,
+    "Itens que tenho em casa:",
+    formatarItensEmCasa(itensEmCasa, agora),
+  ]
+    .filter((linha) => linha !== null)
+    .join("\n");
+}
+
 export function montarPromptInicial({ pessoas, observacoesGerais, refeicoes, itensEmCasa, agora }) {
   return `${cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa, agora })}\n\nSugira o cardápio agora.`;
 }

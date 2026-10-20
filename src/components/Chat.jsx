@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, Send, Trash2, Copy, Check, Loader2 } from 'lucide-react'
+import { ArrowLeft, Send, Trash2, Copy, Check, Loader2, ExternalLink } from 'lucide-react'
+import { httpsCallable } from 'firebase/functions'
+import { functions } from '../config/firebase'
 import { useChat } from '../hooks/useChat'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
@@ -32,12 +34,51 @@ async function copiarTexto(texto) {
   }
 }
 
+const contextoParaClaude = httpsCallable(functions, 'contextoParaClaude')
+
+// Texto final levado ao Claude: contexto da casa (montado no servidor, igual
+// ao do Gemini) + a pergunta digitada, se houver.
+function montarTextoClaude(contexto, pergunta) {
+  const fim = pergunta
+    ? `Minha pergunta: ${pergunta}`
+    : 'Use esse contexto para me ajudar com o que eu perguntar a seguir.'
+  return `${contexto}\n\n${fim}\n\nResponda em português, de forma direta.`
+}
+
 export default function Chat({ onFechar }) {
   const { mensagens, enviando, bloqueadoAte, enviar, limpar, marcarLida } = useChat()
   const [agora, setAgora] = useState(() => Date.now())
   const [texto, setTexto] = useState('')
   const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
+  // undefined = carregando, null = falhou, string = pronto
+  const [contextoClaude, setContextoClaude] = useState(undefined)
+  const [avisoClaude, setAvisoClaude] = useState(false)
   const fimRef = useRef(null)
+
+  // Busca o contexto ao abrir o chat, e não no toque do botão: copiar e abrir
+  // outra aba só são permitidos durante o próprio toque, e esperar a resposta
+  // do servidor antes disso faria o navegador bloquear os dois.
+  useEffect(() => {
+    let ativo = true
+    contextoParaClaude()
+      .then(({ data }) => { if (ativo) setContextoClaude(data.contexto) })
+      .catch((erro) => {
+        console.error('Erro ao montar contexto para o Claude:', erro)
+        if (ativo) setContextoClaude(null)
+      })
+    return () => { ativo = false }
+  }, [])
+
+  // Copia (garantia, caso o preenchimento automático não funcione) e abre o
+  // claude.ai com o texto no campo de mensagem.
+  const perguntarAoClaude = () => {
+    if (!contextoClaude) return
+    const textoFinal = montarTextoClaude(contextoClaude, texto.trim())
+    copiarTexto(textoFinal)
+    window.open(`https://claude.ai/new?q=${encodeURIComponent(textoFinal)}`, '_blank', 'noopener')
+    setAvisoClaude(true)
+    setTimeout(() => setAvisoClaude(false), 6000)
+  }
 
   const copiar = async (indice, conteudo) => {
     if (!(await copiarTexto(conteudo))) return
@@ -214,15 +255,52 @@ export default function Chat({ onFechar }) {
           <div ref={fimRef} />
         </div>
 
+        {/* Levar a pergunta ao Claude (conta do próprio usuário no claude.ai) */}
+        <div
+          style={{
+            padding: '10px 16px 0',
+            background: 'var(--card)',
+            borderTop: `1px solid ${COR.divisoria}`,
+          }}
+        >
+          <button
+            type="button"
+            onClick={perguntarAoClaude}
+            disabled={!contextoClaude}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '6px 12px',
+              borderRadius: RAIO.pill,
+              border: `1.5px solid ${COR.borda}`,
+              background: 'var(--bg)',
+              color: 'var(--text)',
+              opacity: contextoClaude ? 1 : 0.5,
+              cursor: contextoClaude ? 'pointer' : 'default',
+              fontFamily: 'Nunito, sans-serif', fontSize: FONTE.sm, fontWeight: FONTE.bold,
+            }}
+          >
+            <ExternalLink size={14} />
+            {contextoClaude === undefined
+              ? 'Preparando contexto...'
+              : contextoClaude === null
+                ? 'Claude indisponível agora'
+                : texto.trim() ? 'Perguntar isso ao Claude' : 'Perguntar ao Claude'}
+          </button>
+          {avisoClaude && (
+            <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '6px' }}>
+              Texto copiado com o contexto da casa. Se não aparecer no Claude, é só colar.
+            </p>
+          )}
+        </div>
+
         {/* Entrada */}
         <form
           onSubmit={onSubmit}
           style={{
             display: 'flex',
             gap: '10px',
-            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+            padding: '10px 16px calc(12px + env(safe-area-inset-bottom))',
             background: 'var(--card)',
-            borderTop: `1px solid ${COR.divisoria}`,
           }}
         >
           <input

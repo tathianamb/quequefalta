@@ -1,6 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { montarPromptPergunta, montarPromptInicial, montarPromptRefinamento } from "./prompt.js";
+import { montarPromptPergunta, montarPromptInicial, montarPromptRefinamento, montarContextoExterno } from "./prompt.js";
+
+test("montarContextoExterno — primeira pessoa, sem pergunta, com itens priorizados", () => {
+  const saida = montarContextoExterno({
+    pessoas: [{ nome: "Tathiana", restricoes: ["sem lactose"] }],
+    observacoesGerais: "",
+    itensEmCasa: [{ nome: "alface", categoria: "Hortifrúti", emCasaDesde: new Date() }],
+  });
+
+  assert.match(saida, /^Contexto da minha casa/);
+  assert.match(saida, /Tathiana \(restrições: sem lactose\)/);
+  assert.match(saida, /Itens que tenho em casa:\nFrescos\/crus/);
+  assert.doesNotMatch(saida, /Observações gerais|Pergunta do usuário/);
+});
 
 test("montarPromptPergunta — com pessoas, observações e itens em casa", () => {
   const entrada = {

@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { criarClienteGemini } from "./gemini/api.js";
-import { montarPromptChat } from "./gemini/prompt.js";
+import { montarPromptChat, montarContextoExterno } from "./gemini/prompt.js";
 import { mensagemDeErro } from "./gemini/erros.js";
 import { buscarPerfilCasa, obterItensComprados } from "./firestore/cardapio.js";
 import { adquirirTravaGemini, liberarTravaGemini } from "./firestore/travaGemini.js";
@@ -69,5 +69,26 @@ export const perguntarChat = onCall(
     } finally {
       await liberarTravaGemini(uid, { falhou });
     }
+  }
+);
+
+// Botão "Perguntar ao Claude" do chat: devolve só o texto de contexto (o
+// mesmo que vai para o Gemini), para o usuário levar ao claude.ai com a
+// própria conta. Não chama modelo nenhum, então não usa a trava do Gemini.
+// Fica no servidor porque perfilCasa não é legível pelo app.
+export const contextoParaClaude = onCall(
+  { region: "southamerica-east1", memory: "256MiB" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Faça login para usar o chat.");
+
+    const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
+    return {
+      contexto: montarContextoExterno({
+        pessoas: perfil?.pessoas || [],
+        observacoesGerais: perfil?.observacoesGerais || "",
+        itensEmCasa,
+      }),
+    };
   }
 );
