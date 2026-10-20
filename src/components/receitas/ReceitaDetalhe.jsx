@@ -1,27 +1,16 @@
 import { ArrowLeft, Clock, Users, ShoppingCart, Check, Pencil } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../../utils/estilos'
+import { criarVerificadorEmCasa } from '../../utils/ingredientesEmCasa'
 
 export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa, isAdmin, onEditar, onBuscarIngrediente }) {
-  const idsEmCasa = new Set(itensEmCasa.map(i => i.produtoId))
+  const temEmCasa = criarVerificadorEmCasa(itensEmCasa, catalogo)
 
   const ingredientesComStatus = receita.ingredientes.map(ing => {
     const produto = catalogo.find(p => p.id === ing.produtoId)
-
-    let temEmCasa = false
-    if (ing.nomeTemp) {
-      temEmCasa = false
-    } else if (ing.grupoSubstituicaoId) {
-      temEmCasa = itensEmCasa.some(item =>
-        Array.isArray(item.grupoSubstituicao) && item.grupoSubstituicao.includes(ing.nome)
-      )
-    } else if (ing.produtoId) {
-      temEmCasa = idsEmCasa.has(ing.produtoId)
-    }
-
     return {
       ...ing,
       nome: produto?.nome ?? ing.nome ?? 'Produto desconhecido',
-      temEmCasa,
+      temEmCasa: temEmCasa(ing),
     }
   })
 

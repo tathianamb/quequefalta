@@ -3,6 +3,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { addDoc, collection, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
 import { ORDEM_CATEGORIAS, textoParaCor } from "../utils/categorias";
+import { criarVerificadorEmCasa, ingredientesFaltantes } from "../utils/ingredientesEmCasa";
 import { useLista } from "../hooks/useLista";
 import { useCatalogo } from "../hooks/useCatalogo";
 import { useTema } from "../hooks/useTema";
@@ -169,16 +170,14 @@ function Home({
   const porCategoriaCatalogo = agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin });
   const carregando = carregandoLista || carregandoCatalogo;
   const receitasFiltradas = (() => {
-    const idsEmCasa = new Set(lista.filter(i => i.comprado).map(i => i.produtoId));
     const base = receitasAprovadas.filter(r => r.nome.toLowerCase().includes(busca.toLowerCase()));
     if (ordenacaoReceitas === "az") return [...base].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
     if (ordenacaoReceitas === "za") return [...base].sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
-    // relevancia: receitas com todos os ingredientes em casa primeiro
-    return [...base].sort((a, b) => {
-      const faltamA = (a.ingredientes ?? []).filter(i => i.produtoId && !idsEmCasa.has(i.produtoId)).length;
-      const faltamB = (b.ingredientes ?? []).filter(i => i.produtoId && !idsEmCasa.has(i.produtoId)).length;
-      return faltamA - faltamB;
-    });
+    // relevancia: receitas com todos os ingredientes em casa primeiro — mesma
+    // regra do cartão e do detalhe (ver utils/ingredientesEmCasa.js)
+    const temEmCasa = criarVerificadorEmCasa(lista.filter(i => i.comprado), catalogo);
+    const faltam = new Map(base.map(r => [r.id, ingredientesFaltantes(r, temEmCasa).length]));
+    return [...base].sort((a, b) => faltam.get(a.id) - faltam.get(b.id));
   })();
 
   const dicaSelecionada = dicas.find((d) => d.id === dicaSelecionadaId) ?? null;
@@ -948,6 +947,7 @@ function Home({
             <ReceitaLista
               receitas={receitasFiltradas}
               itensEmCasa={lista.filter(i => i.comprado)}
+              catalogo={catalogo}
               onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); pushBack(() => { setReceitaSelecionada(null); setTelaReceita("lista"); }); }}
             />
           )}
