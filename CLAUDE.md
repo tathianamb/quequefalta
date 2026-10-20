@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **QueQueFalta** is a shared grocery list PWA for home use, built with React 19 + Vite and Firebase (Firestore + Google Auth). It is hosted on GitHub Pages under the path `/quequefalta/`. Mobile-first (max-width 480px), no automated tests.
 
-A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 20, ESM) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app.
+A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app.
 
 ## Commands
 
