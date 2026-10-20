@@ -159,11 +159,26 @@ export async function obterItensComprados(uid) {
 
   return itensSnap.docs
     .map((doc) => {
-      const produto = catalogoPorId.get(doc.data().produtoId);
+      const item = doc.data();
+      const produto = catalogoPorId.get(item.produtoId);
       if (!produto || CATEGORIAS_NAO_ALIMENTARES.has(produto.categoria)) return null;
-      return { nome: produto.nome, categoria: produto.categoria };
+      return { nome: produto.nome, categoria: produto.categoria, emCasaDesde: dataEmCasa(item, produto, listaAtiva) };
     })
     .filter(Boolean);
+}
+
+// Desde quando o item está em casa — o prompt usa para priorizar os frescos
+// que estão há mais tempo. Fonte principal: o registro de preço mais recente
+// desta casa (data da nota = quando a compra aconteceu de fato). O historico
+// fica no catálogo, que é compartilhado entre todas as casas, por isso o
+// filtro por listaAtiva. Sem registro de preço, cai para compradoEm (quando
+// o item foi marcado como "tem em casa"), só para não ficar sem data.
+export function dataEmCasa(item, produto, listaAtiva) {
+  const datasDaCasa = (produto.historico || [])
+    .filter((h) => h.listaAtiva === listaAtiva && h.data?.toDate)
+    .map((h) => h.data.toDate().getTime());
+  if (datasDaCasa.length) return new Date(Math.max(...datasDaCasa));
+  return item.compradoEm?.toDate?.() ?? null;
 }
 
 export async function buscarCardapioDoDia(uid, dataIso) {

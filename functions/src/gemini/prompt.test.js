@@ -27,6 +27,44 @@ test("montarPromptPergunta — sem pessoas nem itens em casa (defaults)", () => 
   assert.match(saida, /Pergunta do usuário: "prato rápido com ovos"/);
 });
 
+test("itens em casa — frescos/crus ordenados pelo tempo em casa, demais numa linha", () => {
+  const entrada = {
+    pessoas: [],
+    observacoesGerais: "",
+    pergunta: "o que faço hoje?",
+    agora: new Date("2026-10-19T15:00:00Z"), // 12h em São Paulo
+    itensEmCasa: [
+      // Timestamp (cardápio salvo e relido no refinamento)
+      { nome: "leite", categoria: "Laticínios", emCasaDesde: { toDate: () => new Date("2026-10-19T11:00:00Z") } },
+      { nome: "arroz", categoria: "Carboidratos Secos", emCasaDesde: new Date("2026-09-01T12:00:00Z") },
+      { nome: "pão", categoria: "Padaria", emCasaDesde: null },
+      // 16/10 às 22h em São Paulo (já 17/10 em UTC) — conta 3 dias, não 2
+      { nome: "frango", categoria: "Proteínas", emCasaDesde: new Date("2026-10-17T01:00:00Z") },
+      { nome: "alface", categoria: "Hortifrúti", emCasaDesde: new Date("2026-10-13T15:00:00Z") },
+    ],
+  };
+  const saida = montarPromptPergunta(entrada);
+
+  assert.match(
+    saida,
+    /- alface \(há 6 dias em casa\)\n- frango \(há 3 dias em casa\)\n- leite \(chegou hoje\)\n- pão \(sem data de compra\)\nOutros itens: arroz/
+  );
+  assert.match(saida, /priorize os itens frescos\/crus que estão há mais tempo em casa/);
+});
+
+test("itens em casa — sem frescos/crus não inclui a instrução de prioridade", () => {
+  const entrada = {
+    pessoas: [],
+    observacoesGerais: "",
+    pergunta: "?",
+    itensEmCasa: [{ nome: "arroz", categoria: "Carboidratos Secos", emCasaDesde: new Date() }],
+  };
+  const saida = montarPromptPergunta(entrada);
+
+  assert.match(saida, /Itens disponíveis em casa:\narroz\n/);
+  assert.doesNotMatch(saida, /priorize/);
+});
+
 test("montarPromptInicial — refeições customizadas", () => {
   const entrada = {
     pessoas: [{ nome: "Guilherme", restricoes: ["sem porco"] }],
