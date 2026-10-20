@@ -28,6 +28,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
   const [adminSubcategoria, setAdminSubcategoria] = useState(produto.subcategoria || "");
   const [adminGrupoSubstituicao, setAdminGrupoSubstituicao] = useState(produto.grupoSubstituicao || []);
   const [adminNovoGrupoSubstituicao, setAdminNovoGrupoSubstituicao] = useState("");
+  const [adminGenerico, setAdminGenerico] = useState(!!produto.generico);
   const [salvandoAdmin, setSalvandoAdmin] = useState(false);
 
   const handleSalvarAdmin = async () => {
@@ -38,6 +39,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
         categoria: adminCategoria,
         subcategoria: adminSubcategoria.trim(),
         grupoSubstituicao: adminGrupoSubstituicao,
+        generico: adminGenerico,
       });
       setEditandoAdmin(false);
     } finally {
@@ -242,6 +244,18 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                   </button>
                 </div>
               </div>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={adminGenerico}
+                  onChange={(e) => setAdminGenerico(e.target.checked)}
+                  style={{ marginTop: "3px" }}
+                />
+                <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
+                  Genérico — só ingrediente de receita (ex: "Óleo"). Não aparece no
+                  catálogo; na lista entra uma variante do mesmo grupo.
+                </span>
+              </label>
               <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                 <button
                   onClick={handleSalvarAdmin}
@@ -251,7 +265,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
                   {salvandoAdmin ? "Salvando..." : "Salvar"}
                 </button>
                 <button
-                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminGrupoSubstituicao(produto.grupoSubstituicao || []); }}
+                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminGrupoSubstituicao(produto.grupoSubstituicao || []); setAdminGenerico(!!produto.generico); }}
                   style={{ flex: 1, padding: "10px", borderRadius: RAIO.sm, border: "none", background: "var(--bg)", color: "var(--text-soft)", fontFamily: "Nunito, sans-serif", fontWeight: FONTE.bold, cursor: "pointer" }}
                 >
                   Cancelar
@@ -270,6 +284,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
             <div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
                 {[
+                  produto.generico ? "Genérico · só receitas" : null,
                   produto.categoria,
                   produto.subcategoria !== "-" ? produto.subcategoria : null,
                   ...(produto.grupoSubstituicao || []),

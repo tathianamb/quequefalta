@@ -3,7 +3,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { addDoc, collection, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
 import { ORDEM_CATEGORIAS, textoParaCor } from "../utils/categorias";
-import { criarVerificadorEmCasa, ingredientesFaltantes } from "../utils/ingredientesEmCasa";
+import { criarVerificadorEmCasa, ingredientesFaltantes, escolherVariante } from "../utils/ingredientesEmCasa";
 import { useLista } from "../hooks/useLista";
 import { useCatalogo } from "../hooks/useCatalogo";
 import { useTema } from "../hooks/useTema";
@@ -166,7 +166,9 @@ function Home({
   // incluirOutras: o "Tem em casa" mostra a contagem total no cabeçalho, então
   // nenhum item pode sumir dos subgrupos por não ter categoria conhecida.
   const porCategoriaComprados = agrupar(comprados, { incluirOutras: true });
-  const catalogoFiltrado = filtrar(catalogo);
+  // Genéricos ("Óleo") existem só como ingrediente de receita — não aparecem
+  // no catálogo para entrar na lista, exceto no modo admin (para editar).
+  const catalogoFiltrado = filtrar(admin && modoAdmin ? catalogo : catalogo.filter((p) => !p.generico));
   const porCategoriaCatalogo = agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin });
   const carregando = carregandoLista || carregandoCatalogo;
   const receitasFiltradas = (() => {
@@ -976,12 +978,21 @@ function Home({
                 }
               }}
               onAdicionarFaltantes={async (faltantes) => {
+                // Genérico ("Óleo") não vai para a lista: entra a variante que a
+                // casa costuma comprar; sem pista, abre o catálogo no grupo dele
+                // para o usuário escolher (ver escolherVariante).
+                let grupoParaEscolher = null;
                 for (const ing of faltantes) {
                   const produto = catalogo.find(p => p.id === ing.produtoId);
-                  if (produto) await adicionarItem(produto);
+                  if (!produto) continue;
+                  if (!produto.generico) { await adicionarItem(produto); continue; }
+                  const { variante, jaNaLista } = escolherVariante(produto, catalogo, lista, listaAtiva);
+                  if (variante) await adicionarItem(variante);
+                  else if (!jaNaLista) grupoParaEscolher ??= produto.grupoSubstituicao?.[0] ?? null;
                 }
                 setReceitaSelecionada(null);
                 setTelaReceita("lista");
+                if (grupoParaEscolher) { irParaGrupo(grupoParaEscolher); return; }
                 const abaAntesFaltantes = aba;
                 pushBack(() => setAba(abaAntesFaltantes));
                 setAba("lista");

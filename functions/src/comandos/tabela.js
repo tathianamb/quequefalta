@@ -1,5 +1,5 @@
-import { getFirestore } from "firebase-admin/firestore";
 import { interpretarTabela } from "../parser/tabela.js";
+import { carregarCatalogoParaMatch } from "../firestore/catalogo.js";
 import { encontrarMatch } from "../matching/fuzzyMatch.js";
 import { criarLote, buscarLotePorId } from "../firestore/lotes.js";
 import { produtoJaTemRegistro } from "../firestore/historico.js";
@@ -12,9 +12,7 @@ export async function tratarTabela(telegram, chatId, uid, texto) {
     return;
   }
 
-  const db = getFirestore();
-  const catalogoSnap = await db.collection("catalogo").get();
-  const catalogo = catalogoSnap.docs.map((d) => ({ id: d.id, nome: d.data().nome }));
+  const catalogo = await carregarCatalogoParaMatch();
 
   const itensComMatch = await Promise.all(
     resultado.itens.map(async (item) => {

@@ -1,4 +1,4 @@
-import { getFirestore } from "firebase-admin/firestore";
+import { carregarCatalogoParaMatch } from "../firestore/catalogo.js";
 import { buscarProximoComStatus, contarComStatus, buscarItemRevisaoPorId } from "../firestore/revisao.js";
 import { encontrarMatch } from "../matching/fuzzyMatch.js";
 import { tecladoRevisaoItem, tecladoEtapa3 } from "../telegram/teclados.js";
@@ -22,9 +22,7 @@ function fonteFila(uid, status) {
 // o "↩️ Desfazer" do item que acabou de ser resolvido, que precisa aparecer
 // tanto sobre o próximo item quanto sobre a mensagem de "fila vazia".
 async function renderizarItemDaFila(telegram, chatId, item, rotulo, restantes, messageId, prefixo = "", linhasExtras = []) {
-  const db = getFirestore();
-  const catalogoSnap = await db.collection("catalogo").get();
-  const catalogo = catalogoSnap.docs.map((d) => ({ id: d.id, nome: d.data().nome }));
+  const catalogo = await carregarCatalogoParaMatch();
   const { sugestoes } = encontrarMatch({ nome: item.nomeExtraido }, catalogo);
 
   const preco = `R$ ${item.precoExtraido.toFixed(2).replace(".", ",")}`;
@@ -131,9 +129,7 @@ export async function mostrarEtapa3(telegram, chatId, lote, messageId, prefixo =
   }
 
   const item = pendentes[0];
-  const db = getFirestore();
-  const catalogoSnap = await db.collection("catalogo").get();
-  const catalogo = catalogoSnap.docs.map((d) => ({ id: d.id, nome: d.data().nome }));
+  const catalogo = await carregarCatalogoParaMatch();
   const { sugestoes } = encontrarMatch({ nome: item.nomeExtraido }, catalogo);
 
   const preco = `R$ ${item.precoExtraido.toFixed(2).replace(".", ",")}`;

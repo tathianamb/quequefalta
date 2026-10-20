@@ -33,6 +33,33 @@ export function criarVerificadorEmCasa(itensEmCasa, catalogo = []) {
   }
 }
 
+// Produtos que compartilham algum grupo com `produto` (sem ele mesmo e sem
+// outros genéricos).
+function variantesDe(produto, catalogo) {
+  const grupos = new Set((produto.grupoSubstituicao ?? []).map(normalizar))
+  return catalogo.filter((p) =>
+    p.id !== produto.id && !p.generico && (p.grupoSubstituicao ?? []).some((g) => grupos.has(normalizar(g)))
+  )
+}
+
+// Ingrediente genérico ("Óleo") não entra na lista de compras: no lugar dele
+// vai uma variante. Devolve:
+//   { jaNaLista: true }  — alguma variante já está na lista (a comprar);
+//   { variante }         — a variante com mais preços registrados por esta casa;
+//   {}                   — nenhuma pista: o usuário escolhe no catálogo.
+export function escolherVariante(produto, catalogo, lista, listaAtiva) {
+  const variantes = variantesDe(produto, catalogo)
+  const idsNaLista = new Set(lista.map((i) => i.produtoId))
+  if (variantes.some((v) => idsNaLista.has(v.id))) return { jaNaLista: true }
+
+  const comprasDaCasa = (v) => (v.historico ?? []).filter((h) => h.listaAtiva === listaAtiva).length
+  const [melhor] = variantes
+    .map((v) => ({ v, n: comprasDaCasa(v) }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+  return melhor ? { variante: melhor.v } : {}
+}
+
 // Ingredientes que faltam. Os sem cadastro (nomeTemp) não entram: não dá para
 // marcá-los em casa, então contariam como faltando para sempre.
 export function ingredientesFaltantes(receita, temEmCasa) {
