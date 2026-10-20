@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { ORDEM_CATEGORIAS } from "../utils/categorias";
+import { ORDEM_CATEGORIAS, CATEGORIAS_NAO_ALIMENTARES } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
@@ -21,6 +21,29 @@ import { useTelegramVinculo } from "../hooks/useTelegramVinculo";
 import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
 
 const TELEGRAM_BOT_USERNAME = "quequefalta_bot";
+
+// Última seleção de categorias da exportação "em casa" — conveniência por
+// aparelho, para não ter que remarcar tudo a cada exportação.
+const CHAVE_CATEGORIAS_EXPORTAR = "quequefalta:exportarCasa:categorias";
+
+function lerCategoriasExportar() {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_CATEGORIAS_EXPORTAR));
+    return Array.isArray(salvo) ? salvo : [];
+  } catch {
+    return [];
+  }
+}
+
+function salvarCategoriasExportar(categorias) {
+  try {
+    localStorage.setItem(CHAVE_CATEGORIAS_EXPORTAR, JSON.stringify(categorias));
+  } catch {
+    // sem storage (aba anônima etc.) — só não lembra a seleção
+  }
+}
+
+const mesmasCategorias = (a, b) => a.length === b.length && a.every((c) => b.includes(c));
 
 function Menu({
   onFechar,
@@ -48,7 +71,7 @@ function Menu({
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [codigoVinculo, setCodigoVinculo] = useState(null);
   const [gerandoCodigo, setGerandoCodigo] = useState(false);
-  const [categoriasExportar, setCategoriasExportar] = useState([]);
+  const [categoriasExportar, setCategoriasExportar] = useState(lerCategoriasExportar);
 
   const { vinculado, gerarCodigo, desvincular } = useTelegramVinculo(usuario);
 
@@ -92,21 +115,36 @@ function Menu({
     URL.revokeObjectURL(url);
   };
 
+  // Mesma ordem da lista (alimentos primeiro, limpeza/higiene no fim).
+  const posicaoCategoria = (cat) => {
+    const i = ORDEM_CATEGORIAS.indexOf(cat);
+    return i === -1 ? ORDEM_CATEGORIAS.length : i;
+  };
   const categoriasEmCasa = [
     ...new Set(itensEmCasa.map((i) => i.categoria).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  ].sort((a, b) => posicaoCategoria(a) - posicaoCategoria(b) || a.localeCompare(b, "pt-BR"));
+
+  const alimentosEmCasa = categoriasEmCasa.filter((c) => !CATEGORIAS_NAO_ALIMENTARES.includes(c));
+  const naoAlimentosEmCasa = categoriasEmCasa.filter((c) => CATEGORIAS_NAO_ALIMENTARES.includes(c));
+
+  // A seleção lembrada pode citar categorias que hoje não têm item em casa —
+  // só as presentes contam (rótulo do botão e filtro do CSV).
+  const selecionadasExportar = categoriasExportar.filter((c) => categoriasEmCasa.includes(c));
 
   const toggleCategoriaExportar = (cat) => {
-    setCategoriasExportar((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    setCategoriasExportar(
+      selecionadasExportar.includes(cat)
+        ? selecionadasExportar.filter((c) => c !== cat)
+        : [...selecionadasExportar, cat],
     );
   };
 
   const exportarEmCasa = () => {
+    salvarCategoriasExportar(selecionadasExportar);
     const itens =
-      categoriasExportar.length === 0
+      selecionadasExportar.length === 0
         ? itensEmCasa
-        : itensEmCasa.filter((i) => categoriasExportar.includes(i.categoria));
+        : itensEmCasa.filter((i) => selecionadasExportar.includes(i.categoria));
 
     const escapar = (v) => {
       if (v == null) return "";
@@ -985,8 +1023,10 @@ function Menu({
                 color="var(--text-soft)"
                 style={{ cursor: "pointer" }}
                 onClick={() => {
-                  setTela("menu");
-                  setCategoriasExportar([]);
+                  // Aberta direto pelo atalho do "Tem em casa": fechar volta
+                  // para a lista, não para o menu.
+                  if (telaInicial === "exportar-casa") onFechar();
+                  else setTela("menu");
                 }}
               />
             </div>
@@ -1014,6 +1054,38 @@ function Menu({
                   para exportar tudo.
                 </p>
 
+                {/* Atalhos: marcam um conjunto de categorias de uma vez */}
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {[
+                    { rotulo: "🍎 Só alimentos", categorias: alimentosEmCasa },
+                    { rotulo: "🧴 Limpeza e higiene", categorias: naoAlimentosEmCasa },
+                  ]
+                    .filter((a) => a.categorias.length > 0)
+                    .map(({ rotulo, categorias }) => {
+                      const ativo = mesmasCategorias(selecionadasExportar, categorias);
+                      return (
+                        <button
+                          key={rotulo}
+                          onClick={() => setCategoriasExportar(ativo ? [] : categorias)}
+                          style={{
+                            flex: 1,
+                            padding: "10px",
+                            border: `1.5px solid ${ativo ? "var(--laranja)" : COR.borda + "55"}`,
+                            background: ativo ? "#FEC60122" : "var(--bg)",
+                            color: "var(--text)",
+                            borderRadius: RAIO.md,
+                            fontFamily: "Nunito, sans-serif",
+                            fontWeight: FONTE.bold,
+                            fontSize: FONTE.md,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {rotulo}
+                        </button>
+                      );
+                    })}
+                </div>
+
                 <div
                   style={{
                     display: "flex",
@@ -1022,7 +1094,7 @@ function Menu({
                   }}
                 >
                   {categoriasEmCasa.map((cat) => {
-                    const selecionado = categoriasExportar.includes(cat);
+                    const selecionado = selecionadasExportar.includes(cat);
                     return (
                       <button
                         key={cat}
@@ -1065,9 +1137,9 @@ function Menu({
                   }}
                 >
                   <Download size={18} />
-                  {categoriasExportar.length === 0
+                  {selecionadasExportar.length === 0
                     ? "Exportar tudo"
-                    : `Exportar (${categoriasExportar.length} categoria${categoriasExportar.length > 1 ? "s" : ""})`}
+                    : `Exportar (${selecionadasExportar.length} categoria${selecionadasExportar.length > 1 ? "s" : ""})`}
                 </button>
               </>
             )}

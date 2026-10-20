@@ -18,6 +18,7 @@ function CategoriaGrupo({
   contexto,
   onFiltrarGrupo,
   subgrupos,
+  acao, // { icone, rotulo, onClick } — botão opcional no cabeçalho
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
@@ -76,6 +77,16 @@ function CategoriaGrupo({
         >
           {categoria}
         </span>
+        {acao && (
+          <button
+            onClick={(e) => { e.stopPropagation(); acao.onClick(); }}
+            aria-label={acao.rotulo}
+            title={acao.rotulo}
+            style={{ background: "none", border: "none", padding: "2px 4px", cursor: "pointer", color: "var(--text-soft)", display: "flex", alignItems: "center" }}
+          >
+            <acao.icone size={18} />
+          </button>
+        )}
         <span
           style={{
             fontSize: FONTE.sm,

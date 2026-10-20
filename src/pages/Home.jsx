@@ -25,6 +25,7 @@ import {
   MessageCircle,
   ArrowUpDown,
   Check,
+  Download,
 } from "lucide-react";
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
@@ -530,6 +531,15 @@ function Home({
                 categoria="Tem em casa"
                 itens={comprados}
                 subgrupos={Object.entries(porCategoriaComprados)}
+                acao={{
+                  icone: Download,
+                  rotulo: "Exportar o que tem em casa",
+                  onClick: () => {
+                    setMenuAberto(true);
+                    setTelaMenu("exportar-casa");
+                    pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); });
+                  },
+                }}
                 onToggle={toggleComprado}
                 onAbrir={abrirProduto}
                 busca={busca}

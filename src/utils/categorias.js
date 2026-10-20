@@ -44,6 +44,16 @@ export const ORDEM_CATEGORIAS = [
   'Alimentos para Bebê',
 ]
 
+// Mesmo critério de CATEGORIAS_NAO_ALIMENTARES em functions/src/firestore/cardapio.js
+// (o que fica de fora dos itens em casa mandados ao Gemini).
+export const CATEGORIAS_NAO_ALIMENTARES = [
+  'Limpeza',
+  'Utensílios de Cozinha',
+  'Higiene Pessoal',
+  'Farmácia Básica',
+  'Pet Shop',
+]
+
 export function corDaCategoria(categoria) {
   return COR_CATEGORIA[categoria] || COR.neutro
 }
