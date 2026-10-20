@@ -161,7 +161,9 @@ function Home({
   const pendentes = filtrar(lista.filter((i) => !i.comprado));
   const comprados = filtrar(lista.filter((i) => i.comprado));
   const porCategoriaPendentes = agrupar(pendentes);
-  const porCategoriaComprados = agrupar(comprados);
+  // incluirOutras: o "Tem em casa" mostra a contagem total no cabeçalho, então
+  // nenhum item pode sumir dos subgrupos por não ter categoria conhecida.
+  const porCategoriaComprados = agrupar(comprados, { incluirOutras: true });
   const catalogoFiltrado = filtrar(catalogo);
   const porCategoriaCatalogo = agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin });
   const carregando = carregandoLista || carregandoCatalogo;
@@ -527,6 +529,7 @@ function Home({
                 key="tem-em-casa"
                 categoria="Tem em casa"
                 itens={comprados}
+                subgrupos={Object.entries(porCategoriaComprados)}
                 onToggle={toggleComprado}
                 onAbrir={abrirProduto}
                 busca={busca}

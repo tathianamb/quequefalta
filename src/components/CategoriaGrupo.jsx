@@ -17,6 +17,7 @@ function CategoriaGrupo({
   forcarAberto,
   contexto,
   onFiltrarGrupo,
+  subgrupos,
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
@@ -29,6 +30,20 @@ function CategoriaGrupo({
   }, [forcarAberto]);
   
   const cor = corOverride || corDaCategoria(categoria);
+
+  const renderizarItem = (p) => (
+    <ProdutoItem
+      key={p.id}
+      produto={p}
+      onToggle={onToggle}
+      onAbrir={onAbrir}
+      naLista={itensDaLista?.some((i) => i.produtoId === p.id)}
+      comprado={p.comprado}
+      onRemover={onRemover || null}
+      contexto={contexto}
+      onFiltrarGrupo={onFiltrarGrupo}
+    />
+  );
 
   return (
     <div style={{ marginBottom: "16px" }}>
@@ -80,19 +95,21 @@ function CategoriaGrupo({
         )}
       </div>
 
+      {aberto && !subgrupos && itens.map(renderizarItem)}
+
+      {/* Subgrupos por categoria dentro do grupo (ex: "Tem em casa"), para
+          não misturar alimentos com limpeza/higiene */}
       {aberto &&
-        itens.map((p) => (
-          <ProdutoItem
-            key={p.id}
-            produto={p}
-            onToggle={onToggle}
-            onAbrir={onAbrir}
-            naLista={itensDaLista?.some((i) => i.produtoId === p.id)}
-            comprado={p.comprado}
-            onRemover={onRemover || null}
-            contexto={contexto}
-            onFiltrarGrupo={onFiltrarGrupo}
-          />
+        subgrupos?.map(([sub, itensSub]) => (
+          <div key={sub} style={{ marginBottom: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 4px 4px" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: RAIO.full, background: corDaCategoria(sub), flexShrink: 0 }} />
+              <span style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+                {sub} ({itensSub.length})
+              </span>
+            </div>
+            {itensSub.map(renderizarItem)}
+          </div>
         ))}
     </div>
   );
