@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { ArrowLeft, Send, Trash2, Copy, Check, Loader2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Trash2, Copy, Check, Loader2 } from 'lucide-react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../config/firebase'
 import { useChat } from '../hooks/useChat'
+import { IconeClaude, IconeGemini } from './IconesIA'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
 
@@ -35,6 +36,21 @@ async function copiarTexto(texto) {
 }
 
 const contextoParaClaude = httpsCallable(functions, 'contextoParaClaude')
+
+// Os dois botões de envio (Claude e Gemini) têm o mesmo formato; quem
+// diferencia é a marca de cada um.
+const estiloBotaoIA = {
+  width: '42px',
+  height: '42px',
+  flexShrink: 0,
+  borderRadius: RAIO.full,
+  border: `1.5px solid ${COR.borda}`,
+  background: 'var(--bg)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+}
 
 // Texto final levado ao Claude: contexto da casa (montado no servidor, igual
 // ao do Gemini) + a pergunta digitada, se houver.
@@ -255,61 +271,39 @@ export default function Chat({ onFechar }) {
           <div ref={fimRef} />
         </div>
 
-        {/* Levar a pergunta ao Claude (conta do próprio usuário no claude.ai) */}
-        <div
-          style={{
-            padding: '10px 16px 0',
-            background: 'var(--card)',
-            borderTop: `1px solid ${COR.divisoria}`,
-          }}
-        >
-          <button
-            type="button"
-            onClick={perguntarAoClaude}
-            disabled={!contextoClaude}
+        {avisoClaude && (
+          <p
             style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '6px 12px',
-              borderRadius: RAIO.pill,
-              border: `1.5px solid ${COR.borda}`,
-              background: 'var(--bg)',
-              color: 'var(--text)',
-              opacity: contextoClaude ? 1 : 0.5,
-              cursor: contextoClaude ? 'pointer' : 'default',
-              fontFamily: 'Nunito, sans-serif', fontSize: FONTE.sm, fontWeight: FONTE.bold,
+              ...TIPOGRAFIA.subcategoria,
+              color: 'var(--text-soft)',
+              padding: '8px 16px',
+              background: 'var(--card)',
+              borderTop: `1px solid ${COR.divisoria}`,
             }}
           >
-            <ExternalLink size={14} />
-            {contextoClaude === undefined
-              ? 'Preparando contexto...'
-              : contextoClaude === null
-                ? 'Claude indisponível agora'
-                : texto.trim() ? 'Perguntar isso ao Claude' : 'Perguntar ao Claude'}
-          </button>
-          {avisoClaude && (
-            <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '6px' }}>
-              Texto copiado com o contexto da casa. Se não aparecer no Claude, é só colar.
-            </p>
-          )}
-        </div>
+            Texto copiado com o contexto da casa. Se não aparecer no Claude, é só colar.
+          </p>
+        )}
 
-        {/* Entrada */}
+        {/* Entrada: a pergunta vai ao Gemini (aqui no app) ou ao Claude (claude.ai) */}
         <form
           onSubmit={onSubmit}
           style={{
             display: 'flex',
-            gap: '10px',
-            padding: '10px 16px calc(12px + env(safe-area-inset-bottom))',
+            gap: '8px',
+            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
             background: 'var(--card)',
+            borderTop: `1px solid ${COR.divisoria}`,
           }}
         >
           <input
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             maxLength={1000}
-            placeholder="Escreva sua pergunta..."
+            placeholder="Pergunte ao Gemini ou ao Claude..."
             style={{
               flex: 1,
+              minWidth: 0,
               padding: '10px 14px',
               borderRadius: RAIO.pill,
               border: 'none',
@@ -320,26 +314,35 @@ export default function Chat({ onFechar }) {
               fontSize: FONTE.lg,
             }}
           />
+          {/* Claude: funciona também sem texto (leva só o contexto da casa) */}
+          <button
+            type="button"
+            onClick={perguntarAoClaude}
+            disabled={!contextoClaude}
+            aria-label="Perguntar ao Claude"
+            title={contextoClaude === null ? 'Claude indisponível agora' : 'Perguntar ao Claude'}
+            style={{
+              ...estiloBotaoIA,
+              opacity: contextoClaude ? 1 : 0.4,
+              cursor: contextoClaude ? 'pointer' : 'default',
+            }}
+          >
+            <IconeClaude size={20} />
+          </button>
           <button
             type="submit"
             disabled={!texto.trim() || aguardando}
-            aria-label="Enviar"
+            aria-label="Perguntar ao Gemini"
+            title="Perguntar ao Gemini"
             style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: RAIO.full,
-              border: 'none',
-              background: 'linear-gradient(135deg, var(--amarelo), var(--laranja))',
-              opacity: !texto.trim() || aguardando ? 0.5 : 1,
+              ...estiloBotaoIA,
+              opacity: !texto.trim() || aguardando ? 0.4 : 1,
               cursor: !texto.trim() || aguardando ? 'default' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
             }}
           >
             {aguardando
-              ? <Loader2 size={18} color="#212529" style={{ animation: 'girar 1s linear infinite' }} />
-              : <Send size={18} color="#212529" />}
+              ? <Loader2 size={18} color="var(--text-soft)" style={{ animation: 'girar 1s linear infinite' }} />
+              : <IconeGemini size={20} />}
           </button>
         </form>
       </div>
