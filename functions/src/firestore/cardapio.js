@@ -171,14 +171,22 @@ export async function obterItensComprados(uid) {
 // que estão há mais tempo. Fonte principal: o registro de preço mais recente
 // desta casa (data da nota = quando a compra aconteceu de fato). O historico
 // fica no catálogo, que é compartilhado entre todas as casas, por isso o
-// filtro por listaAtiva. Sem registro de preço, cai para compradoEm (quando
-// o item foi marcado como "tem em casa"), só para não ficar sem data.
+// filtro por listaAtiva. O registro só vale se for da compra atual: se veio
+// muito antes do compradoEm (quando o item foi marcado como "tem em casa"),
+// é de uma compra anterior — o item acabou e foi comprado de novo sem
+// registrar preço — e aí vale o compradoEm. Sem registro, também compradoEm.
+const TOLERANCIA_REGISTRO_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function dataEmCasa(item, produto, listaAtiva) {
+  const compradoEm = item.compradoEm?.toDate?.() ?? null;
   const datasDaCasa = (produto.historico || [])
     .filter((h) => h.listaAtiva === listaAtiva && h.data?.toDate)
     .map((h) => h.data.toDate().getTime());
-  if (datasDaCasa.length) return new Date(Math.max(...datasDaCasa));
-  return item.compradoEm?.toDate?.() ?? null;
+  if (datasDaCasa.length) {
+    const ultimoRegistro = Math.max(...datasDaCasa);
+    if (!compradoEm || ultimoRegistro >= compradoEm.getTime() - TOLERANCIA_REGISTRO_MS) return new Date(ultimoRegistro);
+  }
+  return compradoEm;
 }
 
 export async function buscarCardapioDoDia(uid, dataIso) {
