@@ -29,7 +29,7 @@ No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate cha
 cd functions
 node --check src/path/to/file.js                                       # syntax check a changed file
 node -e "import('./index.js').then(()=>console.log('OK'))"              # verify the module graph loads
-firebase deploy --only functions:telegramWebhook                        # deploy (only exported function)
+firebase deploy --only functions:telegramWebhook                        # deploy one function (see functions/index.js for all exports)
 ```
 
 On Windows, `npm`/`firebase` subprocesses sometimes fail to resolve `node` even when it's on the interactive shell's PATH — prefix commands with `C:\Program Files\nodejs` (PowerShell) or `/c/Program Files/nodejs` (Git Bash) if that happens.
@@ -49,7 +49,7 @@ VITE_FIREBASE_APP_ID=...
 
 In CI/CD (`.github/workflows/deploy.yml`), these are injected from GitHub repository secrets on every push to `main`.
 
-`functions/` uses two Firebase secrets instead (`defineSecret` in `telegramWebhook.js`), provisioned via `firebase functions:secrets:set TELEGRAM_BOT_TOKEN` / `TELEGRAM_WEBHOOK_SECRET`. Values set via the Firebase CLI on Windows can pick up a trailing `\r\n` or BOM; the code strips this at read time via a `limpar()` helper — keep that in mind if secrets ever appear invalid despite being set correctly.
+`functions/` uses two Firebase secrets instead (`defineSecret` in `telegramWebhook.js`), provisioned via `firebase functions:secrets:set TELEGRAM_BOT_TOKEN` / `TELEGRAM_WEBHOOK_SECRET`. Values set via the Firebase CLI on Windows can pick up a trailing `\r\n` or BOM; the code strips this at read time via a `limpar()` helper — keep that in mind if secrets ever appear invalid despite being set correctly. `despensaJornal.js` uses two more, `JORNAL_TOKEN` and `JORNAL_UID` (see "Despensa API" below).
 
 ## Architecture — Frontend
 
@@ -209,3 +209,14 @@ Item-by-item review offers: pick a suggested catalog match, correct the parsed n
 ### `callback_data` size constraint
 
 Telegram limits inline-button `callback_data` to 64 bytes. Action names are kept short (`lote_ant`, `rv_res`, `rv_dup`, etc.) and Firestore doc IDs (~20 chars) are the dominant cost — when a callback needs to reference more state than fits, persist it on the Firestore document instead of embedding it in `callback_data` (e.g. `duplicataCandidata` on the item, rather than passing the candidate product ID and origin message ID through the button).
+
+## Despensa API para o jornal (`functions/src/despensaJornal.js`)
+
+HTTP function `despensaJornal` (`southamerica-east1`) consumed by the morning collection robot of the private `news-ai` repo ("O Matutino" newspaper), so the daily recipe uses what is at home. Contract lives in `news-ai/docs/despensa-api.md`; don't change the response shape without updating that side.
+
+- `GET` with `Authorization: Bearer <JORNAL_TOKEN>` → `{ atualizadoEm, itens: [{ nome, categoria, emCasaDesde }], observacoesGerais }`. Wrong token → `401 token inválido`; any other method → `405`.
+- Reads the house of a fixed user, the `JORNAL_UID` secret (uid == id of that user's own list). A wrong uid doesn't error: it returns `itens: []`, so an empty response is the symptom.
+- `itens` is exactly `obterItensComprados()` (foods only) and `observacoesGerais` comes from `buscarPerfilCasa()`; people's names and the rest of the profile are deliberately left out.
+- Token compared in constant time (`timingSafeEqual` over SHA-256 of both sides).
+- The robot holds the same token as `QQF_JORNAL_TOKEN` (and the URL as `QQF_DESPENSA_URL`) in news-ai's GitHub Actions secrets. Rotating means: `firebase functions:secrets:set JORNAL_TOKEN`, redeploy the function, then `gh secret set QQF_JORNAL_TOKEN --repo tathianamb/news-ai` with the same value.
+- When testing by hand, a Google-styled `401 Unauthorized` HTML page (instead of the plain-text `token inválido`) means Cloud Run rejected the `Authorization` header before reaching the function — in practice a token broken by copy/paste. Read it from the secret instead of pasting: `$t = (firebase functions:secrets:access JORNAL_TOKEN | Out-String).Trim()`.

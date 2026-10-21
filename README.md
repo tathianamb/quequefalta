@@ -209,6 +209,7 @@ Para compartilhar
 | CI/CD | GitHub Actions | Build e deploy automáticos no push para `main` |
 | Bot do Telegram | Firebase Cloud Functions (Node 20) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
 | Assistente de cardápio | Firebase Cloud Functions (agendada) + Gemini API (tier gratuito) | Sugestão diária de cardápio via Telegram, com refinamento por feedback |
+| API da despensa | Firebase Cloud Functions (HTTP, token Bearer) | Entrega ao jornal O Matutino o que tem em casa, para a receita do dia |
 
 ---
 
@@ -267,10 +268,10 @@ Codebase separada (Firebase Cloud Functions, Node 20, ESM), sem `lint`/`test`/`b
 cd functions
 node --check src/caminho/do/arquivo.js                          # checagem de sintaxe
 node -e "import('./index.js').then(()=>console.log('OK'))"      # confirma que os módulos carregam
-firebase deploy --only functions:telegramWebhook                # deploy (única função exportada)
+firebase deploy --only functions:telegramWebhook                # deploy de uma função (todas estão em functions/index.js)
 ```
 
-Depende de dois secrets do Firebase (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`), provisionados via `firebase functions:secrets:set`.
+Depende de dois secrets do Firebase (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`), provisionados via `firebase functions:secrets:set`. A API da despensa usa mais dois: `JORNAL_TOKEN` e `JORNAL_UID`.
 
 ---
 
@@ -316,9 +317,10 @@ src/
     └── parseReceita.js      # extrai ingredientes/passos de um texto colado
 
 functions/                    # Cloud Functions do bot do Telegram (codebase separada)
-├── index.js                  # exporta telegramWebhook
+├── index.js                  # exporta as funções (telegramWebhook, despensaJornal etc.)
 └── src/
     ├── telegramWebhook.js    # handler HTTP, roteamento dos updates
+    ├── despensaJornal.js     # API da despensa para o jornal O Matutino
     ├── comandos/              # handlers de comando e callback
     ├── firestore/             # acesso a lotesNotaFiscal, filaRevisaoNotas etc.
     ├── matching/              # fuzzy match do item da nota contra o catálogo
@@ -344,6 +346,9 @@ Quando um usuário sugere um produto, ele entra como `pendente`. Com a aprovaç�
 
 ### Bot do Telegram
 Cloud Function única (`telegramWebhook`), que recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao colar a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
+
+### API da despensa (jornal O Matutino)
+A função HTTP `despensaJornal` responde a um `GET` com `Authorization: Bearer <token>` e devolve os alimentos marcados como "tem em casa" na lista ativa (nome, categoria e desde quando estão em casa), junto com as observações gerais da casa. Os nomes das pessoas e o resto do perfil não saem da API. O robô de coleta das 6h do jornal (repositório privado `news-ai`) chama essa URL para que a receita do dia use principalmente o que já tem em casa. Token errado recebe `401` e qualquer método que não seja GET recebe `405`. Para cortar o acesso, basta trocar o secret `JORNAL_TOKEN` e refazer o deploy.
 
 ---
 
