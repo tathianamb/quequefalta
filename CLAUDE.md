@@ -34,6 +34,10 @@ firebase deploy --only functions:telegramWebhook                        # deploy
 
 On Windows, `npm`/`firebase` subprocesses sometimes fail to resolve `node` even when it's on the interactive shell's PATH — prefix commands with `C:\Program Files\nodejs` (PowerShell) or `/c/Program Files/nodejs` (Git Bash) if that happens.
 
+## Git
+
+Commit and push directly to `main` (no feature branch, no pull request), unless the user asks otherwise. A push to `main` triggers `.github/workflows/deploy.yml`, which publishes the frontend to GitHub Pages; Cloud Functions are not deployed by it (use `firebase deploy`).
+
 ## Environment
 
 Requires a `.env` at the root with Firebase credentials:
