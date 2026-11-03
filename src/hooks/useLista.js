@@ -74,6 +74,19 @@ export function useLista(listaAtiva, catalogo = []) {
     return true;
   };
 
+  // "Tem em casa" direto (duplo toque no catálogo): marca o item que já está
+  // na lista ou cria um já comprado. Já em casa, não mexe.
+  const marcarEmCasa = async (produto) => {
+    const item = itensRaw.find((i) => i.produtoId === produto.id);
+    if (!item) return adicionarItemComprado(produto);
+    if (item.comprado) return false;
+    await updateDoc(doc(db, "listas", listaAtiva, "lista", item.id), {
+      comprado: true,
+      compradoEm: new Date(),
+    });
+    return true;
+  };
+
   const toggleComprado = async (item) => {
     const ref = doc(db, "listas", listaAtiva, "lista", item.id);
     await updateDoc(ref, {
@@ -86,5 +99,5 @@ export function useLista(listaAtiva, catalogo = []) {
     await deleteDoc(doc(db, "listas", listaAtiva, "lista", item.id));
   };
 
-  return { lista, carregando, adicionarItem, adicionarItemComprado, toggleComprado, removerItem };
+  return { lista, carregando, adicionarItem, adicionarItemComprado, marcarEmCasa, toggleComprado, removerItem };
 }

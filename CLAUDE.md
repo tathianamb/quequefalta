@@ -67,7 +67,7 @@ In CI/CD (`.github/workflows/deploy.yml`), these are injected from GitHub reposi
 
 All Firestore reads use `onSnapshot` listeners inside custom hooks:
 
-- `src/hooks/useLista.js` — items in the active list (`listas/{listaId}/lista/`). Exposes `adicionarItem`, `toggleComprado`, `removerItem`.
+- `src/hooks/useLista.js` — items in the active list (`listas/{listaId}/lista/`). Exposes `adicionarItem`, `adicionarItemComprado`, `marcarEmCasa`, `toggleComprado`, `removerItem`.
 - `src/hooks/useCatalogo.js` — global product catalog (`catalogo/`), auto-sorted pt-BR.
 - `src/hooks/useSugestoes.js` — product suggestions + one-admin approval flow. Exposes `aprovar`, `rejeitar`, `atualizar`, `deletar`.
 - `src/hooks/useReceitas.js` — recipes (`receitas/`) with a similar approval flow. Exposes `receitas`, `aprovadas`, `pendentes`, `sugerir`, `aprovar`, `rejeitar`, `atualizar`, `deletar`. `sugerir()` auto-approves unless an ingredient references an uncatalogued product (`nomeTemp`), in which case it goes to `pendente`.
@@ -141,7 +141,7 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 ### Key components
 
 - `Menu.jsx` — bottom-sheet with profile, theme toggle, list management (share/switch/leave), suggestion form, Telegram account linking, admin access, and sign-out.
-- `ProdutoItem.jsx` — single product card. Behavior differs by `contexto` prop: `'lista'` toggles `comprado`; `'catalogo'` adds/removes from active list.
+- `ProdutoItem.jsx` — single product card. Behavior differs by `contexto` prop: `'lista'` toggles `comprado`; `'catalogo'` adds/removes from active list on a single tap, and a double tap on the checkbox marks it straight as "tem em casa" (`marcarEmCasa` in `useLista`); the single tap waits 300ms to tell them apart, so the two taps never both write.
 - `CategoriaGrupo.jsx` — collapsible category section; auto-expands when `busca` is non-empty.
 - `DetalhesProduto.jsx` — product detail modal with price history, price registration form (list context only, blocks duplicate mercado+data registration), and admin attribute/name/category editing.
 - `FiltroCategoria.jsx` — multi-select category filter modal with optional `botoesExtras` slot.

@@ -1,4 +1,4 @@
-import { Check, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
+import { Check, Home, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
 import { TIPOGRAFIA, RAIO, COR, BORDA } from '../utils/estilos'
@@ -6,17 +6,24 @@ import { TIPOGRAFIA, RAIO, COR, BORDA } from '../utils/estilos'
 function ProdutoItem({
   produto,
   onToggle,
+  onEmCasa,
   onAbrir,
   naLista,
   comprado,
+  emCasa,
   onRemover,
   contexto,
   onFiltrarGrupo,
 }) {
   const cor = corDaCategoria(produto.categoria);
-  const [feedback, setFeedback] = useState(false);
+  const [feedback, setFeedback] = useState(false); // false | "lista" | "casa"
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef(null);
+  // Duplo toque no catálogo: o primeiro toque espera um instante para ver se
+  // vem o segundo, em vez de já adicionar/remover — senão os dois toques
+  // gravariam em sequência e poderiam duplicar o item na lista.
+  const toqueRef = useRef(null);
+  useEffect(() => () => clearTimeout(toqueRef.current), []);
 
   const mostraOpcoes = typeof onRemover === "function" && contexto !== "catalogo";
 
@@ -35,9 +42,36 @@ function ProdutoItem({
     };
   }, [menuAberto]);
 
-  const handleToggle = async () => {
-    if (!onToggle) return;
+  const mostrarFeedback = (tipo) => {
+    setFeedback(tipo);
+    setTimeout(() => setFeedback(false), 1500);
+  };
 
+  const handleToque = () => {
+    if (!onToggle) return;
+    if (contexto === "lista" || !onEmCasa) {
+      handleToggle();
+      return;
+    }
+    if (toqueRef.current) {
+      clearTimeout(toqueRef.current);
+      toqueRef.current = null;
+      handleEmCasa();
+      return;
+    }
+    toqueRef.current = setTimeout(() => {
+      toqueRef.current = null;
+      handleToggle();
+    }, 300);
+  };
+
+  const handleEmCasa = async () => {
+    if (emCasa) return;
+    const marcado = await onEmCasa(produto);
+    if (marcado !== false) mostrarFeedback("casa");
+  };
+
+  const handleToggle = async () => {
     if (contexto === "lista") {
       await onToggle(produto);
       return;
@@ -49,10 +83,7 @@ function ProdutoItem({
     }
 
     const adicionado = await onToggle(produto);
-    if (adicionado !== false) {
-      setFeedback(true);
-      setTimeout(() => setFeedback(false), 1500);
-    }
+    if (adicionado !== false) mostrarFeedback("lista");
   };
 
   const handleRemover = () => {
@@ -78,8 +109,10 @@ function ProdutoItem({
         }}
       >
         <div
-          onClick={handleToggle}
+          onClick={handleToque}
+          title={onEmCasa ? "Toque: adicionar à lista · Dois toques: tem em casa" : undefined}
           style={{
+            touchAction: "manipulation",
             width: "28px",
             height: "28px",
             borderRadius: RAIO.sm,
@@ -100,7 +133,8 @@ function ProdutoItem({
           }}
         >
           {comprado && <Check size={16} color="white" strokeWidth={3} />}
-          {naLista && !comprado && <ShoppingCart size={14} color="var(--laranja)" />}
+          {emCasa && !comprado && <Home size={14} color="var(--laranja)" />}
+          {naLista && !emCasa && !comprado && <ShoppingCart size={14} color="var(--laranja)" />}
           {!naLista && !comprado && feedback && (
             <Check size={14} color="var(--laranja)" />
           )}
@@ -174,7 +208,7 @@ function ProdutoItem({
                 marginTop: "2px",
               }}
             >
-              ✓ Adicionado à lista!
+              {feedback === "casa" ? "✓ Marcado como tem em casa!" : "✓ Adicionado à lista!"}
             </p>
           )}
         </div>

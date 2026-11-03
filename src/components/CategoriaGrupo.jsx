@@ -8,6 +8,7 @@ function CategoriaGrupo({
   categoria,
   itens,
   onToggle,
+  onEmCasa,
   onAbrir,
   busca,
   itensDaLista,
@@ -37,8 +38,10 @@ function CategoriaGrupo({
       key={p.id}
       produto={p}
       onToggle={onToggle}
+      onEmCasa={onEmCasa}
       onAbrir={onAbrir}
       naLista={itensDaLista?.some((i) => i.produtoId === p.id)}
+      emCasa={contexto === "catalogo" && itensDaLista?.some((i) => i.produtoId === p.id && i.comprado)}
       comprado={p.comprado}
       onRemover={onRemover || null}
       contexto={contexto}
