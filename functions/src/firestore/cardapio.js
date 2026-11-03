@@ -159,34 +159,11 @@ export async function obterItensComprados(uid) {
 
   return itensSnap.docs
     .map((doc) => {
-      const item = doc.data();
-      const produto = catalogoPorId.get(item.produtoId);
+      const produto = catalogoPorId.get(doc.data().produtoId);
       if (!produto || CATEGORIAS_NAO_ALIMENTARES.has(produto.categoria)) return null;
-      return { nome: produto.nome, categoria: produto.categoria, emCasaDesde: dataEmCasa(item, produto, listaAtiva) };
+      return { nome: produto.nome, categoria: produto.categoria };
     })
     .filter(Boolean);
-}
-
-// Desde quando o item está em casa — o prompt usa para priorizar os frescos
-// que estão há mais tempo. Fonte principal: o registro de preço mais recente
-// desta casa (data da nota = quando a compra aconteceu de fato). O historico
-// fica no catálogo, que é compartilhado entre todas as casas, por isso o
-// filtro por listaAtiva. O registro só vale se for da compra atual: se veio
-// muito antes do compradoEm (quando o item foi marcado como "tem em casa"),
-// é de uma compra anterior — o item acabou e foi comprado de novo sem
-// registrar preço — e aí vale o compradoEm. Sem registro, também compradoEm.
-const TOLERANCIA_REGISTRO_MS = 7 * 24 * 60 * 60 * 1000;
-
-export function dataEmCasa(item, produto, listaAtiva) {
-  const compradoEm = item.compradoEm?.toDate?.() ?? null;
-  const datasDaCasa = (produto.historico || [])
-    .filter((h) => h.listaAtiva === listaAtiva && h.data?.toDate)
-    .map((h) => h.data.toDate().getTime());
-  if (datasDaCasa.length) {
-    const ultimoRegistro = Math.max(...datasDaCasa);
-    if (!compradoEm || ultimoRegistro >= compradoEm.getTime() - TOLERANCIA_REGISTRO_MS) return new Date(ultimoRegistro);
-  }
-  return compradoEm;
 }
 
 export async function buscarCardapioDoDia(uid, dataIso) {

@@ -40,7 +40,9 @@ export const despensaJornal = onRequest(
       const [perfil, itens] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
       res.json({
         atualizadoEm: new Date().toISOString(),
-        itens, // [{ nome, categoria, emCasaDesde }] — emCasaDesde é Date (vira ISO no JSON) ou null
+        // emCasaDesde fica sempre null: o contrato com o news-ai (docs/despensa-api.md)
+        // já aceitava null, e o cálculo de "há quanto tempo em casa" foi removido.
+        itens: itens.map((i) => ({ ...i, emCasaDesde: null })),
         observacoesGerais: perfil?.observacoesGerais || "",
       });
     } catch (erro) {
