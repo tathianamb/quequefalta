@@ -64,7 +64,7 @@ function Home({
     carregando: carregandoLista,
     adicionarItem,
     adicionarItemComprado,
-    marcarEmCasa,
+    alternarEmCasa,
     toggleComprado,
     removerItem,
   } = useLista(listaAtiva, catalogo);
@@ -834,7 +834,7 @@ function Home({
               categoria={categoria}
               itens={itens}
               onToggle={adicionarItem}
-              onEmCasa={marcarEmCasa}
+              onEmCasa={alternarEmCasa}
               onAbrir={(p) => { setProdutoSelecionado(p); pushBack(() => setProdutoSelecionado(null)); }}
               busca={busca}
               itensDaLista={lista}

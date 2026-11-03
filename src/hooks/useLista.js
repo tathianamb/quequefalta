@@ -74,17 +74,17 @@ export function useLista(listaAtiva, catalogo = []) {
     return true;
   };
 
-  // "Tem em casa" direto (duplo toque no catálogo): marca o item que já está
-  // na lista ou cria um já comprado. Já em casa, não mexe.
-  const marcarEmCasa = async (produto) => {
+  // Botão de casinha do catálogo: liga/desliga "tem em casa". Fora da lista,
+  // cria o item já comprado; na lista, alterna o comprado (desligar deixa o
+  // item na lista, a comprar). Devolve o novo estado: true = em casa.
+  const alternarEmCasa = async (produto) => {
     const item = itensRaw.find((i) => i.produtoId === produto.id);
-    if (!item) return adicionarItemComprado(produto);
-    if (item.comprado) return false;
-    await updateDoc(doc(db, "listas", listaAtiva, "lista", item.id), {
-      comprado: true,
-      compradoEm: new Date(),
-    });
-    return true;
+    if (!item) {
+      await adicionarItemComprado(produto);
+      return true;
+    }
+    await toggleComprado(item);
+    return !item.comprado;
   };
 
   const toggleComprado = async (item) => {
@@ -99,5 +99,5 @@ export function useLista(listaAtiva, catalogo = []) {
     await deleteDoc(doc(db, "listas", listaAtiva, "lista", item.id));
   };
 
-  return { lista, carregando, adicionarItem, adicionarItemComprado, marcarEmCasa, toggleComprado, removerItem };
+  return { lista, carregando, adicionarItem, adicionarItemComprado, alternarEmCasa, toggleComprado, removerItem };
 }

@@ -19,11 +19,8 @@ function ProdutoItem({
   const [feedback, setFeedback] = useState(false); // false | "lista" | "casa"
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef(null);
-  // Duplo toque no catálogo: o primeiro toque espera um instante para ver se
-  // vem o segundo, em vez de já adicionar/remover — senão os dois toques
-  // gravariam em sequência e poderiam duplicar o item na lista.
-  const toqueRef = useRef(null);
-  useEffect(() => () => clearTimeout(toqueRef.current), []);
+  // Evita dois cliques seguidos gravarem duas vezes antes do snapshot voltar.
+  const gravandoRef = useRef(false);
 
   const mostraOpcoes = typeof onRemover === "function" && contexto !== "catalogo";
 
@@ -47,31 +44,20 @@ function ProdutoItem({
     setTimeout(() => setFeedback(false), 1500);
   };
 
-  const handleToque = () => {
-    if (!onToggle) return;
-    if (contexto === "lista" || !onEmCasa) {
-      handleToggle();
-      return;
+  const handleEmCasa = async (e) => {
+    e.stopPropagation();
+    if (gravandoRef.current) return;
+    gravandoRef.current = true;
+    try {
+      const ficouEmCasa = await onEmCasa(produto);
+      mostrarFeedback(ficouEmCasa ? "casa" : "tirado");
+    } finally {
+      gravandoRef.current = false;
     }
-    if (toqueRef.current) {
-      clearTimeout(toqueRef.current);
-      toqueRef.current = null;
-      handleEmCasa();
-      return;
-    }
-    toqueRef.current = setTimeout(() => {
-      toqueRef.current = null;
-      handleToggle();
-    }, 300);
-  };
-
-  const handleEmCasa = async () => {
-    if (emCasa) return;
-    const marcado = await onEmCasa(produto);
-    if (marcado !== false) mostrarFeedback("casa");
   };
 
   const handleToggle = async () => {
+    if (!onToggle) return;
     if (contexto === "lista") {
       await onToggle(produto);
       return;
@@ -109,10 +95,8 @@ function ProdutoItem({
         }}
       >
         <div
-          onClick={handleToque}
-          title={onEmCasa ? "Toque: adicionar à lista · Dois toques: tem em casa" : undefined}
+          onClick={handleToggle}
           style={{
-            touchAction: "manipulation",
             width: "28px",
             height: "28px",
             borderRadius: RAIO.sm,
@@ -133,7 +117,7 @@ function ProdutoItem({
           }}
         >
           {comprado && <Check size={16} color="white" strokeWidth={3} />}
-          {emCasa && !comprado && <Home size={14} color="var(--laranja)" />}
+          {emCasa && !comprado && <Check size={14} color="var(--laranja)" />}
           {naLista && !emCasa && !comprado && <ShoppingCart size={14} color="var(--laranja)" />}
           {!naLista && !comprado && feedback && (
             <Check size={14} color="var(--laranja)" />
@@ -208,10 +192,38 @@ function ProdutoItem({
                 marginTop: "2px",
               }}
             >
-              {feedback === "casa" ? "✓ Marcado como tem em casa!" : "✓ Adicionado à lista!"}
+              {feedback === "casa"
+                ? "✓ Marcado como tem em casa!"
+                : feedback === "tirado"
+                  ? "Voltou para a lista de compras"
+                  : "✓ Adicionado à lista!"}
             </p>
           )}
         </div>
+
+        {onEmCasa && (
+          <button
+            onClick={handleEmCasa}
+            aria-label={emCasa ? "Tirar de tem em casa" : "Marcar como tem em casa"}
+            aria-pressed={!!emCasa}
+            style={{
+              width: "36px",
+              height: "36px",
+              flexShrink: 0,
+              borderRadius: RAIO.sm,
+              border: `1.5px solid ${emCasa ? "var(--laranja)" : COR.borda}`,
+              background: emCasa ? "var(--laranja)" : "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              padding: 0,
+              transition: "all 0.2s",
+            }}
+          >
+            <Home size={18} color={emCasa ? "white" : "var(--text-soft)"} />
+          </button>
+        )}
 
         {mostraOpcoes && (
           <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
