@@ -17,6 +17,24 @@ service cloud.firestore {
         'tm_barchi@hotmail.com',
         'guiicamargo98@gmail.com'
       ];
+      // Qualquer logado registra preço, mas só acrescentando um registro:
+      // apagar ou alterar o histórico continua sendo de admin.
+      allow update: if logado()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['historico'])
+        && request.resource.data.historico.size() == resource.data.get('historico', []).size() + 1;
+    }
+
+    // Código de vínculo com o Telegram: o app só cria, para o próprio usuário.
+    // Conferir e marcar como usado é com o bot (Admin SDK).
+    match /codigosVinculo/{codigo} {
+      allow create: if logado() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Desvincular: o dono só pode desligar o próprio vínculo.
+    match /telegramVinculos/{chatId} {
+      allow update: if logado()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ativo']);
     }
 
     match /sugestoes/{sugestaoId} {

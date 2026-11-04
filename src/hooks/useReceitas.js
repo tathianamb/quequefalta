@@ -5,6 +5,18 @@ import {
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
+// Firestore recusa campos undefined, e o formulário usa undefined para limpar
+// produtoId/grupo quando o nome de um ingrediente é editado.
+function limparIngredientes(ingredientes) {
+  return (ingredientes ?? []).map(ing => {
+    const limpo = {}
+    for (const [k, v] of Object.entries(ing)) {
+      if (v !== undefined) limpo[k] = v
+    }
+    return limpo
+  })
+}
+
 export function useReceitas(usuario) {
   const [receitas, setReceitas] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -23,17 +35,11 @@ export function useReceitas(usuario) {
 
   const sugerir = async (dados) => {
     const temIngredienteTemporario = (dados.ingredientes ?? []).some(i => i.nomeTemp)
-    const status = temIngredienteTemporario ? 'pendente' : 'aprovada'
-    const ingredientesLimpos = (dados.ingredientes ?? []).map(ing => {
-      const limpo = {}
-      for (const [k, v] of Object.entries(ing)) {
-        if (v !== undefined) limpo[k] = v
-      }
-      return limpo
-    })
+    // "Salvar rascunho" pede status pendente de propósito.
+    const status = temIngredienteTemporario || dados.status === 'pendente' ? 'pendente' : 'aprovada'
     await addDoc(collection(db, 'receitas'), {
       ...dados,
-      ingredientes: ingredientesLimpos,
+      ingredientes: limparIngredientes(dados.ingredientes),
       status,
       criadaPor: usuario.uid,
       criadaEm: serverTimestamp(),
@@ -61,7 +67,10 @@ export function useReceitas(usuario) {
   }
 
   const atualizar = async (receita, dados) => {
-    await updateDoc(doc(db, 'receitas', receita.id), dados)
+    await updateDoc(doc(db, 'receitas', receita.id), {
+      ...dados,
+      ingredientes: limparIngredientes(dados.ingredientes),
+    })
   }
 
   return { receitas, aprovadas, pendentes, carregando, sugerir, aprovar, rejeitar, deletar, atualizar }

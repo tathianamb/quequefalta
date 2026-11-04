@@ -126,7 +126,7 @@ export function ReceitaFormulario({
   onVoltarTexto = null,
 }) {
   const [nome, setNome] = useState(dadosIniciais?.nome ?? '')
-  const [foto, setFoto] = useState('')
+  const [foto, setFoto] = useState(dadosIniciais?.foto ?? '')
   const [tempoPreparo, setTempoPreparo] = useState(dadosIniciais?.tempoPreparo ?? '')
   const [porcoes, setPorcoes] = useState(dadosIniciais?.porcoes ?? '')
   const [dificuldade, setDificuldade] = useState(dadosIniciais?.dificuldade ?? '')
@@ -265,7 +265,7 @@ export function ReceitaFormulario({
     passos: modoPreparo.trim()
       ? modoPreparo.split('\n').map(l => l.trim()).filter(Boolean)
       : [],
-    _textoOriginal: textoOriginal || null,
+    ...(textoOriginal ? { _textoOriginal: textoOriginal } : {}),
   })
 
   const handleEnviar = async () => {
