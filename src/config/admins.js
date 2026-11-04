@@ -1,4 +1,4 @@
-export const ADMINS = [
+const ADMINS = [
   'tm_barchi@hotmail.com',
   'guiicamargo98@gmail.com'
 ]

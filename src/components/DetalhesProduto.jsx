@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { corDaCategoria, ORDEM_CATEGORIAS } from "../utils/categorias";
+import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
 import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from "../utils/estilos";
 
@@ -13,7 +13,7 @@ function hojeISO() {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
-function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo = [], isAdmin = false, origemLista = false, onDeletar }) {
+function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin = false, origemLista = false, onDeletar }) {
   const [mercado, setMercado] = useState("");
   const [preco, setPreco] = useState("");
   const [data, setData] = useState(hojeISO());
@@ -58,8 +58,6 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
     setAdminGrupoSubstituicao(adminGrupoSubstituicao.filter((g) => g !== grupo));
   };
 
-  const cor = corDaCategoria(produto.categoria);
-
   const subcategoriasDaCategoria = useMemo(() => {
     return [...new Set(
       catalogo
@@ -99,7 +97,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, itemDaLista, catalogo 
       }
     });
     const melhor = Object.entries(porMercado).sort((a, b) => a[1] - b[1])[0];
-    return melhor ? { mercado: melhor[0], preco: melhor[1] } : null;
+    return { mercado: melhor[0], preco: melhor[1] };
   };
 
   const handleRegistrar = async () => {

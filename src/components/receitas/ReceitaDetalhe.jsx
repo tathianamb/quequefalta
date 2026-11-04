@@ -184,7 +184,7 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
       </div>
 
       {/* CTA adicionar faltantes */}
-      {!temTudo && faltantes.length > 0 && (
+      {!temTudo && (
         <button
           onClick={() => onAdicionarFaltantes(faltantes)}
           style={{

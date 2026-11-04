@@ -1,5 +1,4 @@
 export const FONTE = {
-  regular: 400,
   medio: 500,
   semibold: 600,
   bold: 700,
@@ -13,8 +12,6 @@ export const FONTE = {
   lg: '16px',
   xl: '18px',
   xxl: '20px',
-  titulo: '22px',
-  display: '32px',
 }
 
 export const RAIO = {

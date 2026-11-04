@@ -32,12 +32,12 @@ Modo de preparo:
 Cozinhe o macarrão al dente.
 Refogue o alho no azeite...`
 
-export function ReceitaTexto({ textoInicial = '', catalogo, grupoSubstituicao, onContinuar, onVoltar }) {
+export function ReceitaTexto({ textoInicial = '', catalogo, onContinuar, onVoltar }) {
   const [texto, setTexto] = useState(textoInicial)
 
   const handleContinuar = () => {
     if (!texto.trim()) return
-    const resultado = parseReceita(texto, { catalogo, grupoSubstituicao })
+    const resultado = parseReceita(texto, { catalogo })
     onContinuar(texto, resultado)
   }
 

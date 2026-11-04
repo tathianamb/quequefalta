@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   collection, onSnapshot, doc,
-  addDoc, updateDoc, deleteDoc, serverTimestamp,
+  addDoc, updateDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
@@ -19,13 +19,11 @@ function limparIngredientes(ingredientes) {
 
 export function useReceitas(usuario) {
   const [receitas, setReceitas] = useState([])
-  const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
     const ref = collection(db, 'receitas')
     const unsub = onSnapshot(ref, (snap) => {
       setReceitas(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setCarregando(false)
     })
     return () => unsub()
   }, [])
@@ -62,10 +60,6 @@ export function useReceitas(usuario) {
     })
   }
 
-  const deletar = async (receita) => {
-    await deleteDoc(doc(db, 'receitas', receita.id))
-  }
-
   const atualizar = async (receita, dados) => {
     await updateDoc(doc(db, 'receitas', receita.id), {
       ...dados,
@@ -73,5 +67,5 @@ export function useReceitas(usuario) {
     })
   }
 
-  return { receitas, aprovadas, pendentes, carregando, sugerir, aprovar, rejeitar, deletar, atualizar }
+  return { aprovadas, pendentes, sugerir, aprovar, rejeitar, atualizar }
 }

@@ -19,7 +19,7 @@ export async function gerarCodigoVinculo(usuario) {
     usado: false,
   });
 
-  return { codigo, expiraEm };
+  return { codigo };
 }
 
 export async function desvincularTelegram(usuario, telegramChatId) {

@@ -107,16 +107,13 @@ function labelSugestao(produto, termo) {
   return produto.nome
 }
 
-function temMatchExato(resultadosProduto, resultadosGrupo, termo) {
+function temMatchExato(resultadosProduto, termo) {
   const t = termo.toLowerCase().trim()
-  const matchProduto = resultadosProduto.some(p => p.nome.toLowerCase() === t)
-  const matchGrupo = resultadosGrupo.some(g => g.nome.toLowerCase() === t)
-  return matchProduto || matchGrupo
+  return resultadosProduto.some(p => p.nome.toLowerCase() === t)
 }
 
 export function ReceitaFormulario({
   catalogo, // produtos
-  grupoSubstituicao = [],
   isAdmin,
   onVoltar,
   onEnviar,
@@ -134,7 +131,6 @@ export function ReceitaFormulario({
     (dadosIniciais?.ingredientes ?? []).map(ing => ({
       ...ing,
       unidade: normalizarUnidade(ing.unidade),
-      _parsedUnidade: normalizarUnidade(ing._parsedUnidade),
     }))
   )
   const [buscaIngrediente, setBuscaIngrediente] = useState('')
@@ -167,22 +163,11 @@ export function ReceitaFormulario({
         .slice(0, 8)
     : []
 
-  const resultadosGrupo = buscaAtiva
-    ? grupoSubstituicao
-        .filter(g =>
-          g.nome.toLowerCase().includes(termoAtivo.toLowerCase()) &&
-          (editandoIdx !== null
-            ? ingredientes[editandoIdx]?.grupoSubstituicaoId !== g.id
-            : !ingredientes.some(i => i.grupoSubstituicaoId === g.id))
-        )
-        .slice(0, 4)
-    : []
-
-  const temResultados = resultadosProduto.length > 0 || resultadosGrupo.length > 0
+  const temResultados = resultadosProduto.length > 0
 
   const mostrarSugestaoNomeTemp = buscaAtiva && (
     !temResultados ||
-    !temMatchExato(resultadosProduto, resultadosGrupo, termoAtivo)
+    !temMatchExato(resultadosProduto, termoAtivo)
   )
 
   const mostrarDropdown = buscaAtiva && (temResultados || mostrarSugestaoNomeTemp)
@@ -209,10 +194,6 @@ export function ReceitaFormulario({
       ? `${produto.nome} (${grupoMatch})`
       : produto.nome
     aplicarSelecao({ produtoId: produto.id, nome: nomeDisplay })
-  }
-
-  const selecionarGrupoSubstituicao = (grupo) => {
-    aplicarSelecao({ grupoSubstituicaoId: grupo.id, nome: grupo.nome })
   }
 
   const selecionarNomeTemp = () => {
@@ -470,7 +451,7 @@ export function ReceitaFormulario({
                       onFocus={() => setEditandoIdx(idx)}
                       onBlur={() => setTimeout(() => setEditandoIdx(null), 150)}
                       onChange={e => setIngredientes(prev => prev.map((item, i) =>
-                        i === idx ? { ...item, nome: e.target.value, produtoId: undefined, grupoSubstituicaoId: undefined, nomeTemp: e.target.value } : item
+                        i === idx ? { ...item, nome: e.target.value, produtoId: undefined, nomeTemp: e.target.value } : item
                       ))}
                       style={{ ...inputStyle, width: '100%', padding: '6px 8px', fontSize: '13px', borderColor: ing.nomeTemp ? 'var(--amarelo-validacao)' : editandoIdx === idx ? 'var(--laranja)' : 'var(--borda, #DEE2E6)' }}
                     />
@@ -484,24 +465,9 @@ export function ReceitaFormulario({
                       }}>
                         {resultadosProduto.length > 0 && (
                           <>
-                            {resultadosGrupo.length > 0 && (
-                              <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>PRODUTOS</div>
-                            )}
                             {resultadosProduto.map(p => (
                               <div key={p.id} onMouseDown={() => selecionarProduto(p)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--borda, #DEE2E6)', ...TIPOGRAFIA.corpo, color: 'var(--text)' }}>
                                 {labelSugestao(p, termoAtivo)}
-                              </div>
-                            ))}
-                          </>
-                        )}
-                        {resultadosGrupo.length > 0 && (
-                          <>
-                            {resultadosProduto.length > 0 && (
-                              <div style={{ ...TIPOGRAFIA.label, color: 'var(--text-soft)', padding: '6px 14px 4px', borderBottom: '1px solid var(--borda, #DEE2E6)' }}>GRUPOS</div>
-                            )}
-                            {resultadosGrupo.map(g => (
-                              <div key={g.id} onMouseDown={() => selecionarGrupoSubstituicao(g)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--borda, #DEE2E6)', ...TIPOGRAFIA.corpo, color: 'var(--text)' }}>
-                                {g.nome}
                               </div>
                             ))}
                           </>
@@ -574,16 +540,6 @@ export function ReceitaFormulario({
                 {/* Seção de produtos */}
                 {resultadosProduto.length > 0 && (
                   <>
-                    {resultadosGrupo.length > 0 && (
-                      <div style={{
-                        ...TIPOGRAFIA.label,
-                        color: 'var(--text-soft)',
-                        padding: '6px 14px 4px',
-                        borderBottom: '1px solid var(--borda, #DEE2E6)',
-                      }}>
-                        PRODUTOS
-                      </div>
-                    )}
                     {resultadosProduto.map(p => (
                       <div
                         key={p.id}
@@ -595,35 +551,6 @@ export function ReceitaFormulario({
                         }}
                       >
                         {labelSugestao(p, buscaIngrediente)}
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Seção de grupos de substituição */}
-                {resultadosGrupo.length > 0 && (
-                  <>
-                    {resultadosProduto.length > 0 && (
-                      <div style={{
-                        ...TIPOGRAFIA.label,
-                        color: 'var(--text-soft)',
-                        padding: '6px 14px 4px',
-                        borderBottom: '1px solid var(--borda, #DEE2E6)',
-                      }}>
-                        GRUPOS DE SUBSTITUIÇÃO
-                      </div>
-                    )}
-                    {resultadosGrupo.map(g => (
-                      <div
-                        key={g.id}
-                        onClick={() => selecionarGrupoSubstituicao(g)}
-                        style={{
-                          padding: '10px 14px', cursor: 'pointer',
-                          borderBottom: '1px solid var(--borda, #DEE2E6)',
-                          ...TIPOGRAFIA.corpo, color: 'var(--text)',
-                        }}
-                      >
-                        {g.nome}
                       </div>
                     ))}
                   </>

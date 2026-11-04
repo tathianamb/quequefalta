@@ -50,29 +50,20 @@ export function useLista(listaAtiva, catalogo = []) {
     .filter(Boolean)
     .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"));
 
-  const adicionarItem = async (produto) => {
+  const criarItem = async (produto, comprado) => {
     const jaExiste = itensRaw.some((i) => i.produtoId === produto.id);
     if (jaExiste) return false;
     await addDoc(collection(db, "listas", listaAtiva, "lista"), {
       produtoId: produto.id,
-      comprado: false,
-      compradoEm: null,
+      comprado,
+      compradoEm: comprado ? new Date() : null,
       adicionadoEm: serverTimestamp(),
     });
     return true;
   };
 
-  const adicionarItemComprado = async (produto) => {
-    const jaExiste = itensRaw.some((i) => i.produtoId === produto.id);
-    if (jaExiste) return false;
-    await addDoc(collection(db, "listas", listaAtiva, "lista"), {
-      produtoId: produto.id,
-      comprado: true,
-      compradoEm: new Date(),
-      adicionadoEm: serverTimestamp(),
-    });
-    return true;
-  };
+  const adicionarItem = (produto) => criarItem(produto, false);
+  const adicionarItemComprado = (produto) => criarItem(produto, true);
 
   // Botão de casinha do catálogo: liga/desliga "tem em casa". Fora da lista,
   // cria o item já comprado; na lista, alterna o comprado (desligar deixa o

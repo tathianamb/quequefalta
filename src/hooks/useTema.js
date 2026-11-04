@@ -18,7 +18,6 @@ export function useTema() {
       root.style.setProperty("--bg", "#1A1B1E");
       root.style.setProperty("--card", "#25262B");
       root.style.setProperty("--text", "#F8F9FA");
-      root.style.setProperty("--text-soft", "#868E96");
       root.style.setProperty("--shadow", "0 2px 12px rgba(0,0,0,0.3)");
       root.style.setProperty("--amarelo-validacao", "#fec601");
       root.style.setProperty("--verde-bg", "#1A2E1A");
@@ -27,7 +26,6 @@ export function useTema() {
       root.style.setProperty("--bg", "#F8F9FA");
       root.style.setProperty("--card", "#FFFFFF");
       root.style.setProperty("--text", "#212529");
-      root.style.setProperty("--text-soft", "#868E96");
       root.style.setProperty("--shadow", "0 2px 12px rgba(0,0,0,0.08)");
       root.style.setProperty("--amarelo-validacao", "#b07d00");
       root.style.setProperty("--verde-bg", "#EBFBEE");

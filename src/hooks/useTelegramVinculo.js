@@ -20,7 +20,6 @@ export function useTelegramVinculo(usuario) {
 
   return {
     vinculado: !!telegramChatId,
-    telegramChatId,
     gerarCodigo,
     desvincular,
   };

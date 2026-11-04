@@ -1,3 +1,5 @@
+import { normalizar } from './texto'
+
 // Parser de receitas em texto livre — arquitetura em camadas.
 // Princípio: regex reconhece FORMATO. Código decide SIGNIFICADO.
 
@@ -36,8 +38,6 @@ const RE = {
   embalagem: /^\(([^)]*)\)\s*(?:de\s+)?/i,
 
   tempoRotulado: /(?:tempo(?:\s+de\s+(?:preparo|cozimento))?|pronto\s+em|preparo)\s*:?\s*(\d+)\s*(h(?:ora)?s?|min(?:uto)?s?)/i,
-  tempoHM: /(\d+)\s*h(?:ora)?s?\s*(?:e\s*)?(\d+)?\s*(?:min(?:uto)?s?)?/i,
-  tempoMin: /(\d+)\s*min(?:uto)?s?/i,
 
   porcoes: /(?:(\d+)\s*(?:por[çc][õo]es?|pessoas?|fatias?)|(?:serve[m]?|rende[m]?|d[áa]\s+para)\s+(\d+)|rendimento:?\s*(\d+))/i,
   dificuldade: /f[aá]cil|m[eé]di[ao]|intermedi[áa]ri[ao]|dif[ií]cil/i,
@@ -57,10 +57,6 @@ const RE = {
    CAMADA 2 — LÉXICOS (listas que o código consulta; extensíveis sem regex)
    ========================================================================= */
 const LEXICO = {
-  // Unidades que não fazem sentido com decimal ("1,9 dentes" é suspeito)
-  unidadesInteiras: ['dente', 'dentes', 'lata', 'latas', 'fatia', 'fatias',
-                     'pacote', 'pacotes', 'unidade', 'unidades', 'ramo', 'ramos'],
-
   // Termos de preparo que colados ao fim do nome devem ir para OBS
   preparos: ['picado', 'picados', 'picada', 'picadas', 'ralado', 'ralada',
              'cozido', 'cozida', 'cozidos', 'cozidas', 'fresco', 'fresca',
@@ -68,21 +64,7 @@ const LEXICO = {
              'fatiado', 'fatiada', 'amassado', 'amassada', 'desfiado', 'desfiada'],
 }
 
-const LIMIAR = { ingredienteMax: 80, metadadoMax: 60, vizinhoMax: 40 }
-
-export const UNIDADES_CONHECIDAS = [
-  'g', 'kg', 'ml', 'mL', 'l', 'litro', 'litros',
-  'xíc', 'xícara', 'xícaras',
-  'colher', 'colheres', 'colh.',
-  'pitada', 'pitadas',
-  'unid.', 'unidade', 'unidades',
-  'lata', 'latas',
-  'pacote', 'pacotes',
-  'dente', 'dentes',
-  'fatia', 'fatias',
-  'ramo', 'ramos',
-  'un.',
-]
+const LIMIAR = { ingredienteMax: 80, vizinhoMax: 40 }
 
 /* =========================================================================
    UTILITÁRIOS
@@ -98,14 +80,6 @@ function substituirFracoes(str) {
     str = str.split(frac).join(rep)
   }
   return str
-}
-
-function normalizar(str) {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
 }
 
 /* =========================================================================
@@ -133,16 +107,6 @@ function extrairEmbalagem(texto) {
 /* =========================================================================
    CAMADA 4 — VALIDADORES (if/else relacionais; regex não expressa bem isso)
    ========================================================================= */
-function validarQuantidadeUnidade(quantidade, unidade) {
-  if (!quantidade || !unidade) return { ok: true }
-  const temDecimal = /[.,]/.test(quantidade)
-  const ehInteira = LEXICO.unidadesInteiras.includes(unidade.toLowerCase())
-  if (temDecimal && ehInteira) {
-    return { ok: false, motivo: `quantidade decimal ("${quantidade}") em unidade contável ("${unidade}")` }
-  }
-  return { ok: true }
-}
-
 function separarPreparoDoNome(nome) {
   const palavras = nome.trim().split(/\s+/)
   const ultima = palavras[palavras.length - 1].toLowerCase().replace(/[.,;]$/, '')
@@ -169,25 +133,16 @@ function casarPorToken(nomeNorm, alvoNorm) {
   return undefined
 }
 
-function buscarMatch(nomeNorm, catalogo, grupoSubstituicao) {
+function buscarMatch(nomeNorm, catalogo) {
   const candidatos = []
 
   for (const produto of catalogo) {
     const alvo = normalizar(produto.nome)
     if (alvo === nomeNorm) {
-      candidatos.push({ tipo: 'produto', item: produto, observacao: null, peso: alvo.split(/\s+/).length, exato: true })
+      candidatos.push({ item: produto, observacao: null, peso: alvo.split(/\s+/).length, exato: true })
     } else {
       const obs = casarPorToken(nomeNorm, alvo)
-      if (obs !== undefined) candidatos.push({ tipo: 'produto', item: produto, observacao: obs, peso: alvo.split(/\s+/).length, exato: false })
-    }
-  }
-  for (const grupo of grupoSubstituicao) {
-    const alvo = normalizar(grupo.nome)
-    if (alvo === nomeNorm) {
-      candidatos.push({ tipo: 'grupoSubstituicao', item: grupo, observacao: null, peso: alvo.split(/\s+/).length, exato: true })
-    } else {
-      const obs = casarPorToken(nomeNorm, alvo)
-      if (obs !== undefined) candidatos.push({ tipo: 'grupoSubstituicao', item: grupo, observacao: obs, peso: alvo.split(/\s+/).length, exato: false })
+      if (obs !== undefined) candidatos.push({ item: produto, observacao: obs, peso: alvo.split(/\s+/).length, exato: false })
     }
   }
 
@@ -195,22 +150,19 @@ function buscarMatch(nomeNorm, catalogo, grupoSubstituicao) {
 
   candidatos.sort((a, b) => {
     if (a.exato !== b.exato) return a.exato ? -1 : 1
-    if (b.peso !== a.peso) return b.peso - a.peso
-    if (a.tipo !== b.tipo) return a.tipo === 'produto' ? -1 : 1
-    return 0
+    return b.peso - a.peso
   })
 
   const m = candidatos[0]
-  return { tipo: m.tipo, item: m.item, observacao: m.observacao }
+  return { item: m.item, observacao: m.observacao }
 }
 
 /* =========================================================================
    PARSE DE UMA LINHA DE INGREDIENTE
    Orquestra extratores + validadores + match no catálogo
    ========================================================================= */
-function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
+function parseLinhaIngrediente(linha, catalogo) {
   let resto = linha.trim()
-  const avisos = []
 
   const q = extrairQuantidade(resto)
   resto = q.resto
@@ -218,13 +170,8 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
   const u = extrairUnidade(resto)
   resto = u.resto
 
-  let embalagem = null
   const e = extrairEmbalagem(resto.trim())
-  if (e.valor) {
-    embalagem = e.valor
-    resto = e.resto
-    avisos.push(`embalagem alternativa detectada: "${embalagem}"`)
-  }
+  if (e.valor) resto = e.resto
 
   let nome = resto.trim().replace(/^d[eaos]+\s+/i, '')
 
@@ -232,48 +179,31 @@ function parseLinhaIngrediente(linha, catalogo = [], grupoSubstituicao = []) {
     nome = nome.replace(RE.aGostoSufixo, '').trim()
   }
 
-  const val = validarQuantidadeUnidade(q.valor, u.valor)
-  if (!val.ok) avisos.push(val.motivo)
-
   const sep = separarPreparoDoNome(nome)
   let preparoSugerido = sep.preparoSugerido
-  if (preparoSugerido) {
-    nome = sep.nome
-    avisos.push(`preparo "${preparoSugerido}" sugerido para OBS`)
-  }
+  if (preparoSugerido) nome = sep.nome
 
   if (!preparoSugerido) {
     const mUso = nome.match(RE.paraUsoSufixo)
     if (mUso) {
       preparoSugerido = mUso[1].trim()
       nome = nome.replace(RE.paraUsoSufixo, '').trim()
-      avisos.push(`uso "${preparoSugerido}" sugerido para OBS`)
     }
   }
 
   const nomeNorm = normalizar(nome)
-  const match = nome ? buscarMatch(nomeNorm, catalogo, grupoSubstituicao) : null
+  const match = nome ? buscarMatch(nomeNorm, catalogo) : null
 
   const ingrediente = {
     nome,
     quantidade: q.valor || null,
     unidade: u.valor || null,
     observacao: preparoSugerido || null,
-    embalagem,
-    avisos,
-    _parsedNome: nome,
-    _parsedQuantidade: q.valor || null,
-    _parsedUnidade: u.valor || null,
   }
 
   if (match) {
-    if (match.tipo === 'produto') {
-      ingrediente.produtoId = match.item.id || match.item.produtoId || null
-      ingrediente.nome = match.item.nome
-    } else if (match.tipo === 'grupoSubstituicao') {
-      ingrediente.grupoSubstituicaoId = match.item.id || null
-      ingrediente.nome = match.item.nome
-    }
+    ingrediente.produtoId = match.item.id || match.item.produtoId || null
+    ingrediente.nome = match.item.nome
     if (match.observacao) ingrediente.observacao = match.observacao
   } else {
     ingrediente.nomeTemp = nome
@@ -306,15 +236,6 @@ function extrairTempoReceita(textoCompleto) {
   return ehHora ? valor * 60 : valor
 }
 
-function extrairTemposDosPassos(passos) {
-  return passos
-    .map((passo, idx) => {
-      const m = passo.match(RE.tempoMin)
-      return m ? { passo: idx + 1, minutos: parseInt(m[1], 10), texto: passo } : null
-    })
-    .filter(Boolean)
-}
-
 function extrairMetadados(textoCompleto) {
   const meta = {}
 
@@ -340,7 +261,7 @@ function extrairMetadados(textoCompleto) {
    CAMADA 5 — ORQUESTRAÇÃO
    Separa seções por cabeçalho; dentro de ingredientes promove vizinhos curtos.
    ========================================================================= */
-export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = {}) {
+export function parseReceita(texto, { catalogo }) {
   const linhas = texto
     .split(/\r?\n/)
     .map(l => l.trim())
@@ -374,11 +295,7 @@ export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = 
     secaoDaLinha[i] = secaoAtual
   }
 
-  const consumidos = new Set()
-
   linhas.forEach((linha, i) => {
-    if (consumidos.has(i)) return
-    if (linha.trim().length === 0) return
     if (ehCabecalhoLinha[i]) return
 
     if (secaoDaLinha[i] === 'preparo') {
@@ -391,12 +308,11 @@ export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = 
     }
 
     if (ehIngredienteLinha[i]) {
-      ingredientes.push(parseLinhaIngrediente(linha, catalogo, grupoSubstituicao))
+      ingredientes.push(parseLinhaIngrediente(linha, catalogo))
     }
   })
 
   const meta = extrairMetadados(texto)
-  const timersDePasso = extrairTemposDosPassos(passos)
 
   return {
     nome: '',
@@ -405,6 +321,5 @@ export function parseReceita(texto, { catalogo = [], grupoSubstituicao = [] } = 
     dificuldade: meta.dificuldade || null,
     ingredientes,
     passos,
-    _timersDePasso: timersDePasso,
   }
 }

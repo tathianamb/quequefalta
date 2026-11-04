@@ -2,13 +2,7 @@
 // receita, pelo cartão da lista ("faltam N de M") e pela ordenação por
 // relevância — antes cada um tinha a sua e elas discordavam.
 
-function normalizar(texto) {
-  return String(texto ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim()
-}
+import { normalizar } from './texto'
 
 // Monta uma vez por render e devolve a função que testa cada ingrediente.
 // `itensEmCasa` são os itens da lista com comprado=true (já cruzados com o
@@ -23,8 +17,6 @@ export function criarVerificadorEmCasa(itensEmCasa, catalogo = []) {
   return (ing) => {
     // Produto ainda não catalogado: não há como saber.
     if (ing.nomeTemp) return false
-    // Ingrediente que já é um grupo (ex: "óleo"): o nome é o do grupo.
-    if (ing.grupoSubstituicaoId) return gruposEmCasa.has(normalizar(ing.nome))
     if (!ing.produtoId) return false
     if (idsEmCasa.has(ing.produtoId)) return true
     // Produto genérico vale pelo grupo dele: a receita pede "Óleo" e em casa

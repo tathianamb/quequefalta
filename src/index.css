@@ -12,7 +12,6 @@
   --laranja: #fe5f01;
   --verde: #577454;
   --verde-sage: #b4bea3;
-  --bege: #d3ad80;
 
   --bg: #f8f9fa;
   --card: #ffffff;
@@ -29,10 +28,6 @@ body {
   max-width: 480px;
   margin: 0 auto;
   letter-spacing: 0.5px;
-}
-
-.categorias-scroll::-webkit-scrollbar {
-  display: none;
 }
 
 input[type="number"]::-webkit-inner-spin-button,

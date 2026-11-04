@@ -43,7 +43,7 @@ function CategoriaGrupo({
       naLista={itensDaLista?.some((i) => i.produtoId === p.id)}
       emCasa={contexto === "catalogo" && itensDaLista?.some((i) => i.produtoId === p.id && i.comprado)}
       comprado={p.comprado}
-      onRemover={onRemover || null}
+      onRemover={onRemover}
       contexto={contexto}
       onFiltrarGrupo={onFiltrarGrupo}
     />

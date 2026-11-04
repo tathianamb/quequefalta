@@ -1,8 +1,7 @@
-﻿import { useState, useRef } from "react";
-import { signOut } from "firebase/auth";
-import { auth, db } from "../config/firebase";
+﻿import { useState } from "react";
+import { db } from "../config/firebase";
 import { addDoc, collection, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
-import { ORDEM_CATEGORIAS, textoParaCor } from "../utils/categorias";
+import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { criarVerificadorEmCasa, ingredientesFaltantes, escolherVariante } from "../utils/ingredientesEmCasa";
 import { useLista } from "../hooks/useLista";
 import { useCatalogo } from "../hooks/useCatalogo";
@@ -31,7 +30,6 @@ import {
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import { useReceitas } from "../hooks/useReceitas";
-import { useGrupoSubstituicao } from "../hooks/useGrupoSubstituicao";
 import { useBackStack } from "../hooks/useBackStack";
 import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
@@ -68,26 +66,19 @@ function Home({
     toggleComprado,
     removerItem,
   } = useLista(listaAtiva, catalogo);
-  const scrollRef = useRef(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollLeft = useRef(0);
   const { escuro, toggleTema, seguirSistema } = useTema();
   const [aba, setAba] = useState("lista");
   const [busca, setBusca] = useState("");
-  const [categoriasFiltro, setCategoriasFiltro] = useState([]);
   const [grupoFiltro, setGrupoFiltro] = useState([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const [chatAberto, setChatAberto] = useState(false);
   const { naoLida: chatNaoLido, enviando: chatEnviando } = useChat();
   const {
-    sugestoes,
     pendentes: sugestoesPendentes,
     aprovar,
     rejeitar,
     atualizar,
-    deletar,
   } = useSugestoes(usuario);
   const {
     aprovadas: receitasAprovadas,
@@ -95,10 +86,8 @@ function Home({
     sugerir: sugerirReceita,
     aprovar: aprovarReceita,
     rejeitar: rejeitarReceita,
-    deletar: deletarReceita,
     atualizar: atualizarReceita,
   } = useReceitas(usuario);
-  const { grupoSubstituicao } = useGrupoSubstituicao();
   const [modoAdmin, setModoAdmin] = useState(false);
   const [sugestaoEditando, setSugestaoEditando] = useState(null); // { id, nome, categoria, subcategoria }
   const [sugestaoNomeFoco, setSugestaoNomeFoco] = useState(false);
@@ -128,15 +117,13 @@ function Home({
   const filtrar = (arr) =>
     arr.filter((p) => {
       const buscaOk = (p.nome ?? "").toLowerCase().includes(busca.toLowerCase());
-      const categoriaOk =
-        categoriasFiltro.length === 0 || categoriasFiltro.includes(p.categoria);
       const grupoOk =
         grupoFiltro.length === 0 ||
         grupoFiltro.some(
           (g) =>
             (p.grupoSubstituicao ?? []).includes(g) || p.subcategoria === g,
         );
-      return buscaOk && categoriaOk && grupoOk;
+      return buscaOk && grupoOk;
     });
 
   const irParaGrupo = (grupo) => {
@@ -144,7 +131,6 @@ function Home({
     pushBack(() => { setAba(abaAtual); setGrupoFiltro([]); });
     setAba("catalogo");
     setBusca("");
-    setCategoriasFiltro([]);
     setGrupoFiltro([grupo]);
   };
 
@@ -354,15 +340,11 @@ function Home({
           categorias={aba === "catalogo"
             ? [...new Set(catalogo.flatMap(p => [...(p.grupoSubstituicao ?? []), ...(p.subcategoria ? [p.subcategoria] : [])]))]
                 .filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))
-            : aba === "lista"
-            ? [...new Set(lista.flatMap(item => {
+            : [...new Set(lista.flatMap(item => {
                 const prod = catalogo.find(p => p.id === item.produtoId) ?? item;
                 return [...(prod.grupoSubstituicao ?? []), ...(prod.subcategoria ? [prod.subcategoria] : [])];
-              }))].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))
-            : undefined}
-          tituloModal="Filtrar"
+              }))].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))}
           botoesExtras={
-            aba === "catalogo" || aba === "lista" ? (
               <button
                 onClick={() => aba === "catalogo"
                   ? setTodasExpandidas((e) => !e)
@@ -386,7 +368,6 @@ function Home({
                   </>
                 )}
               </button>
-            ) : null
           }
         />}
 
@@ -511,6 +492,7 @@ function Home({
               key={categoria}
               categoria={categoria}
               itens={itens}
+              contexto="lista"
               onToggle={toggleComprado}
               onAbrir={abrirProduto}
               busca={busca}
@@ -542,6 +524,7 @@ function Home({
                     pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); });
                   },
                 }}
+                contexto="lista"
                 onToggle={toggleComprado}
                 onAbrir={abrirProduto}
                 busca={busca}
@@ -1007,7 +990,6 @@ function Home({
                 setAba("catalogo");
                 setBusca(nome);
                 setGrupoFiltro([]);
-                setCategoriasFiltro([]);
               }}
             />
           )}
@@ -1015,7 +997,6 @@ function Home({
             <ReceitaTexto
               textoInicial={textoReceita}
               catalogo={catalogo}
-              grupoSubstituicao={grupoSubstituicao}
               onVoltar={() => setTelaReceita("lista")}
               onContinuar={(texto, dados) => {
                 setTextoReceita(texto);
@@ -1028,7 +1009,6 @@ function Home({
           {telaReceita === "formulario" && (
             <ReceitaFormulario
               catalogo={catalogo}
-              grupoSubstituicao={grupoSubstituicao}
               isAdmin={admin && modoAdmin}
               dadosIniciais={dadosParseados}
               textoOriginal={receitaEditando ? null : textoReceita}
@@ -1121,7 +1101,6 @@ function Home({
           }
           onFechar={() => setProdutoSelecionado(null)}
           listaAtiva={listaAtiva}
-          itemDaLista={lista.find((i) => i.produtoId === produtoSelecionado.id)}
           catalogo={catalogo}
           isAdmin={admin && modoAdmin}
           origemLista={!!produtoSelecionado._origemLista}
@@ -1185,7 +1164,6 @@ function Home({
                 pushBack(() => {
                   setAba(abaAtual);
                   setBusca("");
-                  setCategoriasFiltro([]);
                   setGrupoFiltro([]);
                   if (abaAtual !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
                   if (abaAtual !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); }
@@ -1193,7 +1171,6 @@ function Home({
               }
               setAba(id);
               setBusca("");
-              setCategoriasFiltro([]);
               setGrupoFiltro([]);
               if (id !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
               if (id !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); }

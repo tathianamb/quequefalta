@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
 export function useSugestoes(usuario) {
@@ -54,9 +54,5 @@ export function useSugestoes(usuario) {
     await updateDoc(doc(db, 'sugestoes', sugestao.id), dados)
   }
 
-  const deletar = async (sugestao) => {
-    await deleteDoc(doc(db, 'sugestoes', sugestao.id))
-  }
-
-  return { sugestoes, pendentes, aprovar, rejeitar, atualizar, deletar }
+  return { pendentes, aprovar, rejeitar, atualizar }
 }

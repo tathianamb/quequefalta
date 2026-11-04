@@ -14,13 +14,11 @@ function App() {
   const [usuario, setUsuario] = useState(undefined);
   const [listaAtiva, setListaAtiva] = useState(null);
   const [todasListas, setTodasListas] = useState([]);
-  const [listaPendente, setListaPendente] = useState(null);
   const [confirmandoLista, setConfirmandoLista] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const listaParam = params.get("lista");
-    if (listaParam) setListaPendente(listaParam);
 
     getRedirectResult(auth).catch(console.error);
 

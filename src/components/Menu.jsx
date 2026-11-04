@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { baixarCsv } from "../utils/csv";
 import {
   Moon,
   Lightbulb,
@@ -78,41 +79,21 @@ function Menu({
   const handleGerarCodigo = async () => {
     setGerandoCodigo(true);
     try {
-      const { codigo, expiraEm } = await gerarCodigo();
-      setCodigoVinculo({ codigo, expiraEm });
+      const { codigo } = await gerarCodigo();
+      setCodigoVinculo({ codigo });
     } finally {
       setGerandoCodigo(false);
     }
   };
 
   const exportarCatalogo = () => {
-    const escapar = (v) => {
-      if (v == null) return "";
-      const s = String(v);
-      return s.includes(",") || s.includes('"') || s.includes("\n")
-        ? '"' + s.replace(/"/g, '""') + '"'
-        : s;
-    };
-    const linhas = [
-      ["nome", "categoria", "subcategoria", "grupoSubstituicao"].join(","),
-      ...[...catalogo]
+    baixarCsv(
+      "catalogo.csv",
+      ["nome", "categoria", "subcategoria", "grupoSubstituicao"],
+      [...catalogo]
         .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
-        .map((p) =>
-          [
-            escapar(p.nome),
-            escapar(p.categoria),
-            escapar(p.subcategoria),
-            escapar((p.grupoSubstituicao ?? []).join("; ")),
-          ].join(",")
-        ),
-    ];
-    const blob = new Blob(["﻿" + linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "catalogo.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+        .map((p) => [p.nome, p.categoria, p.subcategoria, (p.grupoSubstituicao ?? []).join("; ")]),
+    );
   };
 
   // Mesma ordem da lista (alimentos primeiro, limpeza/higiene no fim).
@@ -145,29 +126,13 @@ function Menu({
       selecionadasExportar.length === 0
         ? itensEmCasa
         : itensEmCasa.filter((i) => selecionadasExportar.includes(i.categoria));
-
-    const escapar = (v) => {
-      if (v == null) return "";
-      const s = String(v);
-      return s.includes(",") || s.includes('"') || s.includes("\n")
-        ? '"' + s.replace(/"/g, '""') + '"'
-        : s;
-    };
-    const linhas = [
-      ["nome", "categoria", "subcategoria"].join(","),
-      ...[...itens]
+    baixarCsv(
+      "em-casa.csv",
+      ["nome", "categoria", "subcategoria"],
+      [...itens]
         .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
-        .map((p) =>
-          [escapar(p.nome), escapar(p.categoria), escapar(p.subcategoria)].join(","),
-        ),
-    ];
-    const blob = new Blob(["﻿" + linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "em-casa.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+        .map((p) => [p.nome, p.categoria, p.subcategoria]),
+    );
   };
 
   const handleSugestao = async () => {

@@ -1,4 +1,3 @@
-import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { SlidersHorizontal, X, Check } from "lucide-react";
 import { useState } from "react";
 import {
@@ -14,8 +13,7 @@ function FiltroCategoria({
   categoriasFiltro,
   setCategoriasFiltro,
   botoesExtras,
-  categorias = ORDEM_CATEGORIAS,
-  tituloModal = "Filtrar",
+  categorias,
 }) {
   const [aberto, setAberto] = useState(false);
   const [selecao, setSelecao] = useState(categoriasFiltro);
@@ -41,7 +39,6 @@ function FiltroCategoria({
   };
 
   const resumo = () => {
-    if (categoriasFiltro.length === 0) return null;
     const visiveis = categoriasFiltro.slice(0, 2);
     const extras = categoriasFiltro.length - 2;
     let texto = visiveis.join(", ");
@@ -166,7 +163,7 @@ function FiltroCategoria({
                   color: "var(--text)",
                 }}
               >
-                {tituloModal}
+                Filtrar
               </h2>
               <X
                 size={20}

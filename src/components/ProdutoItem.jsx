@@ -1,7 +1,7 @@
 import { Check, Home, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
-import { TIPOGRAFIA, RAIO, COR, BORDA } from '../utils/estilos'
+import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
 
 function ProdutoItem({
   produto,
@@ -64,7 +64,7 @@ function ProdutoItem({
     }
 
     if (naLista) {
-      onRemover && onRemover({ ...produto, id: produto.itemId || produto.id });
+      onRemover && onRemover(produto);
       return;
     }
 

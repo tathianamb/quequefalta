@@ -5,7 +5,6 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
-  deleteField,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -33,8 +32,6 @@ export async function inicializarLista(usuario) {
       listas: [usuario.uid],
     });
   }
-
-  return usuario.uid;
 }
 
 export async function obterListaAtiva(usuario) {
