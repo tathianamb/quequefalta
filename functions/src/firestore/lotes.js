@@ -5,7 +5,7 @@ export async function buscarLoteEmAberto(chatId) {
   const snap = await db
     .collection("lotesNotaFiscal")
     .where("chatId", "==", String(chatId))
-    .where("status", "in", ["aguardando_mercado", "aguardando_confirmacao"])
+    .where("status", "==", "aguardando_confirmacao")
     .limit(1)
     .get();
 
@@ -16,10 +16,9 @@ export async function buscarLoteEmAberto(chatId) {
 export async function criarLote({
   chatId,
   uid,
-  fotoFileId = null,
   dataDaNota,
-  mercado = null,
-  status = "aguardando_mercado",
+  mercado,
+  status,
   itens,
 }) {
   const db = getFirestore();
@@ -27,14 +26,12 @@ export async function criarLote({
     chatId: String(chatId),
     uid,
     status,
-    fotoFileId,
     dataDaNota: dataDaNota || null,
     mercado,
     etapaAtual: 1,
     itens: itens.map((item, indice) => ({
       indice,
       nomeExtraido: item.nome,
-      nomeExpandido: item.nomeExpandido || null,
       precoExtraido: item.preco,
       unidade: item.unidade,
       produtoIdCasado: item.match.melhorMatch?.id || null,
@@ -55,15 +52,6 @@ export async function definirEtapaDoLote(loteId, etapa) {
   const db = getFirestore();
   await db.collection("lotesNotaFiscal").doc(loteId).update({
     etapaAtual: etapa,
-    atualizadoEm: FieldValue.serverTimestamp(),
-  });
-}
-
-export async function definirMercado(loteId, mercado) {
-  const db = getFirestore();
-  await db.collection("lotesNotaFiscal").doc(loteId).update({
-    mercado,
-    status: "aguardando_confirmacao",
     atualizadoEm: FieldValue.serverTimestamp(),
   });
 }

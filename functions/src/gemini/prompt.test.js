@@ -17,14 +17,14 @@ test("montarContextoExterno — primeira pessoa, sem pergunta, com os itens em c
 
 test("montarPromptPergunta — com pessoas, observações e itens em casa", () => {
   const entrada = {
-    pessoas: [{ nome: "Tathiana", restricoes: ["sem lactose"], preferencias: ["gosta de apimentado"] }],
+    pessoas: [{ nome: "Tathiana", restricoes: ["sem lactose"] }],
     observacoesGerais: "evitar carne vermelha 2x por semana",
     itensEmCasa: [{ nome: "arroz" }, { nome: "feijão" }],
     pergunta: "sobremesa rápida com o que tenho em casa",
   };
   const saida = montarPromptPergunta(entrada);
 
-  assert.match(saida, /Tathiana \(restrições: sem lactose; preferências: gosta de apimentado\)/);
+  assert.match(saida, /Tathiana \(restrições: sem lactose\)/);
   assert.match(saida, /Observações gerais: evitar carne vermelha 2x por semana/);
   assert.match(saida, /arroz, feijão/);
   assert.match(saida, /Pergunta do usuário: "sobremesa rápida com o que tenho em casa"/);

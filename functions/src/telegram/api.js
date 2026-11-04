@@ -36,11 +36,8 @@ export function criarClienteTelegram(botToken) {
         throw erro;
       }
     },
-    responderCallback(callbackQueryId, opcoes = {}) {
-      return chamar("answerCallbackQuery", {
-        callback_query_id: callbackQueryId,
-        ...opcoes,
-      });
+    responderCallback(callbackQueryId) {
+      return chamar("answerCallbackQuery", { callback_query_id: callbackQueryId });
     },
     async apagarMensagem(chatId, messageId) {
       try {
@@ -53,12 +50,6 @@ export function criarClienteTelegram(botToken) {
         }
         throw erro;
       }
-    },
-    obterArquivo(fileId) {
-      return chamar("getFile", { file_id: fileId });
-    },
-    urlDownloadArquivo(filePath) {
-      return `https://api.telegram.org/file/bot${botToken}/${filePath}`;
     },
   };
 }

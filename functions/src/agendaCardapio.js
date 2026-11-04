@@ -1,5 +1,6 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineSecret } from "firebase-functions/params";
+import { limpar } from "./segredos.js";
 import { criarClienteTelegram } from "./telegram/api.js";
 import { criarClienteGemini } from "./gemini/api.js";
 import { buscarPerfisParaHorario } from "./firestore/cardapio.js";
@@ -7,11 +8,6 @@ import { gerarCardapioInicial } from "./comandos/cardapio.js";
 
 const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
-
-// O Firebase CLI grava secrets via stdin no Windows sempre com \r\n ao final,
-// então todo secret lido aqui precisa ser saneado antes de usar (mesmo motivo
-// documentado em telegramWebhook.js).
-const limpar = (valor) => valor.trim();
 
 // Horário configurável só tem resolução de hora cheia: a função roda a cada
 // hora e compara com o horarioEnvio salvo em perfilCasa (também "HH:00") —

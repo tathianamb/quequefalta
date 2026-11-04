@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { limpar } from "./segredos.js";
 import { criarClienteGemini } from "./gemini/api.js";
 import { montarPromptChat, montarContextoExterno } from "./gemini/prompt.js";
 import { mensagemDeErro } from "./gemini/erros.js";
@@ -15,7 +16,7 @@ const MAX_TEXTO_HISTORICO = 4000;
 // O histórico vem do cliente, então nunca é confiável: só aceita papéis
 // conhecidos, corta o tamanho e limita a quantidade de turnos para o prompt
 // não crescer sem controle (nem virar canal de injeção de campos extras).
-export function sanitizarHistorico(historico) {
+function sanitizarHistorico(historico) {
   if (!Array.isArray(historico)) return [];
   return historico
     .filter((m) => m && (m.papel === "usuario" || m.papel === "assistente") && typeof m.texto === "string")
@@ -56,8 +57,7 @@ export const perguntarChat = onCall(
         mensagem,
       });
 
-      // O secret pode vir com quebra de linha no fim quando gravado pelo CLI no Windows.
-      const gemini = criarClienteGemini(GEMINI_API_KEY.value().trim());
+      const gemini = criarClienteGemini(limpar(GEMINI_API_KEY.value()));
 
       try {
         return { resposta: await gemini.gerarTexto(prompt) };

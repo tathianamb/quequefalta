@@ -26,6 +26,6 @@ export async function tratarVincular(telegram, chatId, textoComando) {
 
   await telegram.enviarMensagem(
     chatId,
-    "Conta vinculada! Agora você pode mandar fotos de notas fiscais para registrar preços no QueQueFalta."
+    "Conta vinculada! Agora você pode usar /nota para registrar preços no QueQueFalta."
   );
 }

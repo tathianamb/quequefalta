@@ -44,9 +44,7 @@ function distanciaLevenshtein(a, b) {
 
 function similaridade(a, b) {
   if (a === b) return 1;
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1;
-  return 1 - distanciaLevenshtein(a, b) / maxLen;
+  return 1 - distanciaLevenshtein(a, b) / Math.max(a.length, b.length);
 }
 
 /**
@@ -127,21 +125,16 @@ function scorePorTermo(termoNormalizado, nomeProdutoNormalizado) {
 
 /**
  * Encontra candidatos do catálogo para um item extraído de nota fiscal.
- * Compara tanto o nome literal (abreviado, como sai do cupom) quanto o nome
- * expandido (nomenclatura comum, sugerido pela extração via IA quando
- * disponível), e fica com o melhor score entre os dois.
- * @param {{ nome: string, nomeExpandido?: string }} item
+ * @param {{ nome: string }} item
  * @param {Array<{id: string, nome: string}>} catalogo
  * @returns {{ melhorMatch: {id, nome, score} | null, sugestoes: Array<{id, nome, score}> }}
  */
 export function encontrarMatch(item, catalogo) {
-  const termos = [item.nome, item.nomeExpandido]
-    .filter(Boolean)
-    .map(normalizar);
+  const termo = normalizar(item.nome);
 
   const candidatos = catalogo.map((produto) => {
     const nomeNormalizado = normalizar(produto.nome);
-    const score = Math.max(...termos.map((termo) => scorePorTermo(termo, nomeNormalizado)));
+    const score = scorePorTermo(termo, nomeNormalizado);
     return { id: produto.id, nome: produto.nome, score };
   });
 

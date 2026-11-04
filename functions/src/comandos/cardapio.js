@@ -93,7 +93,7 @@ export async function tratarFeedbackCardapio(telegram, gemini, chatId, textoComa
   await processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback);
 }
 
-export async function processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback) {
+async function processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback) {
   await telegram.editarMensagem(cardapio.chatId, cardapio.messageId, "🔄 Gerando novo cardápio com seu feedback...");
 
   const prompt = montarPromptRefinamento({

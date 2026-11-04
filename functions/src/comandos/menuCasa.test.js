@@ -7,7 +7,6 @@ test("parsearLinhaPessoa — separador ponto-e-vírgula", () => {
   assert.deepEqual(resultado, {
     nome: "Tathiana",
     restricoes: ["sem lactose", "gosta de apimentado"],
-    preferencias: [],
   });
 });
 
@@ -26,16 +25,15 @@ test("parsearLinhaPessoa — separador vírgula, texto real do usuário", () => 
       "sem abobrinha",
       "sem abóbora",
     ],
-    preferencias: [],
   });
 });
 
 test("parsearLinhaPessoa — sem dois-pontos, texto vira só o nome", () => {
   const resultado = parsearLinhaPessoa("Maria");
-  assert.deepEqual(resultado, { nome: "Maria", restricoes: [], preferencias: [] });
+  assert.deepEqual(resultado, { nome: "Maria", restricoes: [] });
 });
 
 test("parsearLinhaPessoa — restrições vazias após dois-pontos", () => {
   const resultado = parsearLinhaPessoa("Pedro:   ");
-  assert.deepEqual(resultado, { nome: "Pedro", restricoes: [], preferencias: [] });
+  assert.deepEqual(resultado, { nome: "Pedro", restricoes: [] });
 });

@@ -247,7 +247,7 @@ async function desfazerRevisao(telegram, chatId, params, messageId) {
   }
 
   await ctx.desfazer();
-  const prefixo = `↩️ Desfeito: "${ctx.item.nomeExpandido || ctx.item.nomeExtraido}" voltou para a revisão.\n\n`;
+  const prefixo = `↩️ Desfeito: "${ctx.item.nomeExtraido}" voltou para a revisão.\n\n`;
   if (escopo === "fila") {
     await mostrarItemDaFilaPorId(telegram, chatId, ctx.item.id, messageId, prefixo);
     return;
@@ -406,14 +406,14 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         data: lote.dataDaNota,
         listaAtiva,
-        nomeNota: item.nomeExpandido || item.nomeExtraido,
+        nomeNota: item.nomeExtraido,
       });
       gravados++;
     } else if (item.revisao?.sugestaoPendente) {
       // Sugestão criada só agora, na confirmação — até aqui era só uma
       // marcação reversível no próprio lote (ver resolverContextoRevisao).
       await criarSugestaoDeProduto({
-        nome: item.nomeExpandido || item.nomeExtraido,
+        nome: item.nomeExtraido,
         uid: lote.uid,
         listaAtiva,
         preco: item.precoExtraido,
@@ -428,7 +428,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         data: lote.dataDaNota,
         listaAtiva,
-        nomeNota: item.nomeExpandido || item.nomeExtraido,
+        nomeNota: item.nomeExtraido,
       });
       gravados++;
     } else {
@@ -436,7 +436,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         loteId: lote.id,
         uid: lote.uid,
         chatId,
-        nomeExtraido: item.nomeExpandido || item.nomeExtraido,
+        nomeExtraido: item.nomeExtraido,
         precoExtraido: item.precoExtraido,
         unidade: item.unidade,
         mercado: lote.mercado,

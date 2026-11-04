@@ -1,13 +1,11 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { limpar } from "./segredos.js";
 import { buscarPerfilCasa, obterItensComprados } from "./firestore/cardapio.js";
 
 const JORNAL_TOKEN = defineSecret("JORNAL_TOKEN");
 const JORNAL_UID = defineSecret("JORNAL_UID");
-
-// Mesmo saneamento dos outros secrets: o CLI no Windows grava \r\n no fim.
-const limpar = (valor) => valor.trim();
 
 // Compara em tempo constante (via hash, para os dois lados terem o mesmo
 // tamanho) para o tempo de resposta não vazar quanto do token bate.

@@ -42,14 +42,14 @@ function textoTelaPessoas(perfil) {
 
 // Mesmo padrão de mostrarEtapa (etapasLote.js): dispatch por tela, cada uma
 // monta texto + chama enviarOuEditar com o teclado correspondente.
-export async function mostrarTelaMenu(telegram, chatId, perfil, tela, messageId, prefixo = "") {
+async function mostrarTelaMenu(telegram, chatId, perfil, tela, messageId) {
   const telas = {
     principal: () =>
-      enviarOuEditar(telegram, chatId, messageId, `${prefixo}${textoTelaPrincipal(perfil)}`, {
+      enviarOuEditar(telegram, chatId, messageId, textoTelaPrincipal(perfil), {
         reply_markup: tecladoMenuPrincipal(),
       }),
     pessoas: () =>
-      enviarOuEditar(telegram, chatId, messageId, `${prefixo}${textoTelaPessoas(perfil)}`, {
+      enviarOuEditar(telegram, chatId, messageId, textoTelaPessoas(perfil), {
         reply_markup: tecladoPessoas(perfil?.pessoas),
       }),
     horario: () =>
@@ -57,7 +57,7 @@ export async function mostrarTelaMenu(telegram, chatId, perfil, tela, messageId,
         telegram,
         chatId,
         messageId,
-        `${prefixo}🕒 Horário de envio atual: ${perfil?.horarioEnvio || "22:00"}\n\nEscolha um novo horário (aproximado, na hora cheia):`,
+        `🕒 Horário de envio atual: ${perfil?.horarioEnvio || "22:00"}\n\nEscolha um novo horário (aproximado, na hora cheia):`,
         { reply_markup: tecladoHorarios() }
       ),
     refeicoes: () =>
@@ -65,7 +65,7 @@ export async function mostrarTelaMenu(telegram, chatId, perfil, tela, messageId,
         telegram,
         chatId,
         messageId,
-        `${prefixo}🍽️ Escolha as refeições que devem aparecer no cardápio:`,
+        `🍽️ Escolha as refeições que devem aparecer no cardápio:`,
         { reply_markup: tecladoRefeicoes(perfil?.menuState?.refeicoesRascunho) }
       ),
     observacoes: () =>
@@ -73,7 +73,7 @@ export async function mostrarTelaMenu(telegram, chatId, perfil, tela, messageId,
         telegram,
         chatId,
         messageId,
-        `${prefixo}📝 Observações atuais: ${perfil?.observacoesGerais || "nenhuma"}`,
+        `📝 Observações atuais: ${perfil?.observacoesGerais || "nenhuma"}`,
         { reply_markup: { inline_keyboard: [[{ text: "⬅️ Voltar", callback_data: "casa_menu" }]] } }
       ),
   };
@@ -87,19 +87,19 @@ export async function abrirMenuPrincipal(telegram, chatId, uid, messageId) {
   await atualizarMenuState(uid, { tela: "principal", messageId: messageIdFinal, aguardandoTexto: null });
 }
 
-export async function abrirTelaPessoas(telegram, chatId, uid, messageId) {
+async function abrirTelaPessoas(telegram, chatId, uid, messageId) {
   const perfil = await buscarPerfilCasa(uid);
   await mostrarTelaMenu(telegram, chatId, perfil, "pessoas", messageId);
   await atualizarMenuState(uid, { tela: "pessoas", messageId });
 }
 
-export async function abrirTelaHorario(telegram, chatId, uid, messageId) {
+async function abrirTelaHorario(telegram, chatId, uid, messageId) {
   const perfil = await buscarPerfilCasa(uid);
   await mostrarTelaMenu(telegram, chatId, perfil, "horario", messageId);
   await atualizarMenuState(uid, { tela: "horario", messageId });
 }
 
-export async function abrirTelaRefeicoes(telegram, chatId, uid, messageId) {
+async function abrirTelaRefeicoes(telegram, chatId, uid, messageId) {
   const perfil = await buscarPerfilCasa(uid);
   const rascunho = perfil?.menuState?.refeicoesRascunho || perfil?.refeicoes || REFEICOES;
   await atualizarMenuState(uid, { tela: "refeicoes", messageId, refeicoesRascunho: rascunho });
@@ -107,7 +107,7 @@ export async function abrirTelaRefeicoes(telegram, chatId, uid, messageId) {
   await mostrarTelaMenu(telegram, chatId, perfilAtualizado, "refeicoes", messageId);
 }
 
-export async function pedirTextoPessoa(telegram, chatId, uid, indice, messageId) {
+async function pedirTextoPessoa(telegram, chatId, uid, indice, messageId) {
   const instrucao = 'Digite: Nome: restrição1, restrição2\n\n(ex: "Tathiana: sem lactose, gosta de apimentado")';
 
   // Na edição, mostra o valor atual pronto para copiar/editar — sem isso, o
@@ -118,7 +118,7 @@ export async function pedirTextoPessoa(telegram, chatId, uid, indice, messageId)
     const perfil = await buscarPerfilCasa(uid);
     const pessoa = perfil?.pessoas?.[indice];
     if (pessoa) {
-      textoAtual = `${pessoa.nome}: ${[...(pessoa.restricoes || []), ...(pessoa.preferencias || [])].join(", ")}`;
+      textoAtual = `${pessoa.nome}: ${(pessoa.restricoes || []).join(", ")}`;
     }
   }
 
@@ -138,7 +138,7 @@ export async function pedirTextoPessoa(telegram, chatId, uid, indice, messageId)
   });
 }
 
-export async function pedirTextoObservacoes(telegram, chatId, uid, messageId) {
+async function pedirTextoObservacoes(telegram, chatId, uid, messageId) {
   const pergunta = await telegram.enviarMensagem(chatId, "Digite as observações gerais da casa:");
   await atualizarMenuState(uid, {
     aguardandoTexto: { tipo: "observacoes", indice: null, messageIdPergunta: pergunta.message_id },
@@ -146,12 +146,12 @@ export async function pedirTextoObservacoes(telegram, chatId, uid, messageId) {
   });
 }
 
-export async function removerPessoaEMostrar(telegram, chatId, uid, indice, messageId) {
+async function removerPessoaEMostrar(telegram, chatId, uid, indice, messageId) {
   await removerPessoa(uid, indice);
   await abrirTelaPessoas(telegram, chatId, uid, messageId);
 }
 
-export async function definirHorarioEMostrar(telegram, chatId, uid, hh, messageId) {
+async function definirHorarioEMostrar(telegram, chatId, uid, hh, messageId) {
   const perfil = await buscarPerfilCasa(uid);
   await salvarConfigPessoal(uid, {
     refeicoes: perfil?.refeicoes || REFEICOES,
@@ -161,7 +161,7 @@ export async function definirHorarioEMostrar(telegram, chatId, uid, hh, messageI
   await abrirMenuPrincipal(telegram, chatId, uid, messageId);
 }
 
-export async function toggleRefeicaoEMostrar(telegram, chatId, uid, indiceRefeicao, messageId) {
+async function toggleRefeicaoEMostrar(telegram, chatId, uid, indiceRefeicao, messageId) {
   const perfil = await buscarPerfilCasa(uid);
   const refeicao = REFEICOES[indiceRefeicao];
   const rascunhoAtual = perfil?.menuState?.refeicoesRascunho || perfil?.refeicoes || REFEICOES;
@@ -174,7 +174,7 @@ export async function toggleRefeicaoEMostrar(telegram, chatId, uid, indiceRefeic
   await mostrarTelaMenu(telegram, chatId, perfilAtualizado, "refeicoes", messageId);
 }
 
-export async function confirmarRefeicoesEMostrar(telegram, chatId, uid, messageId) {
+async function confirmarRefeicoesEMostrar(telegram, chatId, uid, messageId) {
   const perfil = await buscarPerfilCasa(uid);
   const refeicoesEscolhidas = perfil?.menuState?.refeicoesRascunho?.length
     ? perfil.menuState.refeicoesRascunho
@@ -194,7 +194,7 @@ export async function confirmarRefeicoesEMostrar(telegram, chatId, uid, messageI
 // tudo junto como uma restrição só sem perceber (separou por vírgula).
 export function parsearLinhaPessoa(texto) {
   const separador = texto.indexOf(":");
-  if (separador === -1) return { nome: texto.trim(), restricoes: [], preferencias: [] };
+  if (separador === -1) return { nome: texto.trim(), restricoes: [] };
 
   const nome = texto.slice(0, separador).trim();
   const restricoes = texto
@@ -202,7 +202,7 @@ export function parsearLinhaPessoa(texto) {
     .split(/[,;]/)
     .map((r) => r.trim())
     .filter(Boolean);
-  return { nome, restricoes, preferencias: [] };
+  return { nome, restricoes };
 }
 
 export async function processarTextoAguardado(telegram, chatId, uid, textoUsuario, messageIdUsuario) {

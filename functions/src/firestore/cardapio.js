@@ -11,7 +11,7 @@ import { obterListaAtivaDoUsuario } from "./historico.js";
 //     perfilCasa/{uid}, porque cada membro recebe o cardápio no próprio
 //     Telegram e no próprio horário.
 // Para o dono do grupo (grupoId === uid) as duas camadas são o mesmo documento.
-export async function obterGrupoId(uid) {
+async function obterGrupoId(uid) {
   return (await obterListaAtivaDoUsuario(uid)) || uid;
 }
 

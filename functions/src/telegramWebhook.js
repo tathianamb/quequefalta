@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
+import { limpar } from "./segredos.js";
 import { criarClienteTelegram } from "./telegram/api.js";
 import { criarClienteGemini } from "./gemini/api.js";
 import { tratarVincular } from "./comandos/vincular.js";
@@ -21,10 +22,6 @@ import { apagarSeExistir } from "./telegram/enviarOuEditar.js";
 const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_WEBHOOK_SECRET = defineSecret("TELEGRAM_WEBHOOK_SECRET");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
-
-// O Firebase CLI grava secrets via stdin no Windows sempre com \r\n ao final,
-// então todo secret lido aqui precisa ser saneado antes de usar.
-const limpar = (valor) => valor.trim();
 
 const PEDIR_VINCULO =
   "Vincule sua conta primeiro: gere um código no app (Menu → Vincular Telegram) e mande /vincular 123456 aqui.";

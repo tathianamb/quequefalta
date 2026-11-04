@@ -4,7 +4,6 @@ function formatarPessoas(pessoas) {
     .map((p) => {
       const partes = [];
       if (p.restricoes?.length) partes.push(`restrições: ${p.restricoes.join(", ")}`);
-      if (p.preferencias?.length) partes.push(`preferências: ${p.preferencias.join(", ")}`);
       return `- ${p.nome}${partes.length ? ` (${partes.join("; ")})` : ""}`;
     })
     .join("\n");
@@ -15,6 +14,18 @@ function formatarItensEmCasa(itensEmCasa) {
     return "Nenhum item marcado como comprado na lista no momento — assuma uma despensa básica (arroz, feijão, óleo, tempero, ovos) e sugira algo simples de fazer.";
   }
   return itensEmCasa.map((i) => i.nome).join(", ");
+}
+
+function blocoCasa({ pessoas, observacoesGerais, itensEmCasa }) {
+  return [
+    "Pessoas da casa:",
+    formatarPessoas(pessoas),
+    "",
+    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
+    "",
+    "Itens disponíveis em casa:",
+    formatarItensEmCasa(itensEmCasa),
+  ];
 }
 
 const EXEMPLO_RESPOSTA = [
@@ -36,13 +47,7 @@ function cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
   return [
     `Você é um assistente de cardápio para uma casa no Brasil. Sugira um cardápio para o dia seguinte (${refeicoesStr}), em português, de forma direta e objetiva.`,
     "",
-    "Pessoas da casa:",
-    formatarPessoas(pessoas),
-    "",
-    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
-    "",
-    "Itens disponíveis em casa:",
-    formatarItensEmCasa(itensEmCasa),
+    ...blocoCasa({ pessoas, observacoesGerais, itensEmCasa }),
     "",
     "O cardápio deve usar apenas os itens disponíveis em casa listados acima. Se algo mais ajudaria a completar ou melhorar os pratos, não inclua no cardápio em si — liste em uma seção separada \"Sugestão de compra\" ao final.",
     "",
@@ -58,13 +63,7 @@ export function montarPromptPergunta({ pessoas, observacoesGerais, itensEmCasa, 
   return [
     "Você é um assistente de cozinha para uma casa no Brasil, respondendo em português de forma direta e objetiva.",
     "",
-    "Pessoas da casa:",
-    formatarPessoas(pessoas),
-    "",
-    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
-    "",
-    "Itens disponíveis em casa:",
-    formatarItensEmCasa(itensEmCasa),
+    ...blocoCasa({ pessoas, observacoesGerais, itensEmCasa }),
     "",
     `Pergunta do usuário: "${pergunta}"`,
     "",
@@ -85,13 +84,7 @@ export function montarPromptChat({ pessoas, observacoesGerais, itensEmCasa, hist
   return [
     "Você é um assistente de cozinha para uma casa no Brasil, conversando em português de forma direta e objetiva. Use formatação simples: títulos com ##, listas com - e **negrito**.",
     "",
-    "Pessoas da casa:",
-    formatarPessoas(pessoas),
-    "",
-    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
-    "",
-    "Itens disponíveis em casa:",
-    formatarItensEmCasa(itensEmCasa),
+    ...blocoCasa({ pessoas, observacoesGerais, itensEmCasa }),
     "",
     conversa ? `Conversa até agora:\n${conversa}\n` : null,
     `Nova mensagem do usuário: "${mensagem}"`,

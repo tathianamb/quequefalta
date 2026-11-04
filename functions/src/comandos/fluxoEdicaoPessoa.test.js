@@ -32,9 +32,9 @@ test("fluxo completo: abrir /casa, ir a pessoas, editar índice 1, responder tex
   const db = criarFakeFirestore({
     uid1: {
       pessoas: [
-        { nome: "Tathiana", restricoes: ["sem lactose"], preferencias: [] },
-        { nome: "Guilherme", restricoes: ["sem porco"], preferencias: [] },
-        { nome: "Maria", restricoes: ["anemia"], preferencias: [] },
+        { nome: "Tathiana", restricoes: ["sem lactose"] },
+        { nome: "Guilherme", restricoes: ["sem porco"] },
+        { nome: "Maria", restricoes: ["anemia"] },
       ],
       horarioEnvio: "21:00",
       refeicoes: ["café da manhã", "almoço"],
@@ -91,8 +91,8 @@ test("atualizarPessoa com índice de pessoa removida anteriormente (array encolh
   const db = criarFakeFirestore({
     uid1: {
       pessoas: [
-        { nome: "Tathiana", restricoes: [], preferencias: [] },
-        { nome: "Maria", restricoes: [], preferencias: [] },
+        { nome: "Tathiana", restricoes: [] },
+        { nome: "Maria", restricoes: [] },
       ],
     },
   });
