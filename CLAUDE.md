@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**QueQueFalta** is a shared grocery list PWA for home use, built with React 19 + Vite and Firebase (Firestore + Google Auth). It is hosted on GitHub Pages under the path `/quequefalta/`. Mobile-first (max-width 480px), no automated tests.
+**QueQueFalta** is a shared grocery list PWA for home use, built with React 19 + Vite and Firebase (Firestore + Google Auth). It is hosted on GitHub Pages under the path `/quequefalta/`. Mobile-first (max-width 480px). The frontend has no automated tests; `functions/` has a few (`node --test`).
 
 A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app.
 
@@ -18,19 +18,21 @@ npm run dev                          # dev server (Vite HMR)
 npm run build                        # production build → ./dist
 npm run preview                      # preview production build locally
 npm run lint                         # ESLint
-node scripts/importar-catalogo.mjs   # one-time import of TSV catalog (~500 products) to Firestore
 ```
 
 ### Cloud Functions (`functions/`)
 
-No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying:
+No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (tests are `src/gemini/prompt.test.js`, `src/comandos/menuCasa.test.js` and `src/comandos/fluxoEdicaoPessoa.test.js`):
 
 ```bash
 cd functions
 node --check src/path/to/file.js                                       # syntax check a changed file
 node -e "import('./index.js').then(()=>console.log('OK'))"              # verify the module graph loads
+node --test src/gemini/prompt.test.js                                   # run one test file
 firebase deploy --only functions:telegramWebhook                        # deploy one function (see functions/index.js for all exports)
 ```
+
+Firestore security rules live in `firestore.rules` and are published separately with `firebase deploy --only firestore:rules`. Client writes to a collection without a `match` block fail; collections used only by the bot (Admin SDK) don't need one.
 
 On Windows, `npm`/`firebase` subprocesses sometimes fail to resolve `node` even when it's on the interactive shell's PATH — prefix commands with `C:\Program Files\nodejs` (PowerShell) or `/c/Program Files/nodejs` (Git Bash) if that happens.
 
@@ -53,7 +55,7 @@ VITE_FIREBASE_APP_ID=...
 
 In CI/CD (`.github/workflows/deploy.yml`), these are injected from GitHub repository secrets on every push to `main`.
 
-`functions/` uses two Firebase secrets instead (`defineSecret` in `telegramWebhook.js`), provisioned via `firebase functions:secrets:set TELEGRAM_BOT_TOKEN` / `TELEGRAM_WEBHOOK_SECRET`. Values set via the Firebase CLI on Windows can pick up a trailing `\r\n` or BOM; the code strips this at read time via a `limpar()` helper — keep that in mind if secrets ever appear invalid despite being set correctly. `despensaJornal.js` uses two more, `JORNAL_TOKEN` and `JORNAL_UID` (see "Despensa API" below).
+`functions/` uses Firebase secrets instead (`defineSecret`), provisioned via `firebase functions:secrets:set`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` and `GEMINI_API_KEY`. Values set via the Firebase CLI on Windows can pick up a trailing `\r\n` or BOM; the code strips this at read time via `limpar()` (`functions/src/segredos.js`) — keep that in mind if secrets ever appear invalid despite being set correctly. `despensaJornal.js` uses two more, `JORNAL_TOKEN` and `JORNAL_UID` (see "Despensa API" below).
 
 ## Architecture — Frontend
 
@@ -69,9 +71,8 @@ All Firestore reads use `onSnapshot` listeners inside custom hooks:
 
 - `src/hooks/useLista.js` — items in the active list (`listas/{listaId}/lista/`). Exposes `adicionarItem`, `adicionarItemComprado`, `alternarEmCasa`, `toggleComprado`, `removerItem`.
 - `src/hooks/useCatalogo.js` — global product catalog (`catalogo/`), auto-sorted pt-BR.
-- `src/hooks/useSugestoes.js` — product suggestions + one-admin approval flow. Exposes `aprovar`, `rejeitar`, `atualizar`, `deletar`.
-- `src/hooks/useReceitas.js` — recipes (`receitas/`) with a similar approval flow. Exposes `receitas`, `aprovadas`, `pendentes`, `sugerir`, `aprovar`, `rejeitar`, `atualizar`, `deletar`. `sugerir()` auto-approves unless an ingredient references an uncatalogued product (`nomeTemp`), in which case it goes to `pendente`.
-- `src/hooks/useGrupoSubstituicao.js` — named sets of interchangeable products (e.g. "leite" grouping whole/skim/lactose-free), stored in `grupoSubstituicao/`. Exposes `buscar(termo)` and `criar(nome)` (dedupes before creating).
+- `src/hooks/useSugestoes.js` — product suggestions + one-admin approval flow. Exposes `pendentes`, `aprovar`, `rejeitar`, `atualizar`.
+- `src/hooks/useReceitas.js` — recipes (`receitas/`) with a similar approval flow. Exposes `aprovadas`, `pendentes`, `sugerir`, `aprovar`, `rejeitar`, `atualizar`. `sugerir()` auto-approves unless an ingredient references an uncatalogued product (`nomeTemp`) or `dados.status` is `pendente` ("Salvar rascunho"), in which case it goes to `pendente`. There is no UI to delete a recipe.
 - `src/hooks/useDicas.js` — blog-style tips (`dicas/`), newest first. Exposes `dicas`, `criar`, `atualizar`, `deletar`. Admin-only writes, no approval flow.
 - `src/hooks/useTelegramVinculo.js` — watches `usuarios/{uid}.telegramChatId` to reflect Telegram account linking in real time. Exposes `vinculado`, `gerarCodigo()`, `desvincular()`.
 - `src/hooks/useTema.js` — light/dark/system theme; persists to localStorage and injects CSS variables on `document.root`.
@@ -80,7 +81,8 @@ All Firestore reads use `onSnapshot` listeners inside custom hooks:
 
 ```js
 catalogo/{produtoId}
-  ├── nome, categoria, subcategoria, grupoSubstituicao[], receitas[]
+  ├── nome, categoria, subcategoria, receitas[]
+  ├── grupoSubstituicao[] # tags (strings) of interchangeable products, e.g. "Carne moída"
   ├── generico            # true = só ingrediente de receita ("Óleo"): fora do catálogo do app (exceto modo admin) e do match do bot
   └── historico[]         # price records: mercado, preco, data, observacao, listaAtiva
 
@@ -98,12 +100,14 @@ usuarios/{uid}
 
 sugestoes/{sugestaoId}
   ├── nome, categoria, subcategoria, sugeridoPor, listaAtiva
-  ├── status: 'pendente' → 'aprovado'
+  ├── precoSugerido, mercadoSugerido, dataSugerida   # set by the bot; the price is recorded on approval
+  ├── status: 'pendente' → 'aprovado' | 'rejeitado'
   └── aprovadores[]       # uid of the admin who approved
 
 receitas/{receitaId}
   ├── nome, foto, tempoPreparo, porcoes, dificuldade
-  ├── ingredientes[]      # each: produtoId OR grupoSubstituicaoId OR nomeTemp, + nome, quantidade, unidade, observacao
+  ├── ingredientes[]      # each: produtoId OR nomeTemp, + nome, quantidade, unidade, observacao (_qtdErro in drafts)
+  ├── _textoOriginal      # text pasted when the recipe was created; kept as a record, nothing reads it
   ├── passos[]
   ├── status: 'pendente' | 'aprovada' | 'rejeitada'
   └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm  # single admin uid, not an array
@@ -111,9 +115,6 @@ receitas/{receitaId}
 dicas/{dicaId}
   ├── titulo, texto       # texto uses a light Markdown subset (see src/utils/textoDica.js)
   └── criadaPor, autorNome, criadaEm, atualizadaEm
-
-grupoSubstituicao/{grupoId}
-  └── nome, nomeNorm (accent/case-normalized), criadoEm
 
 codigosVinculo/{codigo}   # 6-digit code generated in-app to link a Telegram chat, 10-min expiry
 telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
@@ -124,6 +125,8 @@ perfilCasa/{uid}          # configuração da casa, em duas camadas (ver "Grupo 
 
 lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
+cardapiosDiarios/{uid_data}    # daily menu with promptContexto and refinement historico (bot-only)
+travasGemini/{uid}             # per-user wait between Gemini calls (bot-only)
 ```
 
 ### Firestore operations outside hooks
@@ -136,7 +139,6 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 
 - `src/pages/Home.jsx` — main screen after login. **Four-tab** bottom nav (`lista` / `catalogo` / `receitas` / `dicas`) — labels must stay short to fit 4 across at 360px, search, category filter (`FiltroCategoria`), product detail modal (`DetalhesProduto`), admin suggestions panel, and `Menu` bottom sheet. The recipes tab has its own internal sub-navigation (`telaReceita`: lista/detalhe/texto/formulario) driven by `useBackStack`. The tips tab works the same way with `telaDica` (lista/detalhe/formulario).
 - `src/pages/Login.jsx` — Google sign-in via `signInWithPopup`.
-- `src/pages/Catalogo.jsx` — stub/unused.
 
 ### Key components
 
@@ -145,7 +147,6 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 - `CategoriaGrupo.jsx` — collapsible category section; auto-expands when `busca` is non-empty.
 - `DetalhesProduto.jsx` — product detail modal with price history, price registration form (list context only, blocks duplicate mercado+data registration), and admin attribute/name/category editing.
 - `FiltroCategoria.jsx` — multi-select category filter modal with optional `botoesExtras` slot.
-- `AdminPanel.jsx` — toggle for admin edit mode.
 - `dicas/DicaLista.jsx`, `DicaDetalhe.jsx`, `DicaFormulario.jsx` — tips list, reading view, and admin write/edit form with preview. Text formatting (`## subtítulo`, `- item`, `1. passo`, `**negrito**`, `[texto](https://...)` and bare `https://` URLs) is parsed by `src/utils/textoDica.js` and rendered as React elements (no `dangerouslySetInnerHTML`). Only `http(s)` URLs become links.
 - `receitas/ReceitaLista.jsx`, `ReceitaDetalhe.jsx`, `ReceitaFormulario.jsx`, `ReceitaTexto.jsx` — recipe browsing, detail (ingredient checklist with substitution-group support, "add missing to list"), creation/edit form, and a paste-to-parse screen (`src/utils/parseReceita.js` pre-fills the form from free text).
 
@@ -154,7 +155,7 @@ filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaitin
 All components use **inline styles only** — no CSS modules, no Tailwind. Constants come from:
 
 - `src/utils/estilos.js` — `FONTE`, `RAIO`, `COR`, `TIPOGRAFIA`, `BOTAO_PRIMARIO`, `BOTAO_SECUNDARIO`
-- `src/utils/categorias.js` — `COR_CATEGORIA` (19 categories with hex colors), `ORDEM_CATEGORIAS`, `corDaCategoria()`, `textoParaCor()`
+- `src/utils/categorias.js` — `COR_CATEGORIA` (19 categories with hex colors), `ORDEM_CATEGORIAS`, `corDaCategoria()`
 - `src/index.css` — CSS custom properties (`--text`, `--bg`, `--card`, `--amarelo`, `--laranja`, `--verde`, etc.); dark mode overrides these at runtime via `useTema`.
 
 ### Admins
@@ -163,7 +164,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 
 ### Key behaviors
 
-- **Grupo familiar** (antes "lista compartilhada"): `?lista=<id>` adds that list to the user's `listas[]` after an in-app confirmation, and quem entra passa a fazer parte da casa do dono. O id do grupo é o da lista ativa (== uid do dono), então `perfilCasa/{donoDaLista}` é o perfil do grupo, sem migração. `buscarPerfilCasa(uid)` (`functions/src/firestore/cardapio.js`) mescla as duas camadas e devolve o formato de sempre; pessoas e observações são editadas via `atualizarPessoa`/`removerPessoa`/`salvarObservacoesDoGrupo` (gravam no grupo) e horário/refeições via `salvarConfigPessoal` (grava em `perfilCasa/{uid}`). Trocar a lista ativa troca de grupo. Qualquer membro pode editar as pessoas do grupo pelo `/casa`.
+- **Grupo familiar** (antes "lista compartilhada"): `?lista=<id>` adds that list to the user's `listas[]` right away (the in-app modal only asks whether to switch to it), and quem entra passa a fazer parte da casa do dono. O id do grupo é o da lista ativa (== uid do dono), então `perfilCasa/{donoDaLista}` é o perfil do grupo, sem migração. `buscarPerfilCasa(uid)` (`functions/src/firestore/cardapio.js`) mescla as duas camadas e devolve o formato de sempre; pessoas e observações são editadas via `atualizarPessoa`/`removerPessoa`/`salvarObservacoesDoGrupo` (gravam no grupo) e horário/refeições via `salvarConfigPessoal` (grava em `perfilCasa/{uid}`). Trocar a lista ativa troca de grupo. Qualquer membro pode editar as pessoas do grupo pelo `/casa`.
 - **Ingrediente "em casa" nas receitas**: regra única em `src/utils/ingredientesEmCasa.js`, usada pelo detalhe, pelo cartão ("faltam N de M") e pela ordenação por relevância. Um ingrediente-produto conta como em casa se o próprio produto estiver em casa **ou qualquer item em casa compartilhar um `grupoSubstituicao` com ele** (nomes comparados sem acento/caixa). Os grupos são substituição por uso: nas proteínas são usos do corte ("Bife", "Carne moída"…, mistura de animais é aceita); nos demais, variantes intercambiáveis ("Óleo", "Vinagre", "Leite"…). Integral/baixo índice glicêmico nunca entra no mesmo grupo do refinado. Produto `generico` (Óleo, Sal, Leite) não entra na lista de compras: "Adicionar faltantes" troca pela variante do grupo que a casa mais registrou preço (`escolherVariante`) ou, sem pista, abre o catálogo filtrado pelo grupo. O bot carrega o catálogo sem genéricos via `carregarCatalogoParaMatch` (`functions/src/firestore/catalogo.js`).
 - **Itens em casa no prompt do Gemini**: `obterItensComprados` devolve só `{ nome, categoria }` (alimentos) e `functions/src/gemini/prompt.js` lista os nomes numa linha. Não há cálculo de "há quanto tempo está em casa" (foi removido); a API do jornal mantém `emCasaDesde: null` por compatibilidade.
 - **Offline**: Firestore SDK caches locally; the Service Worker (via `vite-plugin-pwa`, `registerType: 'autoUpdate'`) caches assets. Writes made offline are queued and synced on reconnect.
@@ -171,19 +172,19 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 
 ## Architecture — Telegram bot (`functions/`)
 
-Single Cloud Function `telegramWebhook` (`functions/src/telegramWebhook.js`, region `southamerica-east1`) receives Telegram updates via webhook, validates the `X-Telegram-Bot-Api-Secret-Token` header, and **always** responds `200 ok` at the end regardless of outcome — a past bug had an early `return` inside the handler's `try/catch` skip that response and hang the connection until Cloud Run's 60s timeout, so any change to the routing logic must preserve that invariant (business logic lives in a separate `processarUpdate()` so no code path can bypass the final `res.send`).
+`functions/index.js` exports five functions: `telegramWebhook`, `gerarCardapioDiario`, `perguntarChat`, `contextoParaClaude` and `despensaJornal`. `telegramWebhook` (`functions/src/telegramWebhook.js`, region `southamerica-east1`) receives Telegram updates via webhook, validates the `X-Telegram-Bot-Api-Secret-Token` header, and **always** responds `200 ok` at the end regardless of outcome — a past bug had an early `return` inside the handler's `try/catch` skip that response and hang the connection until Cloud Run's 60s timeout, so any change to the routing logic must preserve that invariant (business logic lives in a separate `processarUpdate()` so no code path can bypass the final `res.send`).
 
 ### Directory layout
 
-- `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps).
-- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name).
+- `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `menuCasa.js` (`/casa` menu), `cardapio.js` (daily menu and feedback), `pergunta.js` (`/pergunta`), `help.js`.
+- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `cardapio.js` (house profile, items at home, daily menus), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock).
 - `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
 - `parser/tabela.js` — parses pasted table text (mercado+date header line, then tab/space-delimited item rows) into structured `{ mercado, data, itens[] }`.
-- `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/getFile), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
+- `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
 
 ### Batch confirmation flow (4 fixed steps)
 
-Pasting a table creates a `lotesNotaFiscal` document and walks the user through 4 fixed steps via `etapasLote.js`, navigable freely forward/back (`lote_ant`/`lote_prox` callbacks), each step always shown even when empty:
+Sending `/nota` with a pasted table creates a `lotesNotaFiscal` document and walks the user through 4 fixed steps via `etapasLote.js`, navigable freely forward/back (`lote_ant`/`lote_prox` callbacks), each step always shown even when empty:
 
 1. **Resumo** — every item with its match status.
 2. **Revisão dos itens com match** — one button per matched item; tapping it removes that match (`lote_rm`), sending it to step 3.

@@ -24,7 +24,7 @@ Uma planilha Google foi criada como solução intermediária, com estrutura rica
 
 ### Funcionais
 
-- Catálogo de produtos padronizado (nome, categoria, subcategoria, tags)
+- Catálogo de produtos padronizado (nome, categoria, subcategoria)
 - Lista de compras montada a partir dos produtos do catálogo
 - Visualização da lista agrupada por categoria
 - Checkbox rápido para marcar item como comprado ("tem em casa")
@@ -33,7 +33,7 @@ Uma planilha Google foi criada como solução intermediária, com estrutura rica
 - Acesso a qualquer item do catálogo para registrar preço, mesmo fora da lista
 - Sugestão de novos produtos pelos usuários, com fluxo de aprovação por um administrador
 - Receitas: cadastro (inclusive colando um texto para preenchimento automático), lista de ingredientes com checklist do que já está em casa, e atalho para adicionar os que faltam à lista
-- Grupos de substituição: agrupar produtos intercambiáveis (ex.: leite integral/desnatado/sem lactose) para uso nas receitas
+- Grupos de substituição: tags nos produtos intercambiáveis (ex.: "Leite", "Carne moída"), usadas para saber se um ingrediente de receita já está em casa
 - Registro de preços pelo Telegram: colar a tabela de uma compra no bot para dar entrada nos preços sem abrir o app
 - Múltiplas listas por usuário e **compartilhamento por link**
 - Sincronização em tempo real entre os participantes de uma lista
@@ -51,9 +51,9 @@ Uma planilha Google foi criada como solução intermediária, com estrutura rica
 
 ## 🗂️ Estrutura de Dados
 
-### Catálogo (importado da planilha existente)
+### Catálogo
 
-- **~500 produtos** pré-cadastrados (fonte: `scripts/Lista_Completa_Supermercado.tsv`)
+- **Mais de 500 produtos** pré-cadastrados
 - **19 categorias:** Proteínas, Hortifrúti, Carboidratos Secos, Padaria, Laticínios, Congelados, Enlatados e Conservas, Mercearia Salgada, Temperos e Condimentos, Óleos/Azeites e Vinagres, Produtos Orientais, Confeitaria e Doces, Bebidas, Limpeza, Utensílios de Cozinha, Higiene Pessoal, Farmácia Básica, Pet Shop, Alimentos para Bebê
 - **~60 subcategorias:** Bovino, Aves, Frutas, Legumes, Queijos, Massas, Leguminosas, Água, Alcoólicas, Bebida quente, Refrigerantes, Lavanderia, entre muitas outras
 
@@ -80,7 +80,7 @@ listas
     ├── participantes []   # uids com acesso
     └── lista (subcoleção) # itens desta lista
         └── {itemId}
-            ├── produtoId / nome / categoria / subcategoria
+            ├── produtoId      # nome e categoria vêm do catálogo
             ├── comprado (boolean)
             ├── compradoEm
             └── adicionadoEm
@@ -105,10 +105,6 @@ receitas
     ├── status             # pendente | aprovada | rejeitada
     └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm
 
-grupoSubstituicao          # conjuntos de produtos intercambiáveis (ex.: "leite")
-└── {grupoId}
-    └── nome / nomeNorm / criadoEm
-
 codigosVinculo             # código de 6 dígitos gerado no app para vincular o Telegram (expira em 10 min)
 telegramVinculos           # chatId ↔ conta vinculada
 
@@ -116,7 +112,7 @@ lotesNotaFiscal            # lote de nota fiscal em processamento pelo bot do Te
 filaRevisaoNotas           # fila global de itens sem match aguardando revisão (bot do Telegram)
 ```
 
-### Mercados cadastrados (fixos)
+### Mercados sugeridos (somados aos do histórico)
 
 - Atacadão
 - Max
@@ -127,7 +123,7 @@ filaRevisaoNotas           # fila global de itens sem match aguardando revisão 
 
 ## 🖥️ Telas
 
-A interface usa navegação por **três abas** (barra inferior) e um **menu lateral**.
+A interface usa navegação por **quatro abas** (barra inferior) e um **menu lateral**.
 
 ### 1. Lista de Compras (aba principal)
 - Exibe os itens com `comprado = false`, agrupados por categoria
@@ -147,11 +143,11 @@ A interface usa navegação por **três abas** (barra inferior) e um **menu late
 - Lista de receitas aprovadas, com foto, tempo de preparo e porções
 - Detalhe: checklist de ingredientes (o que já está em casa) e passo a passo, com atalho para adicionar os que faltam à lista
 - Cadastro manual ou colando um texto de receita para preenchimento automático
-- Ingredientes podem referenciar um produto do catálogo, um grupo de substituição, ou um nome ainda não catalogado (aguarda aprovação)
+- Ingredientes referenciam um produto do catálogo ou um nome ainda não catalogado (aguarda aprovação). Produtos genéricos, como "Óleo" e "Carne moída", valem pela tag: qualquer produto com a mesma tag conta como em casa
 
 ### 4. Detalhe do Produto (bottom sheet)
 - Informações completas do produto
-- Registro de preço: seleção de mercado (4 opções) + campo de preço (data automática), com aviso se já houver um preço registrado no mesmo mercado e data
+- Registro de preço: seleção de mercado + campo de preço (data automática), com aviso se já houver um preço registrado no mesmo mercado e data
 - Destaque do **melhor preço registrado** e em qual mercado
 - Histórico de preços com datas
 
@@ -159,9 +155,9 @@ A interface usa navegação por **três abas** (barra inferior) e um **menu late
 - Alternância de tema claro/escuro
 - Troca entre listas e **compartilhamento da lista por link** (Web Share API)
 - Vínculo com o bot do Telegram (gera um código de 6 dígitos para linkar a conta)
-- Acesso ao **Painel de Administração** (apenas admins)
+- Ativação do **modo administrador** (apenas admins)
 
-### 6. Painel de Administração (admins)
+### 6. Modo administrador
 - Revisão das sugestões de produtos e de receitas
 - Aprovação de um administrador já é suficiente para entrar no catálogo
 - Edição e remoção de sugestões
@@ -180,8 +176,8 @@ Na hora de ir ao mercado
 
 Durante a compra
   └── Abrir o item → informar mercado + preço (data automática)
-      ou colar a tabela da compra no bot do Telegram (mercado + itens
-      de uma vez), sem precisar abrir o app
+      ou enviar /nota com a tabela da compra no bot do Telegram
+      (mercado + itens de uma vez), sem precisar abrir o app
 
 A qualquer momento
   └── Abrir o Catálogo para consultar histórico, registrar preço
@@ -189,7 +185,7 @@ A qualquer momento
   └── Abrir Receitas para ver o que dá pra fazer com o que já tem em casa
 
 Para compartilhar
-  └── Menu → compartilhar link da lista → o convidado confirma o acesso
+  └── Menu → compartilhar link da lista → o convidado entra e escolhe se troca para ela
 ```
 
 ---
@@ -207,7 +203,7 @@ Para compartilhar
 | Sync em tempo real | Firestore (`onSnapshot`) | Atualizações instantâneas entre dispositivos |
 | Offline | Service Worker + cache local | Visualização e marcação sem internet |
 | CI/CD | GitHub Actions | Build e deploy automáticos no push para `main` |
-| Bot do Telegram | Firebase Cloud Functions (Node 20) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
+| Bot do Telegram | Firebase Cloud Functions (Node 22) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
 | Assistente de cardápio | Firebase Cloud Functions (agendada) + Gemini API (tier gratuito) | Sugestão diária de cardápio via Telegram, com refinamento por feedback |
 | API da despensa | Firebase Cloud Functions (HTTP, token Bearer) | Entrega ao jornal O Matutino o que tem em casa, para a receita do dia |
 
@@ -217,7 +213,7 @@ Para compartilhar
 
 - Login com conta Google via Firebase Auth (`signInWithPopup`)
 - Cada usuário tem uma **lista própria** (cujo id é o seu `uid`) criada no primeiro login
-- **Compartilhamento por link**: ao abrir um link `?lista=<id>`, o usuário confirma o acesso e passa a participar da lista
+- **Compartilhamento por link**: ao abrir um link `?lista=<id>`, o usuário passa a participar da lista e escolhe se quer alternar para ela
 - Um usuário pode ter várias listas e alternar entre elas (`listaAtiva`)
 - O catálogo e as sugestões são **globais** (compartilhados por todos)
 - Administradores definidos em `src/config/admins.js` por e-mail
@@ -247,31 +243,25 @@ VITE_FIREBASE_APP_ID=...
 ### Scripts
 
 ```bash
-npm install            # instalar dependências
+npm install --legacy-peer-deps   # instalar dependências
 npm run dev            # ambiente de desenvolvimento
 npm run build          # build de produção (gera ./dist)
 npm run preview        # pré-visualizar o build
 npm run lint           # ESLint
 ```
 
-### Importar o catálogo
-Os produtos da planilha (`scripts/Lista_Completa_Supermercado.tsv`) são importados para o Firestore via:
-
-```bash
-node scripts/importar-catalogo.mjs
-```
-
 ### Bot do Telegram (`functions/`)
-Codebase separada (Firebase Cloud Functions, Node 20, ESM), sem `lint`/`test`/`build` configurados. Antes de publicar uma mudança:
+Codebase separada (Firebase Cloud Functions, Node 22, ESM), sem scripts de `lint`/`test`/`build` configurados. Antes de publicar uma mudança:
 
 ```bash
 cd functions
 node --check src/caminho/do/arquivo.js                          # checagem de sintaxe
 node -e "import('./index.js').then(()=>console.log('OK'))"      # confirma que os módulos carregam
+node --test src/gemini/prompt.test.js                           # roda um arquivo de testes
 firebase deploy --only functions:telegramWebhook                # deploy de uma função (todas estão em functions/index.js)
 ```
 
-Depende de dois secrets do Firebase (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`), provisionados via `firebase functions:secrets:set`. A API da despensa usa mais dois: `JORNAL_TOKEN` e `JORNAL_UID`.
+Depende de três secrets do Firebase (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `GEMINI_API_KEY`), provisionados via `firebase functions:secrets:set`. A API da despensa usa mais dois: `JORNAL_TOKEN` e `JORNAL_UID`.
 
 ---
 
@@ -291,21 +281,26 @@ src/
 │   ├── useCatalogo.js       # catálogo global (tempo real)
 │   ├── useSugestoes.js      # sugestões de produto + aprovação por um admin
 │   ├── useReceitas.js       # receitas + aprovação por um admin
-│   ├── useGrupoSubstituicao.js  # grupos de produtos intercambiáveis
+│   ├── useDicas.js          # dicas (tempo real)
+│   ├── useChat.js           # chat com o assistente
 │   ├── useTelegramVinculo.js    # estado do vínculo com o bot do Telegram
 │   ├── useBackStack.js      # navegação por "voltar" sem router
 │   └── useTema.js           # tema claro/escuro
 ├── pages/
 │   ├── Login.jsx
-│   ├── Home.jsx             # abas Lista, Catálogo e Receitas
-│   └── Catalogo.jsx         # stub/não utilizado
+│   └── Home.jsx             # abas Lista, Catálogo, Receitas e Dicas
 ├── components/
 │   ├── Menu.jsx             # menu lateral, troca/compartilhamento de listas, vínculo Telegram
 │   ├── CategoriaGrupo.jsx
 │   ├── ProdutoItem.jsx
 │   ├── DetalhesProduto.jsx  # preços e histórico
 │   ├── FiltroCategoria.jsx
-│   ├── AdminPanel.jsx       # revisão de sugestões
+│   ├── Chat.jsx             # chat com o assistente
+│   ├── IconesIA.jsx         # marcas dos assistentes
+│   ├── dicas/
+│   │   ├── DicaLista.jsx
+│   │   ├── DicaDetalhe.jsx
+│   │   └── DicaFormulario.jsx
 │   └── receitas/
 │       ├── ReceitaLista.jsx
 │       ├── ReceitaDetalhe.jsx
@@ -313,8 +308,12 @@ src/
 │       └── ReceitaTexto.jsx # colar texto de receita para preenchimento automático
 └── utils/
     ├── categorias.js        # cores e ordem das categorias
+    ├── csv.js               # download de CSV
     ├── estilos.js           # tokens de tipografia, raio e botões
-    └── parseReceita.js      # extrai ingredientes/passos de um texto colado
+    ├── ingredientesEmCasa.js  # regra de "esse ingrediente está em casa?"
+    ├── parseReceita.js      # extrai ingredientes/passos de um texto colado
+    ├── texto.js             # comparação sem acento e sem caixa
+    └── textoDica.js         # formatação do texto das dicas
 
 functions/                    # Cloud Functions do bot do Telegram (codebase separada)
 ├── index.js                  # exporta as funções (telegramWebhook, despensaJornal etc.)
@@ -323,6 +322,7 @@ functions/                    # Cloud Functions do bot do Telegram (codebase sep
     ├── despensaJornal.js     # API da despensa para o jornal O Matutino
     ├── comandos/              # handlers de comando e callback
     ├── firestore/             # acesso a lotesNotaFiscal, filaRevisaoNotas etc.
+    ├── gemini/                # cliente da API e montagem dos prompts
     ├── matching/              # fuzzy match do item da nota contra o catálogo
     ├── parser/                # interpretação da tabela colada
     └── telegram/              # cliente da Bot API e teclados inline
@@ -345,10 +345,10 @@ O Service Worker (gerado pelo `vite-plugin-pwa`, `registerType: 'autoUpdate'`) c
 Quando um usuário sugere um produto, ele entra como `pendente`. Com a aprovação de um admin, o produto é criado no catálogo e a sugestão fica `aprovado`.
 
 ### Bot do Telegram
-Cloud Function única (`telegramWebhook`), que recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao colar a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
+A função `telegramWebhook` recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao receber `/nota` com a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
 
 ### API da despensa (jornal O Matutino)
-A função HTTP `despensaJornal` responde a um `GET` com `Authorization: Bearer <token>` e devolve os alimentos marcados como "tem em casa" na lista ativa (nome, categoria e desde quando estão em casa), junto com as observações gerais da casa. Os nomes das pessoas e o resto do perfil não saem da API. O robô de coleta das 6h do jornal (repositório privado `news-ai`) chama essa URL para que a receita do dia use principalmente o que já tem em casa. Token errado recebe `401` e qualquer método que não seja GET recebe `405`. Para cortar o acesso, basta trocar o secret `JORNAL_TOKEN` e refazer o deploy.
+A função HTTP `despensaJornal` responde a um `GET` com `Authorization: Bearer <token>` e devolve os alimentos marcados como "tem em casa" na lista ativa (nome e categoria; o campo `emCasaDesde` segue no contrato, sempre `null`), junto com as observações gerais da casa. Os nomes das pessoas e o resto do perfil não saem da API. O robô de coleta das 6h do jornal (repositório privado `news-ai`) chama essa URL para que a receita do dia use principalmente o que já tem em casa. Token errado recebe `401` e qualquer método que não seja GET recebe `405`. Para cortar o acesso, basta trocar o secret `JORNAL_TOKEN` e refazer o deploy.
 
 ---
 
