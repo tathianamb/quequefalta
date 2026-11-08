@@ -90,7 +90,7 @@ listas/{listaId}          # listaId == uid of the list owner
   ├── criadaPor, participantes[]
   └── lista/{itemId}      # subcollection: items on this list
       ├── produtoId        # referência ao catalogo/{produtoId}
-      └── comprado, compradoEm, adicionadoEm
+      └── comprado
       # nome, categoria, subcategoria, grupoSubstituicao são lidos do catálogo em tempo de renderização via produtoId
 
 usuarios/{uid}
@@ -105,9 +105,8 @@ sugestoes/{sugestaoId}
   └── aprovadores[]       # uid of the admin who approved
 
 receitas/{receitaId}
-  ├── nome, foto, tempoPreparo, porcoes, dificuldade
+  ├── nome, foto, tempoPreparo, porcoes
   ├── ingredientes[]      # each: produtoId OR nomeTemp, + nome, quantidade, unidade, observacao (_qtdErro in drafts)
-  ├── _textoOriginal      # text pasted when the recipe was created; kept as a record, nothing reads it
   ├── passos[]
   ├── status: 'pendente' | 'aprovada' | 'rejeitada'
   └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm  # single admin uid, not an array

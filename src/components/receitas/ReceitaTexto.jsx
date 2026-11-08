@@ -20,7 +20,7 @@ const inputStyle = {
 const PLACEHOLDER = `Cole aqui o texto da receita. Exemplo:
 
 Macarrão ao molho vermelho
-Tempo: 30 min | Porções: 4 | Dificuldade: fácil
+Tempo: 30 min | Porções: 4
 
 Ingredientes:
 2 xícaras de macarrão

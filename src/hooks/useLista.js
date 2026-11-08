@@ -6,7 +6,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 
@@ -38,8 +37,6 @@ export function useLista(listaAtiva, catalogo = []) {
         id: item.id,
         produtoId: item.produtoId,
         comprado: item.comprado,
-        compradoEm: item.compradoEm,
-        adicionadoEm: item.adicionadoEm,
         nome: prod.nome,
         categoria: prod.categoria,
         subcategoria: prod.subcategoria,
@@ -56,8 +53,6 @@ export function useLista(listaAtiva, catalogo = []) {
     await addDoc(collection(db, "listas", listaAtiva, "lista"), {
       produtoId: produto.id,
       comprado,
-      compradoEm: comprado ? new Date() : null,
-      adicionadoEm: serverTimestamp(),
     });
     return true;
   };
@@ -80,10 +75,7 @@ export function useLista(listaAtiva, catalogo = []) {
 
   const toggleComprado = async (item) => {
     const ref = doc(db, "listas", listaAtiva, "lista", item.id);
-    await updateDoc(ref, {
-      comprado: !item.comprado,
-      compradoEm: !item.comprado ? new Date() : null,
-    });
+    await updateDoc(ref, { comprado: !item.comprado });
   };
 
   const removerItem = async (item) => {

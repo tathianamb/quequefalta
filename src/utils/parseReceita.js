@@ -40,7 +40,6 @@ const RE = {
   tempoRotulado: /(?:tempo(?:\s+de\s+(?:preparo|cozimento))?|pronto\s+em|preparo)\s*:?\s*(\d+)\s*(h(?:ora)?s?|min(?:uto)?s?)/i,
 
   porcoes: /(?:(\d+)\s*(?:por[çc][õo]es?|pessoas?|fatias?)|(?:serve[m]?|rende[m]?|d[áa]\s+para)\s+(\d+)|rendimento:?\s*(\d+))/i,
-  dificuldade: /f[aá]cil|m[eé]di[ao]|intermedi[áa]ri[ao]|dif[ií]cil/i,
 
   cabecalho: /^(modo de (?:preparo|fazer)|ingredientes?|preparos?|instru[çc][õo]es|instru[çc][ãa]o|receita|como fazer|utens[íi]lios|passo\s*a\s*passo|passos)(\s*[\(:,].*)?$/i,
   subCabecalho: /^para\s+(o|a|os|as)\s+\w+/i,
@@ -245,15 +244,6 @@ function extrairMetadados(textoCompleto) {
   const mP = textoCompleto.match(RE.porcoes)
   if (mP) meta.porcoes = parseInt(mP[1] || mP[2] || mP[3], 10)
 
-  const mD = textoCompleto.match(RE.dificuldade)
-  if (mD) {
-    const d = normalizar(mD[0])
-    if (d === 'facil') meta.dificuldade = 'fácil'
-    else if (d === 'medio' || d === 'media') meta.dificuldade = 'médio'
-    else if (d === 'dificil' || d.includes('dificil')) meta.dificuldade = 'difícil'
-    else meta.dificuldade = d
-  }
-
   return meta
 }
 
@@ -318,7 +308,6 @@ export function parseReceita(texto, { catalogo }) {
     nome: '',
     tempoPreparo: meta.tempoPreparo || null,
     porcoes: meta.porcoes || null,
-    dificuldade: meta.dificuldade || null,
     ingredientes,
     passos,
   }

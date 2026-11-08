@@ -81,9 +81,7 @@ listas
     └── lista (subcoleção) # itens desta lista
         └── {itemId}
             ├── produtoId      # nome e categoria vêm do catálogo
-            ├── comprado (boolean)
-            ├── compradoEm
-            └── adicionadoEm
+            └── comprado (boolean)
 
 usuarios
 └── {uid}
@@ -99,8 +97,8 @@ sugestoes                  # novos produtos propostos
 
 receitas
 └── {receitaId}
-    ├── nome / foto / tempoPreparo / porcoes / dificuldade
-    ├── ingredientes []    # produtoId OU grupoSubstituicaoId OU nomeTemp (não catalogado) + quantidade/unidade
+    ├── nome / foto / tempoPreparo / porcoes
+    ├── ingredientes []    # produtoId OU nomeTemp (não catalogado) + quantidade/unidade
     ├── passos []
     ├── status             # pendente | aprovada | rejeitada
     └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm

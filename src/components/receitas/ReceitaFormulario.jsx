@@ -126,7 +126,6 @@ export function ReceitaFormulario({
   const [foto, setFoto] = useState(dadosIniciais?.foto ?? '')
   const [tempoPreparo, setTempoPreparo] = useState(dadosIniciais?.tempoPreparo ?? '')
   const [porcoes, setPorcoes] = useState(dadosIniciais?.porcoes ?? '')
-  const [dificuldade, setDificuldade] = useState(dadosIniciais?.dificuldade ?? '')
   const [ingredientes, setIngredientes] = useState(
     (dadosIniciais?.ingredientes ?? []).map(ing => ({
       ...ing,
@@ -241,12 +240,10 @@ export function ReceitaFormulario({
     foto: foto.trim() || null,
     tempoPreparo: tempoPreparo ? Number(tempoPreparo) : null,
     porcoes: porcoes ? Number(porcoes) : null,
-    dificuldade: dificuldade || null,
     ingredientes,
     passos: modoPreparo.trim()
       ? modoPreparo.split('\n').map(l => l.trim()).filter(Boolean)
       : [],
-    ...(textoOriginal ? { _textoOriginal: textoOriginal } : {}),
   })
 
   const handleEnviar = async () => {
@@ -609,18 +606,6 @@ export function ReceitaFormulario({
             placeholder="Ex: 4"
             style={inputStyle}
           />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Dificuldade</label>
-          <select
-            value={dificuldade}
-            onChange={e => setDificuldade(e.target.value)}
-            style={{ ...inputStyle, cursor: 'pointer' }}
-          >
-            {['', 'Fácil', 'Médio', 'Difícil'].map(op => (
-              <option key={op} value={op}>{op || '—'}</option>
-            ))}
-          </select>
         </div>
       </div>
 
