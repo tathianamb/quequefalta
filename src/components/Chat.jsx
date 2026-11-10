@@ -6,6 +6,7 @@ import { useChat } from '../hooks/useChat'
 import { IconeClaude, IconeGemini } from './IconesIA'
 import { TextoDica } from './dicas/DicaDetalhe'
 import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
+import { CATEGORIAS_NAO_ALIMENTARES } from '../utils/categorias'
 
 const SUGESTOES = [
   'Sobremesa rápida com o que tenho em casa',
@@ -52,8 +53,24 @@ const estiloBotaoIA = {
   padding: 0,
 }
 
-// Texto final levado ao Claude: contexto da casa (montado no servidor, igual
-// ao do Gemini) + a pergunta digitada, se houver.
+// Contexto montado no próprio app, com os alimentos que estão em casa. É o
+// reserva para quando o servidor não responde (o botão do Claude não pode
+// depender dele). Não tem pessoas nem observações: perfilCasa só o servidor lê.
+function montarContextoLocal(itensEmCasa) {
+  const nomes = itensEmCasa
+    .filter((i) => !CATEGORIAS_NAO_ALIMENTARES.includes(i.categoria))
+    .map((i) => i.nome)
+    .filter(Boolean)
+  return [
+    'Contexto da minha casa, exportado do app QueQueFalta (nossa lista de compras compartilhada):',
+    '',
+    'Itens que tenho em casa:',
+    nomes.length ? nomes.join(', ') : 'Nenhum item marcado como em casa no momento.',
+  ].join('\n')
+}
+
+// Texto final levado ao Claude: contexto da casa (do servidor, igual ao do
+// Gemini, ou o local) + a pergunta digitada, se houver.
 function montarTextoClaude(contexto, pergunta) {
   const fim = pergunta
     ? `Minha pergunta: ${pergunta}`
@@ -61,13 +78,15 @@ function montarTextoClaude(contexto, pergunta) {
   return `${contexto}\n\n${fim}\n\nResponda em português, de forma direta.`
 }
 
-export default function Chat({ onFechar }) {
+export default function Chat({ onFechar, itensEmCasa = [] }) {
   const { mensagens, enviando, bloqueadoAte, enviar, limpar, marcarLida } = useChat()
   const [agora, setAgora] = useState(() => Date.now())
   const [texto, setTexto] = useState('')
   const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
-  // undefined = carregando, null = falhou, string = pronto
-  const [contextoClaude, setContextoClaude] = useState(undefined)
+  // Contexto completo vindo do servidor; enquanto não chega (ou se falhar),
+  // vale o montado aqui no app.
+  const [contextoServidor, setContextoServidor] = useState(null)
+  const contextoClaude = contextoServidor || montarContextoLocal(itensEmCasa)
   const [avisoClaude, setAvisoClaude] = useState(false)
   const fimRef = useRef(null)
 
@@ -77,18 +96,14 @@ export default function Chat({ onFechar }) {
   useEffect(() => {
     let ativo = true
     contextoParaClaude()
-      .then(({ data }) => { if (ativo) setContextoClaude(data.contexto) })
-      .catch((erro) => {
-        console.error('Erro ao montar contexto para o Claude:', erro)
-        if (ativo) setContextoClaude(null)
-      })
+      .then(({ data }) => { if (ativo && data?.contexto) setContextoServidor(data.contexto) })
+      .catch((erro) => console.error('Contexto do servidor indisponível, usando o do app:', erro))
     return () => { ativo = false }
   }, [])
 
   // Copia (garantia, caso o preenchimento automático não funcione) e abre o
   // claude.ai com o texto no campo de mensagem.
   const perguntarAoClaude = () => {
-    if (!contextoClaude) return
     const textoFinal = montarTextoClaude(contextoClaude, texto.trim())
     copiarTexto(textoFinal)
     window.open(`https://claude.ai/new?q=${encodeURIComponent(textoFinal)}`, '_blank', 'noopener')
@@ -318,14 +333,9 @@ export default function Chat({ onFechar }) {
           <button
             type="button"
             onClick={perguntarAoClaude}
-            disabled={!contextoClaude}
             aria-label="Perguntar ao Claude"
-            title={contextoClaude === null ? 'Claude indisponível agora' : 'Perguntar ao Claude'}
-            style={{
-              ...estiloBotaoIA,
-              opacity: contextoClaude ? 1 : 0.4,
-              cursor: contextoClaude ? 'pointer' : 'default',
-            }}
+            title="Perguntar ao Claude"
+            style={{ ...estiloBotaoIA, cursor: 'pointer' }}
           >
             <IconeClaude size={20} />
           </button>

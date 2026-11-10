@@ -1133,7 +1133,7 @@ function Home({
       )}
 
       {/* Chat */}
-      {chatAberto && <Chat onFechar={() => setChatAberto(false)} />}
+      {chatAberto && <Chat onFechar={() => setChatAberto(false)} itensEmCasa={lista.filter((i) => i.comprado)} />}
 
       {/* Navegação inferior */}
       <div
