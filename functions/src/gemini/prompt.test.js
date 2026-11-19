@@ -1,99 +1,27 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { montarPromptPergunta, montarPromptInicial, montarPromptRefinamento, montarContextoExterno } from "./prompt.js";
+import { montarPromptChat } from "./prompt.js";
 
-test("montarContextoExterno — primeira pessoa, sem pergunta, com os itens em casa", () => {
-  const saida = montarContextoExterno({
-    pessoas: [{ nome: "Tathiana", restricoes: ["sem lactose"] }],
-    observacoesGerais: "",
-    itensEmCasa: [{ nome: "alface", categoria: "Hortifrúti" }],
+test("montarPromptChat — itens em casa, conversa anterior e nova mensagem", () => {
+  const saida = montarPromptChat({
+    itensEmCasa: [{ nome: "arroz" }, { nome: "feijão" }],
+    historico: [
+      { papel: "usuario", texto: "o que faço no almoço?" },
+      { papel: "assistente", texto: "Arroz com feijão e ovo." },
+    ],
+    mensagem: "e sem ovo?",
   });
 
-  assert.match(saida, /^Contexto da minha casa/);
-  assert.match(saida, /Tathiana \(restrições: sem lactose\)/);
-  assert.match(saida, /Itens que tenho em casa:\nalface$/);
-  assert.doesNotMatch(saida, /Observações gerais|Pergunta do usuário/);
+  assert.match(saida, /Itens disponíveis em casa:\narroz, feijão/);
+  assert.match(saida, /Conversa até agora:\nUsuário: o que faço no almoço\?\nAssistente: Arroz com feijão e ovo\./);
+  assert.match(saida, /Nova mensagem do usuário: "e sem ovo\?"/);
+  assert.doesNotMatch(saida, /Pessoas da casa|Observações gerais/);
 });
 
-test("montarPromptPergunta — com pessoas, observações e itens em casa", () => {
-  const entrada = {
-    pessoas: [{ nome: "Tathiana", restricoes: ["sem lactose"] }],
-    observacoesGerais: "evitar carne vermelha 2x por semana",
-    itensEmCasa: [{ nome: "arroz" }, { nome: "feijão" }],
-    pergunta: "sobremesa rápida com o que tenho em casa",
-  };
-  const saida = montarPromptPergunta(entrada);
+test("montarPromptChat — sem itens em casa nem histórico (defaults)", () => {
+  const saida = montarPromptChat({ itensEmCasa: [], historico: [], mensagem: "prato rápido com ovos" });
 
-  assert.match(saida, /Tathiana \(restrições: sem lactose\)/);
-  assert.match(saida, /Observações gerais: evitar carne vermelha 2x por semana/);
-  assert.match(saida, /arroz, feijão/);
-  assert.match(saida, /Pergunta do usuário: "sobremesa rápida com o que tenho em casa"/);
-});
-
-test("montarPromptPergunta — sem pessoas nem itens em casa (defaults)", () => {
-  const entrada = { pessoas: [], observacoesGerais: "", itensEmCasa: [], pergunta: "prato rápido com ovos" };
-  const saida = montarPromptPergunta(entrada);
-
-  assert.match(saida, /Nenhuma pessoa cadastrada ainda\./);
   assert.match(saida, /Nenhum item marcado como comprado na lista no momento/);
-  assert.doesNotMatch(saida, /Observações gerais:/);
-  assert.match(saida, /Pergunta do usuário: "prato rápido com ovos"/);
-});
-
-test("montarPromptInicial — refeições customizadas", () => {
-  const entrada = {
-    pessoas: [{ nome: "Guilherme", restricoes: ["sem porco"] }],
-    observacoesGerais: "",
-    refeicoes: ["almoço", "jantar"],
-    itensEmCasa: [{ nome: "frango" }],
-  };
-  const saida = montarPromptInicial(entrada);
-
-  assert.match(saida, /Sugira um cardápio para o dia seguinte \(almoço, jantar\)/);
-  assert.match(saida, /Guilherme \(restrições: sem porco\)/);
-  assert.match(saida, /Sugira o cardápio agora\.$/);
-});
-
-test("montarPromptInicial — refeições ausentes usa default das 3 refeições", () => {
-  const entrada = { pessoas: [], observacoesGerais: "", refeicoes: undefined, itensEmCasa: [] };
-  const saida = montarPromptInicial(entrada);
-
-  assert.match(saida, /Sugira um cardápio para o dia seguinte \(café da manhã, almoço e jantar\)/);
-});
-
-test("montarPromptRefinamento — cardápio anterior, feedback e contexto atual da casa", () => {
-  const entrada = {
-    pessoas: [{ nome: "Maria", restricoes: ["anemia"] }],
-    observacoesGerais: "",
-    refeicoes: ["almoço", "jantar"],
-    itensEmCasa: [{ nome: "peixe" }, { nome: "abobrinha" }],
-    cardapioAnterior: "### Almoço\n- Peixe grelhado.",
-    feedback: "algo vegetariano",
-  };
-  const saida = montarPromptRefinamento(entrada);
-
-  assert.match(saida, /Sugira um cardápio para o dia seguinte \(almoço, jantar\)/);
-  assert.match(saida, /Maria \(restrições: anemia\)/);
-  assert.match(saida, /peixe, abobrinha/);
-  assert.match(saida, /Cardápio sugerido antes:\n### Almoço\n- Peixe grelhado\.\n/);
-  assert.match(saida, /Feedback do usuário sobre esse cardápio: "algo vegetariano"/);
-  assert.match(saida, /Gere uma nova sugestão de cardápio incorporando esse feedback\.$/);
-  assert.doesNotMatch(saida, /Histórico/);
-});
-
-test("montarPromptRefinamento — casa sem pessoas nem itens usa os defaults", () => {
-  const entrada = {
-    pessoas: [],
-    observacoesGerais: "",
-    refeicoes: [],
-    itensEmCasa: [],
-    cardapioAnterior: "Jantar: sopa.",
-    feedback: "algo mais leve",
-  };
-  const saida = montarPromptRefinamento(entrada);
-
-  assert.match(saida, /Nenhuma pessoa cadastrada ainda\./);
-  assert.match(saida, /Nenhum item marcado como comprado na lista no momento/);
-  assert.match(saida, /Cardápio sugerido antes:\nJantar: sopa\./);
-  assert.match(saida, /Feedback do usuário sobre esse cardápio: "algo mais leve"/);
+  assert.doesNotMatch(saida, /Conversa até agora/);
+  assert.match(saida, /Nova mensagem do usuário: "prato rápido com ovos"/);
 });

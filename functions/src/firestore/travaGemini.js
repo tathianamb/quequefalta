@@ -1,7 +1,7 @@
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
-// Uma pergunta ao Gemini por vez por usuário, valendo para o chat do app e para
-// o /pergunta do bot, com um intervalo mínimo entre perguntas. Sem isso,
+// Uma pergunta ao Gemini por vez por usuário no chat do app, com um intervalo
+// mínimo entre perguntas. Sem isso,
 // recarregar o app (ou usar outro aparelho) enquanto a função ainda faz suas
 // tentativas, ou simplesmente reenviar logo depois de uma falha, multiplicava
 // as requisições ao Gemini.

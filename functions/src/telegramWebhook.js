@@ -2,31 +2,25 @@ import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { limpar } from "./segredos.js";
 import { criarClienteTelegram } from "./telegram/api.js";
-import { criarClienteGemini } from "./gemini/api.js";
 import { tratarVincular } from "./comandos/vincular.js";
 import { tratarTabela } from "./comandos/tabela.js";
 import { tratarHelp } from "./comandos/help.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemDaFilaPorId } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
-import { tratarCardapioManual, tratarFeedbackCardapio, ehRespostaACardapio } from "./comandos/cardapio.js";
-import { abrirMenuPrincipal, processarTextoAguardado } from "./comandos/menuCasa.js";
-import { tratarPergunta } from "./comandos/pergunta.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
 import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
 import { buscarItemAguardandoNome, atualizarNomeItemRevisao } from "./firestore/revisao.js";
-import { buscarPerfilCasa } from "./firestore/cardapio.js";
 import { tecladoLotePendente } from "./telegram/teclados.js";
 import { apagarSeExistir } from "./telegram/enviarOuEditar.js";
 
 const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_WEBHOOK_SECRET = defineSecret("TELEGRAM_WEBHOOK_SECRET");
-const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 const PEDIR_VINCULO =
   "Vincule sua conta primeiro: gere um código no app (Menu → Vincular Telegram) e mande /vincular 123456 aqui.";
 
-async function processarUpdate(telegram, gemini, update) {
+async function processarUpdate(telegram, update) {
   if (update.callback_query) {
     await tratarCallback(telegram, update.callback_query);
     return;
@@ -81,28 +75,6 @@ async function processarUpdate(telegram, gemini, update) {
     return;
   }
 
-  if (texto.startsWith("/casa")) {
-    await abrirMenuPrincipal(telegram, chatId, uid, null);
-    return;
-  }
-
-  if (texto === "/cardapio") {
-    await tratarCardapioManual(telegram, gemini, chatId, uid);
-    return;
-  }
-
-  // Feedback de cardápio é sempre uma resposta (reply) à mensagem do cardápio:
-  // com /feedback_cardapio na frente ou só o texto. Texto solto nunca conta.
-  if (texto.startsWith("/feedback_cardapio") || (!texto.startsWith("/") && ehRespostaACardapio(update.message))) {
-    await tratarFeedbackCardapio(telegram, gemini, chatId, uid, update.message);
-    return;
-  }
-
-  if (texto.startsWith("/pergunta")) {
-    await tratarPergunta(telegram, gemini, chatId, uid, texto);
-    return;
-  }
-
   if (texto === "/help") {
     await tratarHelp(telegram, chatId);
     return;
@@ -153,19 +125,13 @@ async function processarUpdate(telegram, gemini, update) {
     return;
   }
 
-  const perfilCasa = await buscarPerfilCasa(uid);
-  if (perfilCasa?.menuState?.aguardandoTexto) {
-    await processarTextoAguardado(telegram, chatId, uid, texto.trim(), update.message.message_id);
-    return;
-  }
-
   await tratarHelp(telegram, chatId);
 }
 
 export const telegramWebhook = onRequest(
   {
     region: "southamerica-east1",
-    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, GEMINI_API_KEY],
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET],
     timeoutSeconds: 120,
     memory: "256MiB",
   },
@@ -179,7 +145,6 @@ export const telegramWebhook = onRequest(
     }
 
     const telegram = criarClienteTelegram(limpar(TELEGRAM_BOT_TOKEN.value()));
-    const gemini = criarClienteGemini(limpar(GEMINI_API_KEY.value()));
 
     // A resposta HTTP é sempre enviada aqui, uma única vez, depois que
     // processarUpdate() termina (com sucesso ou erro) — nenhum `return`
@@ -188,7 +153,7 @@ export const telegramWebhook = onRequest(
     // que já causou isso: cada `return` dentro de um try/catch no nível do
     // handler pulava a linha final de res.send()).
     try {
-      await processarUpdate(telegram, gemini, update);
+      await processarUpdate(telegram, update);
     } catch (erro) {
       console.error("Erro ao processar update do Telegram:", erro);
       const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;

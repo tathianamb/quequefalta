@@ -10,8 +10,8 @@ export function enviarOuEditar(telegram, chatId, messageId, texto, opcoes = {}) 
   return telegram.enviarMensagem(chatId, texto, opcoes);
 }
 
-// Usado ao resolver uma pergunta de texto livre (ex: "Digite o nome correto",
-// "Digite: Nome: restrições") — apaga tanto a pergunta quanto a resposta do
+// Usado ao resolver uma pergunta de texto livre (ex: "Digite o nome correto")
+// — apaga tanto a pergunta quanto a resposta do
 // usuário do chat, best-effort, para não deixar rastro da troca no histórico.
 export function apagarSeExistir(telegram, chatId, messageId) {
   if (!messageId) return Promise.resolve();

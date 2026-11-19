@@ -1,14 +1,3 @@
-function formatarPessoas(pessoas) {
-  if (!pessoas?.length) return "Nenhuma pessoa cadastrada ainda.";
-  return pessoas
-    .map((p) => {
-      const partes = [];
-      if (p.restricoes?.length) partes.push(`restrições: ${p.restricoes.join(", ")}`);
-      return `- ${p.nome}${partes.length ? ` (${partes.join("; ")})` : ""}`;
-    })
-    .join("\n");
-}
-
 function formatarItensEmCasa(itensEmCasa) {
   if (!itensEmCasa?.length) {
     return "Nenhum item marcado como comprado na lista no momento — assuma uma despensa básica (arroz, feijão, óleo, tempero, ovos) e sugira algo simples de fazer.";
@@ -16,67 +5,10 @@ function formatarItensEmCasa(itensEmCasa) {
   return itensEmCasa.map((i) => i.nome).join(", ");
 }
 
-function blocoCasa({ pessoas, observacoesGerais, itensEmCasa }) {
-  return [
-    "Pessoas da casa:",
-    formatarPessoas(pessoas),
-    "",
-    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
-    "",
-    "Itens disponíveis em casa:",
-    formatarItensEmCasa(itensEmCasa),
-  ];
-}
-
-const EXEMPLO_RESPOSTA = [
-  "### Café da manhã",
-  "- Pão com ovo mexido e fatias de mamão.",
-  "",
-  "### Almoço",
-  "- Arroz, feijão e frango grelhado com legumes refogados.",
-  "",
-  "### Jantar",
-  "- Sopa de legumes com torradas.",
-  "",
-  "### Sugestão de compra",
-  "- Ovos, mamão, frango, torradas (não estavam disponíveis em casa, mas completam bem o cardápio).",
-].join("\n");
-
-function cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
-  const refeicoesStr = refeicoes?.join(", ") || "café da manhã, almoço e jantar";
-  return [
-    `Você é um assistente de cardápio para uma casa no Brasil. Sugira um cardápio para o dia seguinte (${refeicoesStr}), em português, de forma direta e objetiva.`,
-    "",
-    ...blocoCasa({ pessoas, observacoesGerais, itensEmCasa }),
-    "",
-    "O cardápio deve usar apenas os itens disponíveis em casa listados acima. Se algo mais ajudaria a completar ou melhorar os pratos, não inclua no cardápio em si — liste em uma seção separada \"Sugestão de compra\" ao final.",
-    "",
-    "Exemplo de formato de resposta esperado (conteúdo ilustrativo, não use estas pessoas/itens):",
-    "",
-    EXEMPLO_RESPOSTA,
-  ]
-    .filter((linha) => linha !== null)
-    .join("\n");
-}
-
-export function montarPromptPergunta({ pessoas, observacoesGerais, itensEmCasa, pergunta }) {
-  return [
-    "Você é um assistente de cozinha para uma casa no Brasil, respondendo em português de forma direta e objetiva.",
-    "",
-    ...blocoCasa({ pessoas, observacoesGerais, itensEmCasa }),
-    "",
-    `Pergunta do usuário: "${pergunta}"`,
-    "",
-    "Responda diretamente à pergunta, considerando o contexto acima quando fizer sentido.",
-  ]
-    .filter((linha) => linha !== null)
-    .join("\n");
-}
-
 // Conversa do chat do app: o histórico vem do cliente (já sanitizado por
 // chatApp.js) e é reenviado a cada mensagem, já que a API do Gemini aqui é
-// chamada sem estado.
-export function montarPromptChat({ pessoas, observacoesGerais, itensEmCasa, historico, mensagem }) {
+// chamada sem estado. O único contexto da casa são os itens em casa.
+export function montarPromptChat({ itensEmCasa, historico, mensagem }) {
   const conversa = (historico || [])
     .map((m) => `${m.papel === "assistente" ? "Assistente" : "Usuário"}: ${m.texto}`)
     .join("\n");
@@ -84,7 +16,8 @@ export function montarPromptChat({ pessoas, observacoesGerais, itensEmCasa, hist
   return [
     "Você é um assistente de cozinha para uma casa no Brasil, conversando em português de forma direta e objetiva. Use formatação simples: títulos com ##, listas com - e **negrito**.",
     "",
-    ...blocoCasa({ pessoas, observacoesGerais, itensEmCasa }),
+    "Itens disponíveis em casa:",
+    formatarItensEmCasa(itensEmCasa),
     "",
     conversa ? `Conversa até agora:\n${conversa}\n` : null,
     `Nova mensagem do usuário: "${mensagem}"`,
@@ -93,42 +26,4 @@ export function montarPromptChat({ pessoas, observacoesGerais, itensEmCasa, hist
   ]
     .filter((linha) => linha !== null)
     .join("\n");
-}
-
-// Contexto que o usuário leva para o Claude (claude.ai) pelo botão do chat.
-// Vai como mensagem do próprio usuário, por isso em primeira pessoa, e sem
-// pergunta: o app junta a pergunta digitada no fim.
-export function montarContextoExterno({ pessoas, observacoesGerais, itensEmCasa }) {
-  return [
-    "Contexto da minha casa, exportado do app QueQueFalta (nossa lista de compras compartilhada):",
-    "",
-    "Pessoas da casa:",
-    formatarPessoas(pessoas),
-    "",
-    observacoesGerais ? `Observações gerais: ${observacoesGerais}` : null,
-    observacoesGerais ? "" : null,
-    "Itens que tenho em casa:",
-    formatarItensEmCasa(itensEmCasa),
-  ]
-    .filter((linha) => linha !== null)
-    .join("\n");
-}
-
-export function montarPromptInicial({ pessoas, observacoesGerais, refeicoes, itensEmCasa }) {
-  return `${cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa })}\n\nSugira o cardápio agora.`;
-}
-
-// O cardápio anterior vem do texto da mensagem do Telegram que o usuário
-// respondeu (não há histórico guardado); o contexto da casa é o de agora.
-export function montarPromptRefinamento({ pessoas, observacoesGerais, refeicoes, itensEmCasa, cardapioAnterior, feedback }) {
-  return [
-    cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }),
-    "",
-    "Cardápio sugerido antes:",
-    cardapioAnterior,
-    "",
-    `Feedback do usuário sobre esse cardápio: "${feedback}"`,
-    "",
-    "Gere uma nova sugestão de cardápio incorporando esse feedback.",
-  ].join("\n");
 }
