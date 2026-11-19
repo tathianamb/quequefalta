@@ -7,7 +7,8 @@ import { obterListaAtivaDoUsuario } from "./historico.js";
 // perfil do grupo sem migração. Duas camadas:
 //   - da casa (pessoas, observacoesGerais): em perfilCasa/{grupoId}, comum a
 //     todos os membros;
-//   - pessoais (horarioEnvio, refeicoes, chatId, menuState): em
+//   - pessoais (horarioEnvio, refeicoes, chatId, menuState,
+//     ultimoCardapioPara): em
 //     perfilCasa/{uid}, porque cada membro recebe o cardápio no próprio
 //     Telegram e no próprio horário.
 // Para o dono do grupo (grupoId === uid) as duas camadas são o mesmo documento.
@@ -166,88 +167,10 @@ export async function obterItensComprados(uid) {
     .filter(Boolean);
 }
 
-export async function buscarCardapioDoDia(uid, dataIso) {
+// Idempotência do agendador: só o marcador da última data enviada, na camada
+// pessoal (cada membro recebe o próprio cardápio). O cardápio em si não é
+// guardado: a conversa no Telegram é o registro.
+export async function marcarCardapioEnviado(uid, dataIso) {
   const db = getFirestore();
-  const doc = await db.collection("cardapiosDiarios").doc(`${uid}_${dataIso}`).get();
-  if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() };
-}
-
-export async function criarCardapioDoDia(uid, dataIso, { chatId, promptContexto, prompt, resposta }) {
-  const db = getFirestore();
-  const id = `${uid}_${dataIso}`;
-  await db
-    .collection("cardapiosDiarios")
-    .doc(id)
-    .set({
-      uid,
-      chatId: String(chatId),
-      data: dataIso,
-      status: "aguardando_feedback",
-      promptContexto,
-      respostaAtual: resposta,
-      // FieldValue.serverTimestamp() não pode ser usado dentro de um array —
-      // Firestore rejeita o write inteiro. Usamos Date() do processo, que é
-      // suficiente para ordenar o histórico dentro de uma mesma conversa.
-      historico: [{ tipo: "geracao_inicial", prompt, resposta, em: new Date() }],
-      aguardandoFeedback: true,
-      messageId: null,
-      erro: null,
-      criadoEm: FieldValue.serverTimestamp(),
-      atualizadoEm: FieldValue.serverTimestamp(),
-    });
-  return id;
-}
-
-export async function marcarErroCardapio(cardapioId, mensagemErro) {
-  const db = getFirestore();
-  await db.collection("cardapiosDiarios").doc(cardapioId).update({
-    status: "erro",
-    erro: mensagemErro,
-    atualizadoEm: FieldValue.serverTimestamp(),
-  });
-}
-
-export async function registrarFeedbackCardapio(cardapioId, { feedbackUsuario, prompt, resposta }) {
-  const db = getFirestore();
-  await db
-    .collection("cardapiosDiarios")
-    .doc(cardapioId)
-    .update({
-      status: "aguardando_feedback",
-      respostaAtual: resposta,
-      historico: FieldValue.arrayUnion({
-        tipo: "feedback",
-        feedbackUsuario,
-        prompt,
-        resposta,
-        em: new Date(),
-      }),
-      atualizadoEm: FieldValue.serverTimestamp(),
-    });
-}
-
-export async function marcarMessageId(cardapioId, messageId) {
-  const db = getFirestore();
-  await db.collection("cardapiosDiarios").doc(cardapioId).update({
-    messageId,
-    atualizadoEm: FieldValue.serverTimestamp(),
-  });
-}
-
-// Usado só pelo comando explícito /feedback_cardapio — sem o filtro
-// aguardandoFeedback, já que o usuário está pedindo feedback por vontade
-// própria, não porque o bot ficou "escutando" qualquer texto livre (isso
-// causava um bug real: um cardápio nunca respondido sequestrava qualquer
-// mensagem de texto futura, de qualquer fluxo, indefinidamente).
-export async function buscarCardapioMaisRecente(chatId) {
-  const db = getFirestore();
-  const snap = await db
-    .collection("cardapiosDiarios")
-    .where("chatId", "==", String(chatId))
-    .orderBy("criadoEm", "desc")
-    .limit(1)
-    .get();
-  if (snap.empty) return null;
-  return { id: snap.docs[0].id, ...snap.docs[0].data() };
+  await db.collection("perfilCasa").doc(uid).set({ ultimoCardapioPara: dataIso }, { merge: true });
 }

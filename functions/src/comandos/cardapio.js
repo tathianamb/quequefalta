@@ -1,15 +1,17 @@
-import {
-  buscarPerfilCasa,
-  obterItensComprados,
-  buscarCardapioDoDia,
-  criarCardapioDoDia,
-  marcarErroCardapio,
-  registrarFeedbackCardapio,
-  marcarMessageId,
-  buscarCardapioMaisRecente,
-} from "../firestore/cardapio.js";
+import { buscarPerfilCasa, obterItensComprados, marcarCardapioEnviado } from "../firestore/cardapio.js";
 import { montarPromptInicial, montarPromptRefinamento } from "../gemini/prompt.js";
 import { mensagemDeErro } from "../gemini/erros.js";
+
+// O cardápio não é guardado no Firestore: a conversa no Telegram é o
+// registro. Toda mensagem de cardápio do bot começa com este prefixo, e é por
+// ele que uma resposta (reply) é reconhecida como feedback de cardápio.
+const PREFIXO_CARDAPIO = "🍽️";
+const CABECALHO_INICIAL = `${PREFIXO_CARDAPIO} Sugestão de cardápio para amanhã:`;
+const CABECALHO_AJUSTADO = `${PREFIXO_CARDAPIO} Cardápio ajustado:`;
+const RODAPE_FEEDBACK =
+  'Para ajustar, responda a esta mensagem dizendo o que mudar (ex: "sem peixe amanhã").';
+const COMO_DAR_FEEDBACK =
+  'Para ajustar um cardápio, responda à mensagem dele (a que começa com 🍽️) dizendo o que mudar, ex: "sem peixe amanhã". Também vale responder com /feedback_cardapio seguido do texto.';
 
 export async function tratarCardapioManual(telegram, gemini, chatId, uid) {
   const perfil = await buscarPerfilCasa(uid);
@@ -30,79 +32,79 @@ function dataDeAmanha() {
   return amanha.toISOString().slice(0, 10);
 }
 
-// forcar=true ignora o cardápio já existente do dia e gera um novo do zero —
-// usado pelo comando manual /cardapio. O scheduler chama sem forcar, para
-// não duplicar geração/envio em reruns do Cloud Scheduler (idempotência).
-export async function gerarCardapioInicial(telegram, gemini, uid, chatId, { forcar = false } = {}) {
-  const dataIso = dataDeAmanha();
-
-  if (!forcar) {
-    const existente = await buscarCardapioDoDia(uid, dataIso);
-    if (existente) return;
-  }
-
-  const [perfil, itensEmCasa] = await Promise.all([buscarPerfilCasa(uid), obterItensComprados(uid)]);
-
-  const promptContexto = {
+async function montarContexto(uid, perfil) {
+  return {
     pessoas: perfil?.pessoas || [],
     observacoesGerais: perfil?.observacoesGerais || "",
     refeicoes: perfil?.refeicoes || ["café da manhã", "almoço", "jantar"],
-    itensEmCasa,
+    itensEmCasa: await obterItensComprados(uid),
   };
-  const prompt = montarPromptInicial(promptContexto);
+}
+
+// forcar=true ignora o marcador e gera de novo — usado pelo comando manual
+// /cardapio. O agendador chama sem forcar e pula se perfilCasa/{uid}
+// .ultimoCardapioPara já é a data de amanhã, para não reenviar em reruns do
+// Cloud Scheduler (idempotência).
+export async function gerarCardapioInicial(telegram, gemini, uid, chatId, { forcar = false } = {}) {
+  const dataIso = dataDeAmanha();
+  const perfil = await buscarPerfilCasa(uid);
+
+  if (!forcar && perfil?.ultimoCardapioPara === dataIso) return;
+
+  const prompt = montarPromptInicial(await montarContexto(uid, perfil));
 
   let resposta;
   try {
     resposta = await gemini.gerarTexto(prompt);
   } catch (erro) {
     console.error("Erro ao gerar cardápio inicial:", erro);
-    const cardapioId = await criarCardapioDoDia(uid, dataIso, {
-      chatId,
-      promptContexto,
-      prompt,
-      resposta: null,
-    });
-    await marcarErroCardapio(cardapioId, erro.message);
     await telegram.enviarMensagem(chatId, mensagemDeErro(erro));
     return;
   }
 
-  const cardapioId = await criarCardapioDoDia(uid, dataIso, { chatId, promptContexto, prompt, resposta });
-  const mensagemTexto = `🍽️ Sugestão de cardápio para amanhã:\n\n${resposta}\n\nMande /feedback_cardapio seguido do seu feedback (ex: "/feedback_cardapio sem peixe amanhã") para eu ajustar a sugestão.`;
-  const mensagemEnviada = await telegram.enviarMensagem(chatId, mensagemTexto);
-  await marcarMessageId(cardapioId, mensagemEnviada.message_id);
+  await telegram.enviarMensagem(chatId, `${CABECALHO_INICIAL}\n\n${resposta}\n\n${RODAPE_FEEDBACK}`);
+  await marcarCardapioEnviado(uid, dataIso);
 }
 
-export async function tratarFeedbackCardapio(telegram, gemini, chatId, textoComando) {
-  const textoFeedback = textoComando.replace(/^\/feedback_cardapio/, "").trim();
+// Texto livre só é feedback quando é resposta a uma mensagem de cardápio do
+// próprio bot. Nunca trate texto solto como feedback: quando o bot ficava
+// "escutando" feedback depois de mandar um cardápio, um cardápio nunca
+// respondido sequestrava qualquer mensagem de texto futura, de qualquer fluxo.
+export function ehRespostaACardapio(mensagem) {
+  const original = mensagem?.reply_to_message;
+  return Boolean(original?.from?.is_bot && original.text?.startsWith(PREFIXO_CARDAPIO));
+}
 
-  if (!textoFeedback) {
-    await telegram.enviarMensagem(
-      chatId,
-      'Use: /feedback_cardapio seguido do seu feedback, ex: "/feedback_cardapio sem peixe amanhã".'
-    );
+// Tira o cabeçalho e o rodapé de instruções, deixando só o cardápio em si.
+function extrairCardapio(textoMensagem) {
+  const semCabecalho = textoMensagem.replace(/^.*\n/, "");
+  const fimRodape = semCabecalho.lastIndexOf("\n\nPara ajustar,");
+  const corpo = fimRodape >= 0 ? semCabecalho.slice(0, fimRodape) : semCabecalho;
+  return corpo.trim();
+}
+
+// Aceita /feedback_cardapio <texto> ou texto livre, sempre como resposta à
+// mensagem do cardápio. A versão ajustada vai como mensagem nova (resposta à
+// anterior), não edição, para a conversa ficar registrada.
+export async function tratarFeedbackCardapio(telegram, gemini, chatId, uid, mensagem) {
+  const textoFeedback = mensagem.text.replace(/^\/feedback_cardapio(@\S+)?/, "").trim();
+
+  if (!ehRespostaACardapio(mensagem) || !textoFeedback) {
+    await telegram.enviarMensagem(chatId, COMO_DAR_FEEDBACK);
     return;
   }
 
-  const cardapio = await buscarCardapioMaisRecente(chatId);
-  if (!cardapio) {
-    await telegram.enviarMensagem(chatId, "Nenhum cardápio foi gerado ainda. Mande /cardapio primeiro.");
-    return;
-  }
+  const original = mensagem.reply_to_message;
+  const responderAoCardapio = {
+    reply_parameters: { message_id: original.message_id, allow_sending_without_reply: true },
+  };
 
-  await processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback);
-}
-
-async function processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedback) {
-  await telegram.editarMensagem(cardapio.chatId, cardapio.messageId, "🔄 Gerando novo cardápio com seu feedback...");
+  const aviso = await telegram.enviarMensagem(chatId, "🔄 Ajustando o cardápio com seu feedback...");
 
   const prompt = montarPromptRefinamento({
-    pessoas: cardapio.promptContexto.pessoas,
-    observacoesGerais: cardapio.promptContexto.observacoesGerais,
-    refeicoes: cardapio.promptContexto.refeicoes,
-    itensEmCasa: cardapio.promptContexto.itensEmCasa,
-    historico: cardapio.historico,
-    feedbackNovo: textoFeedback,
+    ...(await montarContexto(uid, await buscarPerfilCasa(uid))),
+    cardapioAnterior: extrairCardapio(original.text),
+    feedback: textoFeedback,
   });
 
   let resposta;
@@ -110,12 +112,15 @@ async function processarFeedbackCardapio(telegram, gemini, cardapio, textoFeedba
     resposta = await gemini.gerarTexto(prompt);
   } catch (erro) {
     console.error("Erro ao refinar cardápio:", erro);
-    await telegram.editarMensagem(cardapio.chatId, cardapio.messageId, mensagemDeErro(erro));
+    await telegram.apagarMensagem(chatId, aviso.message_id);
+    await telegram.enviarMensagem(chatId, mensagemDeErro(erro), responderAoCardapio);
     return;
   }
 
-  await registrarFeedbackCardapio(cardapio.id, { feedbackUsuario: textoFeedback, prompt, resposta });
-
-  const mensagemTexto = `🍽️ Cardápio ajustado:\n\n${resposta}\n\nMande /feedback_cardapio de novo se quiser ajustar mais.`;
-  await telegram.editarMensagem(cardapio.chatId, cardapio.messageId, mensagemTexto);
+  await telegram.apagarMensagem(chatId, aviso.message_id);
+  await telegram.enviarMensagem(
+    chatId,
+    `${CABECALHO_AJUSTADO}\n\n${resposta}\n\n${RODAPE_FEEDBACK}`,
+    responderAoCardapio
+  );
 }

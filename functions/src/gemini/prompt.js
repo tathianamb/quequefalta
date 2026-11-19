@@ -118,23 +118,16 @@ export function montarPromptInicial({ pessoas, observacoesGerais, refeicoes, ite
   return `${cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa })}\n\nSugira o cardápio agora.`;
 }
 
-export function montarPromptRefinamento({ pessoas, observacoesGerais, refeicoes, itensEmCasa, historico, feedbackNovo }) {
-  const rodadasAnteriores = (historico || [])
-    .map((h, indice) => {
-      if (h.tipo === "geracao_inicial") {
-        return `Sugestão inicial:\n${h.resposta}`;
-      }
-      return `Feedback ${indice}: "${h.feedbackUsuario}"\nNova sugestão:\n${h.resposta}`;
-    })
-    .join("\n\n");
-
+// O cardápio anterior vem do texto da mensagem do Telegram que o usuário
+// respondeu (não há histórico guardado); o contexto da casa é o de agora.
+export function montarPromptRefinamento({ pessoas, observacoesGerais, refeicoes, itensEmCasa, cardapioAnterior, feedback }) {
   return [
     cabecalho({ pessoas, observacoesGerais, refeicoes, itensEmCasa }),
     "",
-    "Histórico desta conversa até agora:",
-    rodadasAnteriores,
+    "Cardápio sugerido antes:",
+    cardapioAnterior,
     "",
-    `Novo feedback do usuário: "${feedbackNovo}"`,
+    `Feedback do usuário sobre esse cardápio: "${feedback}"`,
     "",
     "Gere uma nova sugestão de cardápio incorporando esse feedback.",
   ].join("\n");

@@ -8,7 +8,7 @@ const TEXTO_HELP = [
   "/cancelar — cancela o lote de nota fiscal em aberto.",
   "/casa — configura o perfil da casa (pessoas, horário, refeições, observações).",
   "/cardapio — gera uma sugestão de cardápio agora.",
-  "/feedback_cardapio <texto> — ajusta a última sugestão de cardápio com base no seu feedback (ex: \"/feedback_cardapio sem peixe amanhã\").",
+  "Para ajustar um cardápio, responda à mensagem dele dizendo o que mudar (ex: \"sem peixe amanhã\"); a versão ajustada chega como mensagem nova. /feedback_cardapio <texto>, também como resposta, faz o mesmo.",
   "/pergunta <texto> — faz uma pergunta pontual ao assistente (ex: \"/pergunta sobremesa rápida com o que tenho em casa\").",
   "/help — mostra esta lista de comandos.",
 ].join("\n");

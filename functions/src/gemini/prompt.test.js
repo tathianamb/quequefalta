@@ -61,37 +61,39 @@ test("montarPromptInicial — refeições ausentes usa default das 3 refeições
   assert.match(saida, /Sugira um cardápio para o dia seguinte \(café da manhã, almoço e jantar\)/);
 });
 
-test("montarPromptRefinamento — histórico com geração inicial e 1 feedback", () => {
+test("montarPromptRefinamento — cardápio anterior, feedback e contexto atual da casa", () => {
   const entrada = {
     pessoas: [{ nome: "Maria", restricoes: ["anemia"] }],
     observacoesGerais: "",
     refeicoes: ["almoço", "jantar"],
-    itensEmCasa: [{ nome: "peixe" }],
-    historico: [
-      { tipo: "geracao_inicial", resposta: "Almoço: peixe grelhado." },
-      { tipo: "feedback", feedbackUsuario: "sem peixe hoje", resposta: "Almoço: frango grelhado." },
-    ],
-    feedbackNovo: "algo vegetariano",
+    itensEmCasa: [{ nome: "peixe" }, { nome: "abobrinha" }],
+    cardapioAnterior: "### Almoço\n- Peixe grelhado.",
+    feedback: "algo vegetariano",
   };
   const saida = montarPromptRefinamento(entrada);
 
-  assert.match(saida, /Sugestão inicial:\nAlmoço: peixe grelhado\./);
-  assert.match(saida, /Feedback 1: "sem peixe hoje"\nNova sugestão:\nAlmoço: frango grelhado\./);
-  assert.match(saida, /Novo feedback do usuário: "algo vegetariano"/);
+  assert.match(saida, /Sugira um cardápio para o dia seguinte \(almoço, jantar\)/);
+  assert.match(saida, /Maria \(restrições: anemia\)/);
+  assert.match(saida, /peixe, abobrinha/);
+  assert.match(saida, /Cardápio sugerido antes:\n### Almoço\n- Peixe grelhado\.\n/);
+  assert.match(saida, /Feedback do usuário sobre esse cardápio: "algo vegetariano"/);
   assert.match(saida, /Gere uma nova sugestão de cardápio incorporando esse feedback\.$/);
+  assert.doesNotMatch(saida, /Histórico/);
 });
 
-test("montarPromptRefinamento — histórico vazio", () => {
+test("montarPromptRefinamento — casa sem pessoas nem itens usa os defaults", () => {
   const entrada = {
     pessoas: [],
     observacoesGerais: "",
     refeicoes: [],
     itensEmCasa: [],
-    historico: [],
-    feedbackNovo: "algo mais leve",
+    cardapioAnterior: "Jantar: sopa.",
+    feedback: "algo mais leve",
   };
   const saida = montarPromptRefinamento(entrada);
 
-  assert.match(saida, /Histórico desta conversa até agora:\n\n/);
-  assert.match(saida, /Novo feedback do usuário: "algo mais leve"/);
+  assert.match(saida, /Nenhuma pessoa cadastrada ainda\./);
+  assert.match(saida, /Nenhum item marcado como comprado na lista no momento/);
+  assert.match(saida, /Cardápio sugerido antes:\nJantar: sopa\./);
+  assert.match(saida, /Feedback do usuário sobre esse cardápio: "algo mais leve"/);
 });

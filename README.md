@@ -202,7 +202,7 @@ Para compartilhar
 | Offline | Service Worker + cache local | Visualização e marcação sem internet |
 | CI/CD | GitHub Actions | Build e deploy automáticos no push para `main` |
 | Bot do Telegram | Firebase Cloud Functions (Node 22) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
-| Assistente de cardápio | Firebase Cloud Functions (agendada) + Gemini API (tier gratuito) | Sugestão diária de cardápio via Telegram, com refinamento por feedback |
+| Assistente de cardápio | Firebase Cloud Functions (agendada) + Gemini API (tier gratuito) | Sugestão diária de cardápio via Telegram; para ajustar, basta responder à mensagem do cardápio (a conversa é o registro, nada é guardado no Firestore) |
 
 ---
 
@@ -342,6 +342,8 @@ Quando um usuário sugere um produto, ele entra como `pendente`. Com a aprovaç�
 
 ### Bot do Telegram
 A função `telegramWebhook` recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao receber `/nota` com a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
+
+O cardápio diário (`gerarCardapioDiario`, no horário configurado no `/casa`, ou `/cardapio` na hora) chega como uma mensagem que começa com 🍽️. Para ajustar, responda a essa mensagem dizendo o que mudar (ou responda com `/feedback_cardapio <texto>`): o bot monta o contexto da casa na hora e manda a versão ajustada como mensagem nova, em resposta à anterior. O cardápio não é guardado no Firestore; só a data do último envio fica no perfil, para o agendador não mandar duas vezes.
 
 ---
 

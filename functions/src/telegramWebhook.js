@@ -9,7 +9,7 @@ import { tratarHelp } from "./comandos/help.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemDaFilaPorId } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
-import { tratarCardapioManual, tratarFeedbackCardapio } from "./comandos/cardapio.js";
+import { tratarCardapioManual, tratarFeedbackCardapio, ehRespostaACardapio } from "./comandos/cardapio.js";
 import { abrirMenuPrincipal, processarTextoAguardado } from "./comandos/menuCasa.js";
 import { tratarPergunta } from "./comandos/pergunta.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
@@ -91,8 +91,10 @@ async function processarUpdate(telegram, gemini, update) {
     return;
   }
 
-  if (texto.startsWith("/feedback_cardapio")) {
-    await tratarFeedbackCardapio(telegram, gemini, chatId, texto);
+  // Feedback de cardápio é sempre uma resposta (reply) à mensagem do cardápio:
+  // com /feedback_cardapio na frente ou só o texto. Texto solto nunca conta.
+  if (texto.startsWith("/feedback_cardapio") || (!texto.startsWith("/") && ehRespostaACardapio(update.message))) {
+    await tratarFeedbackCardapio(telegram, gemini, chatId, uid, update.message);
     return;
   }
 

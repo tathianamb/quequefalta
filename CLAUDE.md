@@ -120,11 +120,11 @@ telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 
 perfilCasa/{uid}          # configuração da casa, em duas camadas (ver "Grupo familiar")
   ├── pessoas[], observacoesGerais       # da casa: lidas/gravadas em perfilCasa/{grupoId}
-  └── horarioEnvio, refeicoes, chatId, menuState   # pessoais: sempre em perfilCasa/{uid}
+  ├── horarioEnvio, refeicoes, chatId, menuState   # pessoais: sempre em perfilCasa/{uid}
+  └── ultimoCardapioPara  # pessoal, "AAAA-MM-DD": data do último cardápio enviado (idempotência do agendador)
 
 lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
-cardapiosDiarios/{uid_data}    # daily menu with promptContexto and refinement historico (bot-only)
 travasGemini/{uid}             # per-user wait between Gemini calls (bot-only)
 ```
 
@@ -176,7 +176,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 ### Directory layout
 
 - `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `menuCasa.js` (`/casa` menu), `cardapio.js` (daily menu and feedback), `pergunta.js` (`/pergunta`), `help.js`.
-- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `cardapio.js` (house profile, items at home, daily menus), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock).
+- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `cardapio.js` (house profile, items at home, the daily-menu marker), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock).
 - `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
 - `parser/tabela.js` — parses pasted table text (mercado+date header line, then tab/space-delimited item rows) into structured `{ mercado, data, itens[] }`.
 - `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
@@ -209,6 +209,12 @@ Item-by-item review offers: pick a suggested catalog match, correct the parsed n
 **Undo (`rv_desf`).** In the global queue, picking a product writes the price immediately; the exact `historico` entry is saved on the queue item (`registro`, plus `statusAnterior`) and the next screen carries a "↩️ Desfazer" button that `arrayRemove`s that entry and returns the item to its original list. Inside a batch, step 3 never writes — `produtoIdResolvido` is only committed by `finalizarLote` — so step 3 lists every already-decided item with a "↩️" button that just clears its `revisao`. For anything older, admins can delete individual `historico` entries in the app (trash icon in `DetalhesProduto`, admin mode).
 
 **"Suggest new product" timing differs by context.** In the global queue, tapping it creates the `sugestoes` doc immediately (deduped by normalized name against existing pending suggestions). Inside a batch (step 3), it's deferred: the tap only marks `revisao.sugestaoPendente: true` on the lote item (reversible — nothing is written outside the lote yet) and the item drops out of step-3 review. The `sugestoes` doc is only actually created inside `finalizarLote` when the batch is confirmed at step 4, alongside registering the other items' prices. This exists because an accidental tap (e.g. meaning to hit "Corrigir nome") used to leave an orphaned suggestion in Firestore with no easy undo; canceling the whole batch (`/cancelar`) is currently the only way to back out of a pending one before finalizing.
+
+### Daily menu and feedback (`comandos/cardapio.js`)
+
+The menu is not stored in Firestore: the Telegram conversation is the record. `gerarCardapioDiario` (hourly, matches `horarioEnvio`) and `/cardapio` send a message starting with `🍽️`. The scheduler skips a user whose `perfilCasa/{uid}.ultimoCardapioPara` already equals tomorrow's date and sets it after sending; `/cardapio` (`forcar`) ignores the marker but also sets it.
+
+Feedback is always a **reply** to a `🍽️` message from the bot, either plain text or `/feedback_cardapio <text>`. The previous menu comes from `message.reply_to_message.text` (header and footer stripped) and the house context (people, notes, meals, items at home) is rebuilt on the spot with `buscarPerfilCasa` + `obterItensComprados`, then `montarPromptRefinamento` gets the previous menu + the feedback. The adjusted menu goes out as a **new message** replying to the previous one (no edit), so replying to it again chains further adjustments. Never treat loose text as feedback: when the bot used to "listen" for feedback after sending a menu, an unanswered menu hijacked every later text message from any flow. `/feedback_cardapio` without a reply to a menu just explains how to reply.
 
 ### `callback_data` size constraint
 
