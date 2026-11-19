@@ -344,7 +344,7 @@ Quando um usuário sugere um produto, ele entra como `pendente`. Com a aprovaç�
 ### Bot do Telegram
 A função `telegramWebhook` recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao receber `/nota` com a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
 
-O bot cuida só de preços. Cardápio e nutrição (pessoas da casa, restrições, cardápio diário) ficam no NutriAI, um assistente fora deste repositório.
+O bot cuida só de preços. Cardápio e nutrição (pessoas da casa, restrições, cardápio diário) ficam no NutreAI, um assistente separado (repositório privado `nutreai`).
 
 ### Chat do app
 O chat (`Chat.jsx`) manda a pergunta para a função `perguntarChat`, que chama o Gemini com os alimentos que estão em casa na lista ativa, com uma espera mínima entre perguntas por usuário. O botão do Claude monta o mesmo contexto no próprio app e abre o claude.ai com ele, sem passar pelo servidor.
