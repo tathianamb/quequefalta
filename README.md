@@ -202,7 +202,7 @@ Para compartilhar
 | Offline | Service Worker + cache local | Visualização e marcação sem internet |
 | CI/CD | GitHub Actions | Build e deploy automáticos no push para `main` |
 | Bot do Telegram | Firebase Cloud Functions (Node 22) + Telegram Bot API | Registro de preços por texto, sem custo de IA/OCR |
-| Assistente de cardápio | Firebase Cloud Functions (agendada) + Gemini API (tier gratuito) | Sugestão diária de cardápio via Telegram; para ajustar, basta responder à mensagem do cardápio (a conversa é o registro, nada é guardado no Firestore) |
+| Chat do app | Firebase Cloud Functions (`perguntarChat`) + Gemini API (tier gratuito) | Perguntas de cozinha com base no que tem em casa; botão para levar o mesmo contexto ao Claude |
 
 ---
 
@@ -258,7 +258,7 @@ node --test src/gemini/prompt.test.js                           # roda um arquiv
 firebase deploy --only functions:telegramWebhook                # deploy de uma função (todas estão em functions/index.js)
 ```
 
-Depende de três secrets do Firebase (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `GEMINI_API_KEY`), provisionados via `firebase functions:secrets:set`.
+Depende de três secrets do Firebase, provisionados via `firebase functions:secrets:set`: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` (bot) e `GEMINI_API_KEY` (só o chat do app, `perguntarChat`).
 
 ---
 
@@ -312,13 +312,14 @@ src/
     ├── texto.js             # comparação sem acento e sem caixa
     └── textoDica.js         # formatação do texto das dicas
 
-functions/                    # Cloud Functions do bot do Telegram (codebase separada)
-├── index.js                  # exporta as funções (telegramWebhook, gerarCardapioDiario etc.)
+functions/                    # Cloud Functions: bot do Telegram e chat do app (codebase separada)
+├── index.js                  # exporta telegramWebhook e perguntarChat
 └── src/
     ├── telegramWebhook.js    # handler HTTP, roteamento dos updates
+    ├── chatApp.js            # perguntarChat (chat do app com o Gemini)
     ├── comandos/              # handlers de comando e callback
-    ├── firestore/             # acesso a lotesNotaFiscal, filaRevisaoNotas etc.
-    ├── gemini/                # cliente da API e montagem dos prompts
+    ├── firestore/             # acesso a lotesNotaFiscal, filaRevisaoNotas, itens em casa etc.
+    ├── gemini/                # cliente da API e prompt do chat
     ├── matching/              # fuzzy match do item da nota contra o catálogo
     ├── parser/                # interpretação da tabela colada
     └── telegram/              # cliente da Bot API e teclados inline
@@ -343,7 +344,10 @@ Quando um usuário sugere um produto, ele entra como `pendente`. Com a aprovaç�
 ### Bot do Telegram
 A função `telegramWebhook` recebe os updates do Telegram, valida um secret de webhook e sempre responde `200 ok` ao final — evita que a conexão fique pendurada até o timeout do Cloud Run. Ao receber `/nota` com a tabela de uma compra, o bot guia o usuário por 4 etapas fixas (resumo, revisão dos itens com match, revisão dos sem match, finalizar), sempre editando a mesma mensagem em vez de enviar novas. Antes de gravar um preço, verifica se já existe um registro igual (mesmo produto, mercado e data) para não duplicar o histórico.
 
-O cardápio diário (`gerarCardapioDiario`, no horário configurado no `/casa`, ou `/cardapio` na hora) chega como uma mensagem que começa com 🍽️. Para ajustar, responda a essa mensagem dizendo o que mudar (ou responda com `/feedback_cardapio <texto>`): o bot monta o contexto da casa na hora e manda a versão ajustada como mensagem nova, em resposta à anterior. O cardápio não é guardado no Firestore; só a data do último envio fica no perfil, para o agendador não mandar duas vezes.
+O bot cuida só de preços. Cardápio e nutrição (pessoas da casa, restrições, cardápio diário) ficam no NutriAI, um assistente fora deste repositório.
+
+### Chat do app
+O chat (`Chat.jsx`) manda a pergunta para a função `perguntarChat`, que chama o Gemini com os alimentos que estão em casa na lista ativa, com uma espera mínima entre perguntas por usuário. O botão do Claude monta o mesmo contexto no próprio app e abre o claude.ai com ele, sem passar pelo servidor.
 
 ---
 

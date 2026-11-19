@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { ArrowLeft, Trash2, Copy, Check, Loader2 } from 'lucide-react'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '../config/firebase'
 import { useChat } from '../hooks/useChat'
 import { IconeClaude, IconeGemini } from './IconesIA'
 import { TextoDica } from './dicas/DicaDetalhe'
@@ -36,8 +34,6 @@ async function copiarTexto(texto) {
   }
 }
 
-const contextoParaClaude = httpsCallable(functions, 'contextoParaClaude')
-
 // Os dois botões de envio (Claude e Gemini) têm o mesmo formato; quem
 // diferencia é a marca de cada um.
 const estiloBotaoIA = {
@@ -53,9 +49,10 @@ const estiloBotaoIA = {
   padding: 0,
 }
 
-// Contexto montado no próprio app, com os alimentos que estão em casa. É o
-// reserva para quando o servidor não responde (o botão do Claude não pode
-// depender dele). Não tem pessoas nem observações: perfilCasa só o servidor lê.
+// Contexto levado ao Claude, montado no próprio app com os alimentos que
+// estão em casa (o mesmo contexto que o Gemini recebe no servidor). Não
+// depende do servidor: copiar e abrir outra aba só são permitidos durante o
+// próprio toque no botão, sem esperar resposta de rede.
 function montarContextoLocal(itensEmCasa) {
   const nomes = itensEmCasa
     .filter((i) => !CATEGORIAS_NAO_ALIMENTARES.includes(i.categoria))
@@ -69,8 +66,8 @@ function montarContextoLocal(itensEmCasa) {
   ].join('\n')
 }
 
-// Texto final levado ao Claude: contexto da casa (do servidor, igual ao do
-// Gemini, ou o local) + a pergunta digitada, se houver.
+// Texto final levado ao Claude: contexto da casa + a pergunta digitada, se
+// houver.
 function montarTextoClaude(contexto, pergunta) {
   const fim = pergunta
     ? `Minha pergunta: ${pergunta}`
@@ -83,28 +80,13 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
   const [agora, setAgora] = useState(() => Date.now())
   const [texto, setTexto] = useState('')
   const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
-  // Contexto completo vindo do servidor; enquanto não chega (ou se falhar),
-  // vale o montado aqui no app.
-  const [contextoServidor, setContextoServidor] = useState(null)
-  const contextoClaude = contextoServidor || montarContextoLocal(itensEmCasa)
   const [avisoClaude, setAvisoClaude] = useState(false)
   const fimRef = useRef(null)
-
-  // Busca o contexto ao abrir o chat, e não no toque do botão: copiar e abrir
-  // outra aba só são permitidos durante o próprio toque, e esperar a resposta
-  // do servidor antes disso faria o navegador bloquear os dois.
-  useEffect(() => {
-    let ativo = true
-    contextoParaClaude()
-      .then(({ data }) => { if (ativo && data?.contexto) setContextoServidor(data.contexto) })
-      .catch((erro) => console.error('Contexto do servidor indisponível, usando o do app:', erro))
-    return () => { ativo = false }
-  }, [])
 
   // Copia (garantia, caso o preenchimento automático não funcione) e abre o
   // claude.ai com o texto no campo de mensagem.
   const perguntarAoClaude = () => {
-    const textoFinal = montarTextoClaude(contextoClaude, texto.trim())
+    const textoFinal = montarTextoClaude(montarContextoLocal(itensEmCasa), texto.trim())
     copiarTexto(textoFinal)
     window.open(`https://claude.ai/new?q=${encodeURIComponent(textoFinal)}`, '_blank', 'noopener')
     setAvisoClaude(true)

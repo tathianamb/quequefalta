@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **QueQueFalta** is a shared grocery list PWA for home use, built with React 19 + Vite and Firebase (Firestore + Google Auth). It is hosted on GitHub Pages under the path `/quequefalta/`. Mobile-first (max-width 480px). The frontend has no automated tests; `functions/` has a few (`node --test`).
 
-A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app.
+A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app, plus `perguntarChat`, the backend of the in-app chat.
+
+**Cardápio e nutrição ficam fora deste repositório**, no NutriAI (rotina do Claude): pessoas da casa, restrições, observações, cardápio diário e ajustes de cardápio. O bot do Telegram não tem mais `/casa`, `/cardapio`, `/pergunta` nem feedback de cardápio, e a coleção `perfilCasa` não é mais usada. Não traga isso de volta para cá; o chat do app só usa os itens em casa.
 
 ## Commands
 
@@ -22,7 +24,7 @@ npm run lint                         # ESLint
 
 ### Cloud Functions (`functions/`)
 
-No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (tests are `src/gemini/prompt.test.js`, `src/comandos/menuCasa.test.js` and `src/comandos/fluxoEdicaoPessoa.test.js`):
+No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (the only test file is `src/gemini/prompt.test.js`):
 
 ```bash
 cd functions
@@ -55,7 +57,7 @@ VITE_FIREBASE_APP_ID=...
 
 In CI/CD (`.github/workflows/deploy.yml`), these are injected from GitHub repository secrets on every push to `main`.
 
-`functions/` uses Firebase secrets instead (`defineSecret`), provisioned via `firebase functions:secrets:set`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` and `GEMINI_API_KEY`. Values set via the Firebase CLI on Windows can pick up a trailing `\r\n` or BOM; the code strips this at read time via `limpar()` (`functions/src/segredos.js`) — keep that in mind if secrets ever appear invalid despite being set correctly.
+`functions/` uses Firebase secrets instead (`defineSecret`), provisioned via `firebase functions:secrets:set`: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` (bot) and `GEMINI_API_KEY` (`perguntarChat` only). Values set via the Firebase CLI on Windows can pick up a trailing `\r\n` or BOM; the code strips this at read time via `limpar()` (`functions/src/segredos.js`) — keep that in mind if secrets ever appear invalid despite being set correctly.
 
 ## Architecture — Frontend
 
@@ -118,14 +120,9 @@ dicas/{dicaId}
 codigosVinculo/{codigo}   # 6-digit code generated in-app to link a Telegram chat, 10-min expiry
 telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 
-perfilCasa/{uid}          # configuração da casa, em duas camadas (ver "Grupo familiar")
-  ├── pessoas[], observacoesGerais       # da casa: lidas/gravadas em perfilCasa/{grupoId}
-  ├── horarioEnvio, refeicoes, chatId, menuState   # pessoais: sempre em perfilCasa/{uid}
-  └── ultimoCardapioPara  # pessoal, "AAAA-MM-DD": data do último cardápio enviado (idempotência do agendador)
-
 lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
-travasGemini/{uid}             # per-user wait between Gemini calls (bot-only)
+travasGemini/{uid}             # per-user wait between Gemini calls of the app chat (server-only)
 ```
 
 ### Firestore operations outside hooks
@@ -163,20 +160,20 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 
 ### Key behaviors
 
-- **Grupo familiar** (antes "lista compartilhada"): `?lista=<id>` adds that list to the user's `listas[]` right away (the in-app modal only asks whether to switch to it), and quem entra passa a fazer parte da casa do dono. O id do grupo é o da lista ativa (== uid do dono), então `perfilCasa/{donoDaLista}` é o perfil do grupo, sem migração. `buscarPerfilCasa(uid)` (`functions/src/firestore/cardapio.js`) mescla as duas camadas e devolve o formato de sempre; pessoas e observações são editadas via `atualizarPessoa`/`removerPessoa`/`salvarObservacoesDoGrupo` (gravam no grupo) e horário/refeições via `salvarConfigPessoal` (grava em `perfilCasa/{uid}`). Trocar a lista ativa troca de grupo. Qualquer membro pode editar as pessoas do grupo pelo `/casa`.
+- **Grupo familiar** (antes "lista compartilhada"): `?lista=<id>` adds that list to the user's `listas[]` right away (the in-app modal only asks whether to switch to it), and quem entra passa a fazer parte da casa do dono. A casa é a lista ativa: o chat lê os itens em casa dela, e trocar a lista ativa troca de casa.
 - **Ingrediente "em casa" nas receitas**: regra única em `src/utils/ingredientesEmCasa.js`, usada pelo detalhe, pelo cartão ("faltam N de M") e pela ordenação por relevância. Um ingrediente-produto conta como em casa se o próprio produto estiver em casa **ou qualquer item em casa compartilhar um `grupoSubstituicao` com ele** (nomes comparados sem acento/caixa). Os grupos são substituição por uso: nas proteínas são usos do corte ("Bife", "Carne moída"…, mistura de animais é aceita); nos demais, variantes intercambiáveis ("Óleo", "Vinagre", "Leite"…). Integral/baixo índice glicêmico nunca entra no mesmo grupo do refinado. Produto `generico` (Óleo, Sal, Leite) não entra na lista de compras: "Adicionar faltantes" troca pela variante do grupo que a casa mais registrou preço (`escolherVariante`) ou, sem pista, abre o catálogo filtrado pelo grupo. O bot carrega o catálogo sem genéricos via `carregarCatalogoParaMatch` (`functions/src/firestore/catalogo.js`).
-- **Itens em casa no prompt do Gemini**: `obterItensComprados` devolve só `{ nome, categoria }` (alimentos) e `functions/src/gemini/prompt.js` lista os nomes numa linha. Não há cálculo de "há quanto tempo está em casa" (foi removido).
+- **Chat do app** (`src/components/Chat.jsx`, `src/hooks/useChat.js`): o Gemini é chamado pela function `perguntarChat` (`functions/src/chatApp.js`, com a trava por usuário de `travaGemini.js`). O único contexto da casa são os itens em casa: `obterItensComprados` (`functions/src/firestore/itensEmCasa.js`) devolve só `{ nome, categoria }` (alimentos) e `functions/src/gemini/prompt.js` lista os nomes numa linha. Não há pessoas, restrições nem observações. O botão do Claude monta o mesmo contexto no próprio app (`montarContextoLocal`, sem servidor) e abre o claude.ai com ele.
 - **Offline**: Firestore SDK caches locally; the Service Worker (via `vite-plugin-pwa`, `registerType: 'autoUpdate'`) caches assets. Writes made offline are queued and synced on reconnect.
 - **Base path**: `vite.config.js` sets `base: '/quequefalta/'` — required for GitHub Pages and the PWA manifest's `start_url`.
 
 ## Architecture — Telegram bot (`functions/`)
 
-`functions/index.js` exports four functions: `telegramWebhook`, `gerarCardapioDiario`, `perguntarChat` and `contextoParaClaude`. `telegramWebhook` (`functions/src/telegramWebhook.js`, region `southamerica-east1`) receives Telegram updates via webhook, validates the `X-Telegram-Bot-Api-Secret-Token` header, and **always** responds `200 ok` at the end regardless of outcome — a past bug had an early `return` inside the handler's `try/catch` skip that response and hang the connection until Cloud Run's 60s timeout, so any change to the routing logic must preserve that invariant (business logic lives in a separate `processarUpdate()` so no code path can bypass the final `res.send`).
+`functions/index.js` exports two functions: `telegramWebhook` (the bot, prices only, no Gemini) and `perguntarChat` (the app chat, see "Chat do app"). `telegramWebhook` (`functions/src/telegramWebhook.js`, region `southamerica-east1`) receives Telegram updates via webhook, validates the `X-Telegram-Bot-Api-Secret-Token` header, and **always** responds `200 ok` at the end regardless of outcome — a past bug had an early `return` inside the handler's `try/catch` skip that response and hang the connection until Cloud Run's 60s timeout, so any change to the routing logic must preserve that invariant (business logic lives in a separate `processarUpdate()` so no code path can bypass the final `res.send`).
 
 ### Directory layout
 
-- `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `menuCasa.js` (`/casa` menu), `cardapio.js` (daily menu and feedback), `pergunta.js` (`/pergunta`), `help.js`.
-- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `cardapio.js` (house profile, items at home, the daily-menu marker), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock).
+- `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `help.js`.
+- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat).
 - `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
 - `parser/tabela.js` — parses pasted table text (mercado+date header line, then tab/space-delimited item rows) into structured `{ mercado, data, itens[] }`.
 - `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
@@ -209,12 +206,6 @@ Item-by-item review offers: pick a suggested catalog match, correct the parsed n
 **Undo (`rv_desf`).** In the global queue, picking a product writes the price immediately; the exact `historico` entry is saved on the queue item (`registro`, plus `statusAnterior`) and the next screen carries a "↩️ Desfazer" button that `arrayRemove`s that entry and returns the item to its original list. Inside a batch, step 3 never writes — `produtoIdResolvido` is only committed by `finalizarLote` — so step 3 lists every already-decided item with a "↩️" button that just clears its `revisao`. For anything older, admins can delete individual `historico` entries in the app (trash icon in `DetalhesProduto`, admin mode).
 
 **"Suggest new product" timing differs by context.** In the global queue, tapping it creates the `sugestoes` doc immediately (deduped by normalized name against existing pending suggestions). Inside a batch (step 3), it's deferred: the tap only marks `revisao.sugestaoPendente: true` on the lote item (reversible — nothing is written outside the lote yet) and the item drops out of step-3 review. The `sugestoes` doc is only actually created inside `finalizarLote` when the batch is confirmed at step 4, alongside registering the other items' prices. This exists because an accidental tap (e.g. meaning to hit "Corrigir nome") used to leave an orphaned suggestion in Firestore with no easy undo; canceling the whole batch (`/cancelar`) is currently the only way to back out of a pending one before finalizing.
-
-### Daily menu and feedback (`comandos/cardapio.js`)
-
-The menu is not stored in Firestore: the Telegram conversation is the record. `gerarCardapioDiario` (hourly, matches `horarioEnvio`) and `/cardapio` send a message starting with `🍽️`. The scheduler skips a user whose `perfilCasa/{uid}.ultimoCardapioPara` already equals tomorrow's date and sets it after sending; `/cardapio` (`forcar`) ignores the marker but also sets it.
-
-Feedback is always a **reply** to a `🍽️` message from the bot, either plain text or `/feedback_cardapio <text>`. The previous menu comes from `message.reply_to_message.text` (header and footer stripped) and the house context (people, notes, meals, items at home) is rebuilt on the spot with `buscarPerfilCasa` + `obterItensComprados`, then `montarPromptRefinamento` gets the previous menu + the feedback. The adjusted menu goes out as a **new message** replying to the previous one (no edit), so replying to it again chains further adjustments. Never treat loose text as feedback: when the bot used to "listen" for feedback after sending a menu, an unanswered menu hijacked every later text message from any flow. `/feedback_cardapio` without a reply to a menu just explains how to reply.
 
 ### `callback_data` size constraint
 
