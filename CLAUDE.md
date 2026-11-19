@@ -224,3 +224,7 @@ HTTP function `despensaJornal` (`southamerica-east1`) consumed by the morning co
 - Token compared in constant time (`timingSafeEqual` over SHA-256 of both sides).
 - The robot holds the same token as `QQF_JORNAL_TOKEN` (and the URL as `QQF_DESPENSA_URL`) in news-ai's GitHub Actions secrets. Rotating means: `firebase functions:secrets:set JORNAL_TOKEN`, redeploy the function, then `gh secret set QQF_JORNAL_TOKEN --repo tathianamb/news-ai` with the same value.
 - When testing by hand, a Google-styled `401 Unauthorized` HTML page (instead of the plain-text `token inválido`) means Cloud Run rejected the `Authorization` header before reaching the function — in practice a token broken by copy/paste. Read it from the secret instead of pasting: `$t = (firebase functions:secrets:access JORNAL_TOKEN | Out-String).Trim()`.
+
+## Leitor externo: assistente de cardápio (`tathianamb/cardapio-ai`, privado)
+
+Um robô diário do GitHub Actions no repositório `cardapio-ai` lê o Firestore pela API REST com a conta de serviço `cardapio-leitor@quequefalta.iam.gserviceaccount.com` (papel `roles/datastore.viewer`, só leitura; não depende de faturamento) e exporta o que tem em casa, a lista de compras e as receitas aprovadas. Ele lê `usuarios/{uid}.listaAtiva`, `listas/{id}/lista`, `catalogo` (inclusive `grupoSubstituicao`) e `receitas`: ao mudar o nome ou o formato desses campos, ajuste também `coleta/exportar.mjs` lá. Dados da casa nunca entram neste repositório, que é público. A função `despensaJornal` não tem mais consumidor (o jornal deixou de usá-la em 21/10/2026).
