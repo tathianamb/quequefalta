@@ -8,8 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app, plus `perguntarChat`, the backend of the in-app chat.
 
-**Cardápio e nutrição ficam fora deste repositório**, no NutriAI (rotina do Claude): pessoas da casa, restrições, observações, cardápio diário e ajustes de cardápio. O bot do Telegram não tem mais `/casa`, `/cardapio`, `/pergunta` nem feedback de cardápio, e a coleção `perfilCasa` não é mais usada. Não traga isso de volta para cá; o chat do app só usa os itens em casa.
-
 ## Commands
 
 ### Frontend (repo root)
@@ -211,6 +209,8 @@ Item-by-item review offers: pick a suggested catalog match, correct the parsed n
 
 Telegram limits inline-button `callback_data` to 64 bytes. Action names are kept short (`lote_ant`, `rv_res`, `rv_dup`, etc.) and Firestore doc IDs (~20 chars) are the dominant cost — when a callback needs to reference more state than fits, persist it on the Firestore document instead of embedding it in `callback_data` (e.g. `duplicataCandidata` on the item, rather than passing the candidate product ID and origin message ID through the button).
 
-## Leitor externo: assistente de cardápio (`tathianamb/cardapio-ai`, privado)
+## Cardápio e nutrição: nutreai (`tathianamb/nutreai`, privado)
 
-Um robô diário do GitHub Actions no repositório `cardapio-ai` lê o Firestore pela API REST com a conta de serviço `cardapio-leitor@quequefalta.iam.gserviceaccount.com` (papel `roles/datastore.viewer`, só leitura; não depende de faturamento) e exporta o que tem em casa, a lista de compras e as receitas aprovadas. Ele lê `usuarios/{uid}.listaAtiva`, `listas/{id}/lista`, `catalogo` (inclusive `grupoSubstituicao`) e `receitas`: ao mudar o nome ou o formato desses campos, ajuste também `coleta/exportar.mjs` lá. Dados da casa nunca entram neste repositório, que é público. Ele substitui a antiga API `despensaJornal` (Cloud Function), removida em 19/11/2026.
+**Cardápio e nutrição ficam fora deste repositório**, no nutreai (rotina do Claude, antes `cardapio-ai`): pessoas, restrições, cardápio diário e ajustes de cardápio, com bot do Telegram próprio. O bot deste repositório não tem mais `/casa`, `/cardapio`, `/pergunta` nem feedback de cardápio, e a coleção `perfilCasa` não é mais usada. Não traga isso de volta para cá; o chat do app só usa os itens em casa.
+
+Um robô diário do GitHub Actions no nutreai (20h30) lê o Firestore pela API REST com a conta de serviço `cardapio-leitor@quequefalta.iam.gserviceaccount.com` (papel `roles/datastore.viewer`, só leitura; não depende de faturamento) e exporta o que tem em casa, a lista de compras e as receitas aprovadas. Ele lê `usuarios/{uid}.listaAtiva`, `listas/{id}/lista`, `catalogo` (inclusive `grupoSubstituicao`) e `receitas`: ao mudar o nome ou o formato desses campos, ajuste também `coleta/exportar.mjs` lá. Dados da casa nunca entram neste repositório, que é público. Ele substitui a antiga API `despensaJornal` (Cloud Function), removida em 19/11/2026.
