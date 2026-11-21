@@ -32,3 +32,6 @@ dist-ssr
 
 # scripts locais
 scripts/
+
+# imagens originais das receitas (hospedadas no R2)
+fotos-receitas/
