@@ -32,14 +32,16 @@ export async function buscarItemRevisaoPorId(itemId) {
 
 // `registro` é a entrada exata gravada no historico (null quando a duplicata
 // foi aceita sem gravar) e `statusAnterior` é de qual lista o item saiu —
-// os dois existem só para o "↩️ Desfazer" conseguir reverter a escolha.
-export async function resolverItemRevisao(itemId, produtoId, { registro = null, statusAnterior = "pendente" } = {}) {
+// `emCasa` ({ listaAtiva, efeito, itemId }) é o que a resolução mudou na lista
+// da casa. Os três existem só para o "↩️ Desfazer" conseguir reverter a escolha.
+export async function resolverItemRevisao(itemId, produtoId, { registro = null, statusAnterior = "pendente", emCasa = null } = {}) {
   const db = getFirestore();
   await db.collection("filaRevisaoNotas").doc(itemId).update({
     status: "resolvido",
     produtoIdResolvido: produtoId,
     registro,
     statusAnterior,
+    emCasa,
     resolvidoEm: FieldValue.serverTimestamp(),
   });
 }
@@ -60,6 +62,7 @@ export async function desfazerResolucaoItemRevisao(item) {
     produtoIdResolvido: null,
     registro: FieldValue.delete(),
     statusAnterior: FieldValue.delete(),
+    emCasa: FieldValue.delete(),
     duplicataCandidata: FieldValue.delete(),
   });
   await batch.commit();

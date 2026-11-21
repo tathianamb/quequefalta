@@ -19,6 +19,7 @@ import {
 } from "../firestore/revisao.js";
 import { criarSugestaoDeProduto } from "../firestore/sugestoes.js";
 import { aprenderApelido, esquecerApelido, nomeOriginalDoItem } from "../firestore/apelidos.js";
+import { marcarEmCasa, desfazerEmCasa, notaRecente } from "../firestore/emCasa.js";
 import { mostrarProximoDaMesmaLista, mostrarItemDaFilaPorId } from "./revisar.js";
 import { linhaDesfazerFila } from "../telegram/teclados.js";
 import { mostrarEtapa } from "./etapasLote.js";
@@ -81,8 +82,8 @@ async function resolverContextoRevisao(params) {
           return { nomeProduto, jaRegistrado: true };
         }
         let registro = null;
+        const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
         if (!aceitarDuplicata) {
-          const listaAtiva = await obterListaAtivaDoUsuario(item.uid);
           registro = await registrarPreco({
             produtoId,
             mercado: item.mercado,
@@ -92,12 +93,25 @@ async function resolverContextoRevisao(params) {
             nomeNota: item.nomeExtraido,
           });
         }
-        await resolverItemRevisao(itemId, produtoId, { registro, statusAnterior: item.status });
+        const emCasa = notaRecente(item.dataDaNota)
+          ? await marcarEmCasaSemFalhar(listaAtiva, [produtoId])
+          : null;
+        const efeitoEmCasa = emCasa?.get(produtoId);
+        await resolverItemRevisao(itemId, produtoId, {
+          registro,
+          statusAnterior: item.status,
+          emCasa: efeitoEmCasa ? { listaAtiva, ...efeitoEmCasa } : null,
+        });
         await aprenderSemFalhar(nomeOriginalDoItem(item), produtoId);
         return { nomeProduto };
       },
       async desfazer() {
         await desfazerResolucaoItemRevisao(item);
+        if (item.emCasa) {
+          await desfazerEmCasa(item.emCasa.listaAtiva, item.emCasa).catch((e) =>
+            console.error("Falha ao desfazer tem em casa:", e)
+          );
+        }
         await esquecerApelido(nomeOriginalDoItem(item), item.produtoIdResolvido).catch((e) =>
           console.error("Falha ao esquecer apelido:", e)
         );
@@ -405,6 +419,17 @@ async function aprenderSemFalhar(nomeNota, produtoId) {
   }
 }
 
+// Também é um extra: o preço vale mesmo se a lista da casa não puder ser
+// atualizada. Devolve null quando falha.
+async function marcarEmCasaSemFalhar(listaAtiva, produtoIds) {
+  try {
+    return await marcarEmCasa(listaAtiva, produtoIds);
+  } catch (e) {
+    console.error("Falha ao marcar tem em casa:", e);
+    return null;
+  }
+}
+
 async function finalizarLote(telegram, chatId, loteId) {
   const lote = await buscarLotePorId(loteId);
   if (!lote || lote.status !== "aguardando_confirmacao") {
@@ -417,6 +442,7 @@ async function finalizarLote(telegram, chatId, loteId) {
   let gravados = 0;
   let paraFila = 0;
   let sugeridos = 0;
+  const comprados = [];
 
   for (const item of lote.itens) {
     // Todo item que termina ligado a um produto ensina a memória de apelidos:
@@ -426,7 +452,10 @@ async function finalizarLote(telegram, chatId, loteId) {
       item.statusMatch === "match" || item.statusMatch === "descartado"
         ? item.produtoIdCasado
         : item.revisao?.status === "resolvido" ? item.revisao.produtoIdResolvido : null;
-    if (produtoFinal) await aprenderSemFalhar(nomeOriginalDoItem(item), produtoFinal);
+    if (produtoFinal) {
+      await aprenderSemFalhar(nomeOriginalDoItem(item), produtoFinal);
+      comprados.push(produtoFinal);
+    }
 
     if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) {
       continue;
@@ -481,6 +510,13 @@ async function finalizarLote(telegram, chatId, loteId) {
 
   await marcarLoteConfirmado(loteId);
 
+  // Nota recente = compra de agora: tudo que ficou ligado a um produto
+  // (inclusive o preço que já existia) vai para "tem em casa".
+  const emCasa = notaRecente(lote.dataDaNota) ? await marcarEmCasaSemFalhar(listaAtiva, comprados) : null;
+  const mensagemEmCasa = emCasa?.size
+    ? ` ${emCasa.size} ite${emCasa.size > 1 ? "ns" : "m"} marcado${emCasa.size > 1 ? "s" : ""} como tem em casa.`
+    : "";
+
   const mensagemSugeridos = sugeridos
     ? ` ${sugeridos} ite${sugeridos > 1 ? "ns" : "m"} foi${sugeridos > 1 ? "ram" : ""} enviado${sugeridos > 1 ? "s" : ""} como sugestão de produto novo.`
     : "";
@@ -489,6 +525,6 @@ async function finalizarLote(telegram, chatId, loteId) {
     : "";
   await telegram.enviarMensagem(
     chatId,
-    `✅ ${gravados} preço${gravados > 1 ? "s" : ""} registrado${gravados > 1 ? "s" : ""} no QueQueFalta!${mensagemSugeridos}${mensagemFila}`
+    `✅ ${gravados} preço${gravados > 1 ? "s" : ""} registrado${gravados > 1 ? "s" : ""} no QueQueFalta!${mensagemEmCasa}${mensagemSugeridos}${mensagemFila}`
   );
 }
