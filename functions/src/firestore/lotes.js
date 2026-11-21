@@ -37,6 +37,8 @@ export async function criarLote({
       nomeOriginal: item.nome,
       precoExtraido: item.preco,
       unidade: item.unidade,
+      quantidade: item.quantidade ?? null,
+      total: item.total ?? null,
       produtoIdCasado: item.match.melhorMatch?.id || null,
       nomeProdutoCasado: item.match.melhorMatch?.nome || null,
       sugestoes: item.match.sugestoes,

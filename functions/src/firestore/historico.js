@@ -16,7 +16,9 @@ export async function produtoJaTemRegistro({ produtoId, mercado, data }) {
   return historico.some((h) => h.mercado === mercado && paraDataIso(h.data) === data);
 }
 
-export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva, nomeNota }) {
+// `quantidade` e `unidade` ("un" | "kg") vêm da nota; ficam fora da entrada
+// quando não se sabe (registros antigos, preço digitado no app).
+export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva, nomeNota, quantidade, unidade }) {
   const db = getFirestore();
   const dataRegistro = data ? new Date(`${data}T12:00:00`) : new Date();
   // O nome como veio na nota (nome comercial + peso/volume, ex: "Queijo Prato
@@ -28,6 +30,8 @@ export async function registrarPreco({ produtoId, mercado, preco, data, listaAti
     : "Registrado via Telegram";
 
   const entrada = { mercado, preco, data: dataRegistro, observacao, listaAtiva };
+  if (Number.isFinite(quantidade)) entrada.quantidade = quantidade;
+  if (unidade) entrada.unidade = unidade;
   await db
     .collection("catalogo")
     .doc(produtoId)

@@ -84,7 +84,7 @@ catalogo/{produtoId}
   ├── nome, categoria, subcategoria, receitas[]
   ├── grupoSubstituicao[] # tags (strings) of interchangeable products, e.g. "Carne moída"
   ├── generico            # true = só ingrediente de receita ("Óleo"): fora do catálogo do app (exceto modo admin) e do match do bot
-  └── historico[]         # price records: mercado, preco, data, observacao, listaAtiva
+  └── historico[]         # price records: mercado, preco, data, observacao, listaAtiva (+ quantidade, unidade 'un'|'kg' when it came from a bot note)
 
 listas/{listaId}          # listaId == uid of the list owner
   ├── criadaPor, participantes[]
@@ -121,6 +121,7 @@ telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
 apelidosNota/{nomeNormalizado} # learned "receipt text → produtoId" memory: produtoId, usos, nomeNota (bot-only)
+idasMercado/{loteId}           # planned vs. bought per trip: planejados, compradosDaLista[], extras[], esquecidos[], valorTotal, valorExtras (bot-only)
 travasGemini/{uid}             # per-user wait between Gemini calls of the app chat (server-only)
 ```
 
@@ -173,7 +174,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 ### Directory layout
 
 - `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `help.js`.
-- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat), `apelidos.js` (learned receipt-name memory, see below), `emCasa.js` (marks bought products as "tem em casa", see below).- `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
+- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat), `apelidos.js` (learned receipt-name memory, see below), `emCasa.js` (marks bought products as "tem em casa", see below), `idas.js` (planned vs. bought per trip, see below).- `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
 - `parser/tabela.js` — parses pasted table text (mercado+date header line, then tab/space-delimited item rows) into structured `{ mercado, data, itens[] }`.
 - `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
 
@@ -213,6 +214,19 @@ Every item keeps `nomeOriginal` (the text as printed on the receipt) next to `no
 ### Bought items go to "tem em casa" (`emCasa.js`)
 
 A note dated within the last `DIAS_NOTA_RECENTE` (7) days counts as a purchase made now. `finalizarLote` marks every item that ended tied to a product as em casa in the house's `listaAtiva`, including duplicates whose price was already recorded. Products not yet on the list are created with `comprado: true`, and products waiting to be bought are flipped to `comprado: true`. The same applies when an item is resolved in the global queue. There, the change is saved on the queue item (`emCasa: { listaAtiva, efeito, itemId }`) so that "↩️ Desfazer" can revert it. Older notes only record prices. Failures are logged and never block the price writes (`marcarEmCasaSemFalhar`).
+
+### Planned vs. bought (`idasMercado`)
+
+For a recent note, `finalizarLote` compares the note with the house list **before** marking anything em casa, and writes `idasMercado/{loteId}`:
+- `compradosDaLista`: note lines whose product was on the list to buy.
+- `extras`: every other line. These are products not on the list, repurchases of something already em casa, and lines without a catalog product. Each line carries its value: the note's total, or price × quantity.
+- `esquecidos`: products that stayed on the list without being bought. The list is shared across markets, so this also includes what was meant for another market.
+
+A re-sent note, where every linked product is a duplicate price, is skipped. The bot's final message shows a one-line summary of the trip.
+
+The parser now keeps `quantidade` and `total` per line. Repeated lines in a note are summed. Quantity and unit flow from the lote and the review queue into `historico` through `registrarPreco`.
+
+A local, gitignored script, `functions/scripts/relatorioAderencia.mjs`, exports a month to CSV for the household spending sheet. It is read-only, uses a gcloud token, and its output stays outside the repo.
 
 ### `callback_data` size constraint
 

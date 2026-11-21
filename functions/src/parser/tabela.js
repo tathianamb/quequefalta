@@ -11,10 +11,20 @@ function paraNumero(valorBr) {
   return parseFloat(valorBr.replace(/\./g, "").replace(",", "."));
 }
 
+// Quantidade: com vírgula é formato BR ("0,522", "1.234,5"); sem vírgula, o
+// ponto é decimal ("0.522" de texto encaminhado) — quantidade de milhares não
+// existe numa nota de mercado.
+function paraQuantidade(texto) {
+  return texto.includes(",") ? paraNumero(texto) : parseFloat(texto);
+}
+
 function paraDataIso(dataBr) {
   const [dia, mes, ano] = dataBr.split("/");
   return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
 }
+
+const numeroOuNull = (n) => (Number.isFinite(n) ? n : null);
+const somar = (a, b) => (a == null || b == null ? null : Math.round((a + b) * 1000) / 1000);
 
 /**
  * Interpreta uma mensagem com uma tabela de compras (colada do Excel/Sheets
@@ -25,7 +35,8 @@ function paraDataIso(dataBr) {
  *   ...
  *
  * @param {string} texto
- * @returns {{ mercado: string, data: string, itens: Array<{nome, preco, unidade}> } | { erro: string }}
+ * @returns {{ mercado: string, data: string, itens: Array<{nome, preco, unidade, quantidade, total}> } | { erro: string }}
+ *   quantidade e total ficam null quando não dá para ler o número.
  */
 export function interpretarTabela(texto) {
   const linhas = texto
@@ -51,7 +62,7 @@ export function interpretarTabela(texto) {
     const matchItem = linha.match(REGEX_LINHA_ITEM);
     if (!matchItem) continue;
 
-    const [, nome, , unidadeTexto, precoUnitTexto] = matchItem;
+    const [, nome, quantidadeTexto, unidadeTexto, precoUnitTexto, totalTexto] = matchItem;
     const nomeLimpo = nome.trim();
     if (!nomeLimpo || /^produto\b/i.test(nomeLimpo)) continue; // pula linha de cabeçalho da tabela
 
@@ -59,8 +70,17 @@ export function interpretarTabela(texto) {
     const preco = paraNumero(precoUnitTexto);
     if (Number.isNaN(preco)) continue;
 
-    if (!itensPorNome.has(nomeLimpo)) {
-      itensPorNome.set(nomeLimpo, { nome: nomeLimpo, preco, unidade });
+    const quantidade = numeroOuNull(paraQuantidade(quantidadeTexto));
+    const total = numeroOuNull(paraNumero(totalTexto));
+
+    // O mesmo produto em duas linhas vira um item só: o preço é o da primeira
+    // linha, e quantidade e total somam.
+    const existente = itensPorNome.get(nomeLimpo);
+    if (!existente) {
+      itensPorNome.set(nomeLimpo, { nome: nomeLimpo, preco, unidade, quantidade, total });
+    } else {
+      existente.quantidade = somar(existente.quantidade, quantidade);
+      existente.total = somar(existente.total, total);
     }
   }
 

@@ -20,6 +20,7 @@ import {
 import { criarSugestaoDeProduto } from "../firestore/sugestoes.js";
 import { aprenderApelido, esquecerApelido, nomeOriginalDoItem } from "../firestore/apelidos.js";
 import { marcarEmCasa, desfazerEmCasa, notaRecente } from "../firestore/emCasa.js";
+import { registrarIda } from "../firestore/idas.js";
 import { mostrarProximoDaMesmaLista, mostrarItemDaFilaPorId } from "./revisar.js";
 import { linhaDesfazerFila } from "../telegram/teclados.js";
 import { mostrarEtapa } from "./etapasLote.js";
@@ -91,6 +92,8 @@ async function resolverContextoRevisao(params) {
             data: item.dataDaNota,
             listaAtiva,
             nomeNota: item.nomeExtraido,
+            quantidade: item.quantidade,
+            unidade: item.unidade,
           });
         }
         const emCasa = notaRecente(item.dataDaNota)
@@ -443,6 +446,9 @@ async function finalizarLote(telegram, chatId, loteId) {
   let paraFila = 0;
   let sugeridos = 0;
   const comprados = [];
+  const linhas = []; // cada linha da nota, para o planejado × comprado
+  let ligados = 0;
+  let ligadosDuplicados = 0;
 
   for (const item of lote.itens) {
     // Todo item que termina ligado a um produto ensina a memória de apelidos:
@@ -455,7 +461,19 @@ async function finalizarLote(telegram, chatId, loteId) {
     if (produtoFinal) {
       await aprenderSemFalhar(nomeOriginalDoItem(item), produtoFinal);
       comprados.push(produtoFinal);
+      ligados++;
+      if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) ligadosDuplicados++;
     }
+    linhas.push({
+      produtoId: produtoFinal || null,
+      nome:
+        (item.statusMatch === "match" || item.statusMatch === "descartado" ? item.nomeProdutoCasado : null) ||
+        item.revisao?.nomeProdutoResolvido ||
+        item.nomeExtraido,
+      preco: item.precoExtraido,
+      quantidade: item.quantidade ?? null,
+      total: item.total ?? null,
+    });
 
     if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) {
       continue;
@@ -467,6 +485,8 @@ async function finalizarLote(telegram, chatId, loteId) {
         data: lote.dataDaNota,
         listaAtiva,
         nomeNota: item.nomeExtraido,
+        quantidade: item.quantidade,
+        unidade: item.unidade,
       });
       gravados++;
     } else if (item.revisao?.sugestaoPendente) {
@@ -489,6 +509,8 @@ async function finalizarLote(telegram, chatId, loteId) {
         data: lote.dataDaNota,
         listaAtiva,
         nomeNota: item.nomeExtraido,
+        quantidade: item.quantidade,
+        unidade: item.unidade,
       });
       gravados++;
     } else {
@@ -500,6 +522,8 @@ async function finalizarLote(telegram, chatId, loteId) {
         nomeOriginal: nomeOriginalDoItem(item),
         precoExtraido: item.precoExtraido,
         unidade: item.unidade,
+        quantidade: item.quantidade ?? null,
+        total: item.total ?? null,
         mercado: lote.mercado,
         dataDaNota: lote.dataDaNota,
         status: item.revisao?.status === "ignorado" ? "ignorado" : "pendente",
@@ -509,6 +533,32 @@ async function finalizarLote(telegram, chatId, loteId) {
   }
 
   await marcarLoteConfirmado(loteId);
+
+  // Planejado × comprado, antes de marcar "tem em casa" (que mudaria a lista).
+  // Nota já registrada antes (todo produto com preço repetido) é reenvio, não
+  // uma ida nova: registrar de novo contaria tudo como extra.
+  const reenvio = ligados > 0 && ligados === ligadosDuplicados;
+  const ida =
+    notaRecente(lote.dataDaNota) && !reenvio
+      ? await registrarIda({
+          loteId,
+          uid: lote.uid,
+          listaAtiva,
+          mercado: lote.mercado,
+          data: lote.dataDaNota || new Date().toISOString().slice(0, 10),
+          linhas,
+        }).catch((e) => {
+          console.error("Falha ao registrar a ida:", e);
+          return null;
+        })
+      : null;
+  const mensagemIda = ida
+    ? `\n\n📋 ${ida.compradosDaLista.length} da lista de compras, ${ida.extras.length} fora da lista` +
+      ` (R$ ${ida.valorExtras.toFixed(2).replace(".", ",")}).` +
+      (ida.esquecidos.length
+        ? ` Ficaram na lista ${ida.esquecidos.length}: ${ida.esquecidos.slice(0, 5).map((e) => e.nome).filter(Boolean).join(", ")}${ida.esquecidos.length > 5 ? "…" : ""}.`
+        : "")
+    : "";
 
   // Nota recente = compra de agora: tudo que ficou ligado a um produto
   // (inclusive o preço que já existia) vai para "tem em casa".
@@ -525,6 +575,6 @@ async function finalizarLote(telegram, chatId, loteId) {
     : "";
   await telegram.enviarMensagem(
     chatId,
-    `✅ ${gravados} preço${gravados > 1 ? "s" : ""} registrado${gravados > 1 ? "s" : ""} no QueQueFalta!${mensagemEmCasa}${mensagemSugeridos}${mensagemFila}`
+    `✅ ${gravados} preço${gravados > 1 ? "s" : ""} registrado${gravados > 1 ? "s" : ""} no QueQueFalta!${mensagemEmCasa}${mensagemSugeridos}${mensagemFila}${mensagemIda}`
   );
 }
