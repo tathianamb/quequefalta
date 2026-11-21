@@ -32,12 +32,16 @@ export async function criarLote({
     itens: itens.map((item, indice) => ({
       indice,
       nomeExtraido: item.nome,
+      // nomeExtraido muda com "✏️ Corrigir nome"; nomeOriginal fica como veio
+      // na nota — é a chave da memória de apelidos (firestore/apelidos.js).
+      nomeOriginal: item.nome,
       precoExtraido: item.preco,
       unidade: item.unidade,
       produtoIdCasado: item.match.melhorMatch?.id || null,
       nomeProdutoCasado: item.match.melhorMatch?.nome || null,
       sugestoes: item.match.sugestoes,
       statusMatch: item.match.melhorMatch ? "match" : "sem_match",
+      origemMatch: item.match.melhorMatch?.origem || (item.match.melhorMatch ? "fuzzy" : null),
       confirmado: true,
       revisao: null,
       jaRegistrado: item.jaRegistrado || false,

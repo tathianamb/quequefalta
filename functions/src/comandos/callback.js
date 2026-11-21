@@ -18,6 +18,7 @@ import {
   desfazerResolucaoItemRevisao,
 } from "../firestore/revisao.js";
 import { criarSugestaoDeProduto } from "../firestore/sugestoes.js";
+import { aprenderApelido, esquecerApelido, nomeOriginalDoItem } from "../firestore/apelidos.js";
 import { mostrarProximoDaMesmaLista, mostrarItemDaFilaPorId } from "./revisar.js";
 import { linhaDesfazerFila } from "../telegram/teclados.js";
 import { mostrarEtapa } from "./etapasLote.js";
@@ -92,10 +93,14 @@ async function resolverContextoRevisao(params) {
           });
         }
         await resolverItemRevisao(itemId, produtoId, { registro, statusAnterior: item.status });
+        await aprenderSemFalhar(nomeOriginalDoItem(item), produtoId);
         return { nomeProduto };
       },
       async desfazer() {
         await desfazerResolucaoItemRevisao(item);
+        await esquecerApelido(nomeOriginalDoItem(item), item.produtoIdResolvido).catch((e) =>
+          console.error("Falha ao esquecer apelido:", e)
+        );
       },
       async marcarAguardandoNome(messageId, messageIdPergunta) {
         await marcarAguardandoNomeNovo(itemId, messageId, messageIdPergunta);
@@ -367,15 +372,37 @@ async function removerMatch(telegram, chatId, loteId, indice, messageId) {
   // (etapa 3) em vez de ser descartado direto. Confirmar a duplicata sem
   // clicar ❌ (avançando para a etapa 3) é o que descarta de vez — ver
   // navegarEtapa.
+  // Match vindo da memória de apelidos e marcado como errado: o apelido é
+  // apagado, senão a próxima nota com esse texto repetiria o mesmo erro.
+  const lote = await buscarLotePorId(loteId);
+  const item = lote?.itens.find((i) => i.indice === indice);
+  if (item?.origemMatch === "apelido" && item.produtoIdCasado) {
+    await esquecerApelido(nomeOriginalDoItem(item), item.produtoIdCasado, { tudo: true }).catch((e) =>
+      console.error("Falha ao esquecer apelido:", e)
+    );
+  }
+
   await atualizarItemDoLote(loteId, indice, {
     statusMatch: "sem_match",
     produtoIdCasado: null,
     nomeProdutoCasado: null,
+    origemMatch: null,
     jaRegistrado: false,
   });
 
   const loteAtualizado = await buscarLotePorId(loteId);
   await mostrarEtapa(telegram, chatId, loteAtualizado, messageId);
+}
+
+// Aprender é um extra: se falhar, o preço já gravado e o fluxo do lote não
+// podem ser afetados (um throw no meio de finalizarLote deixaria o lote
+// meio gravado e ainda "aguardando_confirmacao").
+async function aprenderSemFalhar(nomeNota, produtoId) {
+  try {
+    await aprenderApelido(nomeNota, produtoId);
+  } catch (e) {
+    console.error("Falha ao aprender apelido:", e);
+  }
 }
 
 async function finalizarLote(telegram, chatId, loteId) {
@@ -392,6 +419,15 @@ async function finalizarLote(telegram, chatId, loteId) {
   let sugeridos = 0;
 
   for (const item of lote.itens) {
+    // Todo item que termina ligado a um produto ensina a memória de apelidos:
+    // match mantido na etapa 2 (inclusive o descartado por já ter preço —
+    // o produto estava certo), ou produto escolhido na etapa 3.
+    const produtoFinal =
+      item.statusMatch === "match" || item.statusMatch === "descartado"
+        ? item.produtoIdCasado
+        : item.revisao?.status === "resolvido" ? item.revisao.produtoIdResolvido : null;
+    if (produtoFinal) await aprenderSemFalhar(nomeOriginalDoItem(item), produtoFinal);
+
     if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) {
       continue;
     } else if (item.statusMatch === "match" && item.confirmado) {
@@ -432,6 +468,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         uid: lote.uid,
         chatId,
         nomeExtraido: item.nomeExtraido,
+        nomeOriginal: nomeOriginalDoItem(item),
         precoExtraido: item.precoExtraido,
         unidade: item.unidade,
         mercado: lote.mercado,

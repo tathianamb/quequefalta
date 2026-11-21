@@ -120,6 +120,7 @@ telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 
 lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
+apelidosNota/{nomeNormalizado} # learned "receipt text → produtoId" memory: produtoId, usos, nomeNota (bot-only)
 travasGemini/{uid}             # per-user wait between Gemini calls of the app chat (server-only)
 ```
 
@@ -171,8 +172,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 ### Directory layout
 
 - `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `help.js`.
-- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat).
-- `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
+- `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat), `apelidos.js` (learned receipt-name memory, see below).- `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
 - `parser/tabela.js` — parses pasted table text (mercado+date header line, then tab/space-delimited item rows) into structured `{ mercado, data, itens[] }`.
 - `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
 
@@ -204,6 +204,10 @@ Item-by-item review offers: pick a suggested catalog match, correct the parsed n
 **Undo (`rv_desf`).** In the global queue, picking a product writes the price immediately; the exact `historico` entry is saved on the queue item (`registro`, plus `statusAnterior`) and the next screen carries a "↩️ Desfazer" button that `arrayRemove`s that entry and returns the item to its original list. Inside a batch, step 3 never writes — `produtoIdResolvido` is only committed by `finalizarLote` — so step 3 lists every already-decided item with a "↩️" button that just clears its `revisao`. For anything older, admins can delete individual `historico` entries in the app (trash icon in `DetalhesProduto`, admin mode).
 
 **"Suggest new product" timing differs by context.** In the global queue, tapping it creates the `sugestoes` doc immediately (deduped by normalized name against existing pending suggestions). Inside a batch (step 3), it's deferred: the tap only marks `revisao.sugestaoPendente: true` on the lote item (reversible — nothing is written outside the lote yet) and the item drops out of step-3 review. The `sugestoes` doc is only actually created inside `finalizarLote` when the batch is confirmed at step 4, alongside registering the other items' prices. This exists because an accidental tap (e.g. meaning to hit "Corrigir nome") used to leave an orphaned suggestion in Firestore with no easy undo; canceling the whole batch (`/cancelar`) is currently the only way to back out of a pending one before finalizing.
+
+### Learned matches (`apelidosNota`)
+
+Every item keeps `nomeOriginal` (the text as printed on the receipt) next to `nomeExtraido` (which "✏️ Corrigir nome" overwrites). Whenever an item ends up tied to a product — kept in step 2 (including auto-discarded duplicates), chosen in step 3 (learned at `finalizarLote`), or resolved in the global queue — `aprenderApelido(nomeOriginal, produtoId)` records it (same product → `usos+1`; different product → latest decision wins). When a new table is parsed, `tratarTabela` looks up each name in `apelidosNota` **before** the fuzzy match; a hit becomes the match with `origemMatch: "apelido"`, shown with 🧠. ❌ on a 🧠 match deletes the alias; "↩️ Desfazer" in the global queue decrements it. Learning is best-effort (`aprenderSemFalhar`) and must never break `finalizarLote`. Items created before this existed have no `nomeOriginal`; `nomeOriginalDoItem()` falls back to `nomeExtraido`.
 
 ### `callback_data` size constraint
 

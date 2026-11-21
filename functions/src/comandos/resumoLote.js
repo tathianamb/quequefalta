@@ -8,7 +8,9 @@ export function descreverItem(item) {
     return `${nomeNota} (vai virar sugestão de produto novo) — ${preco}`;
   }
   if (item.statusMatch === "match") {
-    return `${item.nomeProdutoCasado} (nota: "${nomeNota}") — ${preco}`;
+    // 🧠 = casado pela memória de decisões anteriores, não pelo fuzzy match.
+    const memoria = item.origemMatch === "apelido" ? "🧠 " : "";
+    return `${memoria}${item.nomeProdutoCasado} (nota: "${nomeNota}") — ${preco}`;
   }
   return `${nomeNota} (sem match no catálogo) — ${preco}`;
 }
