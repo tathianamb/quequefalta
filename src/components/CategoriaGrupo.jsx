@@ -20,6 +20,7 @@ function CategoriaGrupo({
   onFiltrarGrupo,
   subgrupos,
   acao, // { icone, rotulo, onClick } — botão opcional no cabeçalho
+  detalheDoItem, // (item) => texto opcional exibido sob o item
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
@@ -46,6 +47,7 @@ function CategoriaGrupo({
       onRemover={onRemover}
       contexto={contexto}
       onFiltrarGrupo={onFiltrarGrupo}
+      detalhe={detalheDoItem?.(p)}
     />
   );
 

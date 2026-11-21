@@ -26,7 +26,20 @@ import {
   ArrowUpDown,
   Check,
   Download,
+  Sparkles,
 } from "lucide-react";
+
+// Cores dos grupos "por mercado" (sem relação com as cores de categoria).
+const CORES_MERCADO = ["#4C6EF5", "#12B886", "#F59F00", "#E64980", "#7950F2", "#15AABF"];
+
+// Preferência de agrupamento da lista, só deste aparelho.
+function lerAgrupamentoSalvo() {
+  try {
+    return localStorage.getItem("agrupamentoLista") === "mercado" ? "mercado" : "categoria";
+  } catch {
+    return "categoria";
+  }
+}
 import { isAdmin } from "../config/admins";
 import { useSugestoes } from "../hooks/useSugestoes";
 import { useReceitas } from "../hooks/useReceitas";
@@ -40,6 +53,8 @@ import { DicaLista } from "../components/dicas/DicaLista";
 import { DicaDetalhe } from "../components/dicas/DicaDetalhe";
 import { DicaFormulario } from "../components/dicas/DicaFormulario";
 import FiltroCategoria from "../components/FiltroCategoria";
+import SugestoesMes from "../components/SugestoesMes";
+import { ondeComprar, formatarPreco } from "../utils/precos";
 import {
   TIPOGRAFIA,
   FONTE,
@@ -68,6 +83,8 @@ function Home({
   } = useLista(listaAtiva, catalogo);
   const { escuro, toggleTema, seguirSistema } = useTema();
   const [aba, setAba] = useState("lista");
+  const [agrupamentoLista, setAgrupamentoLista] = useState(lerAgrupamentoSalvo);
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
   const [busca, setBusca] = useState("");
   const [grupoFiltro, setGrupoFiltro] = useState([]);
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
@@ -150,6 +167,38 @@ function Home({
   const pendentes = filtrar(lista.filter((i) => !i.comprado));
   const comprados = filtrar(lista.filter((i) => i.comprado));
   const porCategoriaPendentes = agrupar(pendentes);
+
+  // "Onde comprar": cada item pendente vai para o mercado com o menor preço
+  // atual registrado (regra em utils/precos.js). Mercados com mais itens
+  // primeiro; itens sem nenhum preço ficam num grupo no fim.
+  const produtoPorId = new Map(catalogo.map((p) => [p.id, p]));
+  const ondeDoItem = new Map(pendentes.map((i) => [i.id, ondeComprar(produtoPorId.get(i.produtoId))]));
+  const porMercadoPendentes = (() => {
+    const grupos = new Map();
+    for (const item of pendentes) {
+      const onde = ondeDoItem.get(item.id);
+      const chave = onde?.chave ?? "";
+      if (!grupos.has(chave)) grupos.set(chave, { nome: onde?.mercado ?? "Sem preço registrado", itens: [] });
+      grupos.get(chave).itens.push(item);
+    }
+    return [...grupos.entries()]
+      .sort(([a, ga], [b, gb]) => (a === "") - (b === "") || gb.itens.length - ga.itens.length)
+      .map(([chave, g], i) => ({
+        ...g,
+        chave: chave || "sem-preco",
+        cor: chave ? CORES_MERCADO[i % CORES_MERCADO.length] : COR.neutro,
+      }));
+  })();
+  const detalhePrecoDoItem = (item) => {
+    const onde = ondeDoItem.get(item.id);
+    if (!onde) return null;
+    const data = onde.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    return `${formatarPreco(onde.preco)} · preço de ${data}`;
+  };
+  const mudarAgrupamento = (valor) => {
+    setAgrupamentoLista(valor);
+    try { localStorage.setItem("agrupamentoLista", valor); } catch { /* sem storage: só não lembra */ }
+  };
   // incluirOutras: o "Tem em casa" mostra a contagem total no cabeçalho, então
   // nenhum item pode sumir dos subgrupos por não ter categoria conhecida.
   const porCategoriaComprados = agrupar(comprados, { incluirOutras: true });
@@ -487,11 +536,63 @@ function Home({
                 </button>
               </div>
             )}
-          {Object.entries(porCategoriaPendentes).map(([categoria, itens]) => (
+          {!carregando && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "16px" }}>
+              <div style={{ display: "flex", background: "var(--card)", borderRadius: RAIO.pill, padding: "3px", boxShadow: "var(--shadow)" }}>
+                {[["categoria", "Categoria"], ["mercado", "Mercado"]].map(([valor, rotulo]) => {
+                  const ativo = agrupamentoLista === valor;
+                  return (
+                    <button
+                      key={valor}
+                      onClick={() => mudarAgrupamento(valor)}
+                      aria-pressed={ativo}
+                      style={{
+                        border: "none",
+                        borderRadius: RAIO.pill,
+                        padding: "6px 12px",
+                        background: ativo ? "var(--amarelo)" : "transparent",
+                        color: ativo ? "#212529" : "var(--text-soft)",
+                        fontFamily: "Nunito, sans-serif",
+                        fontWeight: FONTE.bold,
+                        fontSize: "13px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {rotulo}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => { setSugestoesAbertas(true); pushBack(() => setSugestoesAbertas(false)); }}
+                style={{ ...BOTAO_SECUNDARIO, padding: "6px 12px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <Sparkles size={14} /> Sugestões do mês
+              </button>
+            </div>
+          )}
+          {agrupamentoLista === "categoria" && Object.entries(porCategoriaPendentes).map(([categoria, itens]) => (
             <CategoriaGrupo
               key={categoria}
               categoria={categoria}
               itens={itens}
+              contexto="lista"
+              onToggle={toggleComprado}
+              onAbrir={abrirProduto}
+              busca={busca}
+              itensDaLista={lista}
+              onRemover={removerItem}
+              onFiltrarGrupo={irParaGrupo}
+              forcarAberto={todasExpandidasLista}
+            />
+          ))}
+          {agrupamentoLista === "mercado" && porMercadoPendentes.map((grupo) => (
+            <CategoriaGrupo
+              key={grupo.chave}
+              categoria={grupo.nome}
+              itens={grupo.itens}
+              corOverride={grupo.cor}
+              detalheDoItem={detalhePrecoDoItem}
               contexto="lista"
               onToggle={toggleComprado}
               onAbrir={abrirProduto}
@@ -1093,6 +1194,17 @@ function Home({
       )}
 
       {/* Modal detalhes */}
+      {sugestoesAbertas && (
+        <SugestoesMes
+          catalogo={catalogo}
+          listaAtiva={listaAtiva}
+          lista={lista}
+          adicionarItem={adicionarItem}
+          toggleComprado={toggleComprado}
+          onFechar={() => setSugestoesAbertas(false)}
+        />
+      )}
+
       {produtoSelecionado && (
         <DetalhesProduto
           produto={

@@ -14,6 +14,7 @@ function ProdutoItem({
   onRemover,
   contexto,
   onFiltrarGrupo,
+  detalhe, // texto curto opcional sob as tags (ex: preço no agrupamento por mercado)
 }) {
   const cor = corDaCategoria(produto.categoria);
   const [feedback, setFeedback] = useState(false); // false | "lista" | "casa"
@@ -184,6 +185,11 @@ function ProdutoItem({
               </span>
             ))}
           </div>
+          {detalhe && (
+            <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "4px" }}>
+              {detalhe}
+            </p>
+          )}
           {feedback && (
             <p
               style={{
