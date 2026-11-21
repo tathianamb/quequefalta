@@ -94,6 +94,7 @@ async function resolverContextoRevisao(params) {
             nomeNota: item.nomeExtraido,
             quantidade: item.quantidade,
             unidade: item.unidade,
+            precoPago: item.precoPago,
           });
         }
         const emCasa = notaRecente(item.dataDaNota)
@@ -487,6 +488,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         nomeNota: item.nomeExtraido,
         quantidade: item.quantidade,
         unidade: item.unidade,
+        precoPago: item.precoPago,
       });
       gravados++;
     } else if (item.revisao?.sugestaoPendente) {
@@ -511,6 +513,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         nomeNota: item.nomeExtraido,
         quantidade: item.quantidade,
         unidade: item.unidade,
+        precoPago: item.precoPago,
       });
       gravados++;
     } else {
@@ -524,6 +527,7 @@ async function finalizarLote(telegram, chatId, loteId) {
         unidade: item.unidade,
         quantidade: item.quantidade ?? null,
         total: item.total ?? null,
+        precoPago: item.precoPago ?? null,
         mercado: lote.mercado,
         dataDaNota: lote.dataDaNota,
         status: item.revisao?.status === "ignorado" ? "ignorado" : "pendente",
@@ -546,6 +550,7 @@ async function finalizarLote(telegram, chatId, loteId) {
           listaAtiva,
           mercado: lote.mercado,
           data: lote.dataDaNota || new Date().toISOString().slice(0, 10),
+          totalNota: lote.totalNota ?? null,
           linhas,
         }).catch((e) => {
           console.error("Falha ao registrar a ida:", e);

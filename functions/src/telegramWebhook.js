@@ -5,6 +5,7 @@ import { criarClienteTelegram } from "./telegram/api.js";
 import { tratarVincular } from "./comandos/vincular.js";
 import { tratarTabela } from "./comandos/tabela.js";
 import { tratarHelp } from "./comandos/help.js";
+import { TEMPLATE_CURTO } from "./parser/nota.js";
 import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemDaFilaPorId } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
@@ -91,7 +92,7 @@ async function processarUpdate(telegram, update) {
     if (!textoTabela) {
       await telegram.enviarMensagem(
         chatId,
-        "Cole a tabela junto, na mesma mensagem: /nota seguido do mercado + data na primeira linha e os itens abaixo."
+        `Mande a nota na mesma mensagem do /nota, assim:\n\n${TEMPLATE_CURTO}`
       );
       return;
     }

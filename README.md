@@ -34,7 +34,7 @@ Uma planilha Google foi criada como solução intermediária, com estrutura rica
 - Sugestão de novos produtos pelos usuários, com fluxo de aprovação por um administrador
 - Receitas: cadastro (inclusive colando um texto para preenchimento automático), lista de ingredientes com checklist do que já está em casa, e atalho para adicionar os que faltam à lista
 - Grupos de substituição: tags nos produtos intercambiáveis (ex.: "Leite", "Carne moída"), usadas para saber se um ingrediente de receita já está em casa
-- Registro de preços pelo Telegram: colar a tabela de uma compra no bot para dar entrada nos preços sem abrir o app
+- Registro de preços pelo Telegram: mandar a nota de uma compra ao bot (`/nota`, modelo em [docs/template-nota.md](docs/template-nota.md)) para dar entrada nos preços sem abrir o app; o bot confere a soma com o total da nota e marca os itens como "tem em casa"
 - Múltiplas listas por usuário e **compartilhamento por link**
 - Sincronização em tempo real entre os participantes de uma lista
 - Tema claro/escuro (com opção de seguir o sistema)
@@ -174,8 +174,8 @@ Na hora de ir ao mercado
 
 Durante a compra
   └── Abrir o item → informar mercado + preço (data automática)
-      ou enviar /nota com a tabela da compra no bot do Telegram
-      (mercado + itens de uma vez), sem precisar abrir o app
+      ou enviar /nota com a nota da compra no bot do Telegram
+      (mercado, data, total + itens de uma vez), sem precisar abrir o app
 
 A qualquer momento
   └── Abrir o Catálogo para consultar histórico, registrar preço
@@ -254,9 +254,11 @@ Codebase separada (Firebase Cloud Functions, Node 22, ESM), sem scripts de `lint
 cd functions
 node --check src/caminho/do/arquivo.js                          # checagem de sintaxe
 node -e "import('./index.js').then(()=>console.log('OK'))"      # confirma que os módulos carregam
-node --test src/gemini/prompt.test.js                           # roda um arquivo de testes
+node --test src/gemini/prompt.test.js src/parser/nota.test.js  # roda os testes
 firebase deploy --only functions:telegramWebhook                # deploy de uma função (todas estão em functions/index.js)
 ```
+
+O formato que o `/nota` espera está em [docs/template-nota.md](docs/template-nota.md) (cabeçalho `Mercado:`/`Data:`/`Total:` e um item por linha: `item; qtd; un; unit; desc; pago`). O `/help` do bot mostra o mesmo modelo.
 
 Depende de três secrets do Firebase, provisionados via `firebase functions:secrets:set`: `TELEGRAM_BOT_TOKEN` e `TELEGRAM_WEBHOOK_SECRET` (bot) e `GEMINI_API_KEY` (só o chat do app, `perguntarChat`).
 

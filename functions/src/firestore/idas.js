@@ -19,11 +19,13 @@ function valorDaLinha({ total, preco, quantidade }) {
 const centavos = (n) => Math.round(n * 100) / 100;
 
 /**
- * @param {{ loteId: string, uid: string, listaAtiva: string, mercado: string, data: string,
+ * `totalNota` é o "Total:" informado na nota (null no formato antigo);
+ * `valorTotal` é a soma das linhas.
+ * @param {{ loteId: string, uid: string, listaAtiva: string, mercado: string, data: string, totalNota?: number|null,
  *   linhas: Array<{ produtoId: string|null, nome: string, preco: number, quantidade: number|null, total: number|null }> }} args
  * @returns {Promise<object|null>} o resumo gravado, ou null quando não há o que comparar.
  */
-export async function registrarIda({ loteId, uid, listaAtiva, mercado, data, linhas }) {
+export async function registrarIda({ loteId, uid, listaAtiva, mercado, data, totalNota = null, linhas }) {
   if (!listaAtiva || !linhas.length) return null;
   const db = getFirestore();
 
@@ -64,6 +66,7 @@ export async function registrarIda({ loteId, uid, listaAtiva, mercado, data, lin
     extras,
     esquecidos,
     valorTotal: soma([...compradosDaLista, ...extras]),
+    totalNota,
     valorExtras: soma(extras),
     registradoEm: FieldValue.serverTimestamp(),
   };

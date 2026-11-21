@@ -22,13 +22,13 @@ npm run lint                         # ESLint
 
 ### Cloud Functions (`functions/`)
 
-No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (the only test file is `src/gemini/prompt.test.js`):
+No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (test files: `src/gemini/prompt.test.js`, `src/parser/nota.test.js`):
 
 ```bash
 cd functions
 node --check src/path/to/file.js                                       # syntax check a changed file
 node -e "import('./index.js').then(()=>console.log('OK'))"              # verify the module graph loads
-node --test src/gemini/prompt.test.js                                   # run one test file
+node --test src/gemini/prompt.test.js src/parser/nota.test.js          # run the tests
 firebase deploy --only functions:telegramWebhook                        # deploy one function (see functions/index.js for all exports)
 ```
 
@@ -84,7 +84,7 @@ catalogo/{produtoId}
   ├── nome, categoria, subcategoria, receitas[]
   ├── grupoSubstituicao[] # tags (strings) of interchangeable products, e.g. "Carne moída"
   ├── generico            # true = só ingrediente de receita ("Óleo"): fora do catálogo do app (exceto modo admin) e do match do bot
-  └── historico[]         # price records: mercado, preco, data, observacao, listaAtiva (+ quantidade, unidade 'un'|'kg' when it came from a bot note)
+  └── historico[]         # price records: mercado, preco (list unit price), data, observacao, listaAtiva (+ quantidade, unidade 'un'|'kg', precoPago when discounted — from bot notes)
 
 listas/{listaId}          # listaId == uid of the list owner
   ├── criadaPor, participantes[]
@@ -118,10 +118,10 @@ dicas/{dicaId}
 codigosVinculo/{codigo}   # 6-digit code generated in-app to link a Telegram chat, 10-min expiry
 telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 
-lotesNotaFiscal/{loteId}       # in-progress receipt batch (bot-only, see Telegram bot section)
+lotesNotaFiscal/{loteId}       # in-progress receipt batch: mercado, dataDaNota, totalNota, somaItens, linhasIgnoradas, itens[] (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
 apelidosNota/{nomeNormalizado} # learned "receipt text → produtoId" memory: produtoId, usos, nomeNota (bot-only)
-idasMercado/{loteId}           # planned vs. bought per trip: planejados, compradosDaLista[], extras[], esquecidos[], valorTotal, valorExtras (bot-only)
+idasMercado/{loteId}           # planned vs. bought per trip: planejados, compradosDaLista[], extras[], esquecidos[], valorTotal (sum of lines), totalNota, valorExtras (bot-only)
 travasGemini/{uid}             # per-user wait between Gemini calls of the app chat (server-only)
 ```
 
@@ -175,7 +175,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 
 - `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `help.js`.
 - `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat), `apelidos.js` (learned receipt-name memory, see below), `emCasa.js` (marks bought products as "tem em casa", see below), `idas.js` (planned vs. bought per trip, see below).- `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
-- `parser/tabela.js` — parses pasted table text (mercado+date header line, then tab/space-delimited item rows) into structured `{ mercado, data, itens[] }`.
+- `parser/nota.js` — parses the `/nota` text (format documented in `docs/template-nota.md`, which is also the user-facing reference — keep both in sync, plus `TEMPLATE_CURTO` shown by `/help`). The header has `Mercado:`, `Data:` and an optional `Total:`. Each item line is `item; qtd; un; unit; desc; pago`, separated by `;` or tab; empty `desc` means 0 and empty `pago` means qtd × unit − desc. It returns `{ formato, mercado, data, totalNota, somaItens, linhasIgnoradas[], itens[] }`, and `avisoDeTotal` flags a sum that differs from the total by more than R$ 0,05; step 1 shows that warning and the unread lines. Text without a `Chave:` header falls back to `parser/tabela.js`, the old undocumented format (mercado+date first line, space/tab rows).
 - `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
 
 ### Batch confirmation flow (4 fixed steps)

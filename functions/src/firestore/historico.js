@@ -17,8 +17,10 @@ export async function produtoJaTemRegistro({ produtoId, mercado, data }) {
 }
 
 // `quantidade` e `unidade` ("un" | "kg") vêm da nota; ficam fora da entrada
-// quando não se sabe (registros antigos, preço digitado no app).
-export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva, nomeNota, quantidade, unidade }) {
+// quando não se sabe (registros antigos, preço digitado no app). `preco` é o
+// unitário de tabela; `precoPago` (pago ÷ qtd) só existe quando houve
+// desconto no item — o "onde comprar" do app usa `preco`.
+export async function registrarPreco({ produtoId, mercado, preco, data, listaAtiva, nomeNota, quantidade, unidade, precoPago }) {
   const db = getFirestore();
   const dataRegistro = data ? new Date(`${data}T12:00:00`) : new Date();
   // O nome como veio na nota (nome comercial + peso/volume, ex: "Queijo Prato
@@ -32,6 +34,7 @@ export async function registrarPreco({ produtoId, mercado, preco, data, listaAti
   const entrada = { mercado, preco, data: dataRegistro, observacao, listaAtiva };
   if (Number.isFinite(quantidade)) entrada.quantidade = quantidade;
   if (unidade) entrada.unidade = unidade;
+  if (Number.isFinite(precoPago) && precoPago !== preco) entrada.precoPago = precoPago;
   await db
     .collection("catalogo")
     .doc(produtoId)

@@ -1,15 +1,31 @@
 import { formatarLinhaItem } from "./resumoLote.js";
+import { avisoDeTotal } from "../parser/nota.js";
 import { mostrarEtapa3 as mostrarEtapa3Revisao } from "./revisar.js";
 import { tecladoEtapa1, tecladoEtapa2, tecladoEtapa4 } from "../telegram/teclados.js";
 import { enviarOuEditar } from "../telegram/enviarOuEditar.js";
 
 async function mostrarEtapa1(telegram, chatId, lote, messageId, prefixo = "") {
   const resumo = lote.itens.map(formatarLinhaItem).join("\n");
+  const br = (n) => n.toFixed(2).replace(".", ",");
+  const [ano, mes, dia] = String(lote.dataDaNota || "").split("-");
+  const cabecalho = [
+    `Mercado: ${lote.mercado}`,
+    lote.dataDaNota ? `Data: ${dia}/${mes}/${ano}` : null,
+    lote.totalNota != null ? `Total da nota: R$ ${br(lote.totalNota)}` : null,
+  ].filter(Boolean).join("\n");
+  // Conferência da transcrição: soma ≠ total e linhas que o parser não leu.
+  const avisos = [
+    avisoDeTotal(lote),
+    lote.linhasIgnoradas?.length
+      ? `⚠️ ${lote.linhasIgnoradas.length} linha(s) não entendida(s), ficaram de fora:\n${lote.linhasIgnoradas.map((l) => `   ${l}`).join("\n")}`
+      : null,
+  ].filter(Boolean);
+  const textoAvisos = avisos.length ? `\n\n${avisos.join("\n\n")}` : "";
   await enviarOuEditar(
     telegram,
     chatId,
     messageId,
-    `${prefixo}Etapa 1/4 — Resumo\n\nMercado: ${lote.mercado}\n\n${resumo}`,
+    `${prefixo}Etapa 1/4 — Resumo\n\n${cabecalho}\n\n${resumo}${textoAvisos}`,
     { reply_markup: tecladoEtapa1(lote.id) }
   );
 }

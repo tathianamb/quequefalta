@@ -1,4 +1,4 @@
-import { interpretarTabela } from "../parser/tabela.js";
+import { interpretarNota } from "../parser/nota.js";
 import { carregarCatalogoParaMatch } from "../firestore/catalogo.js";
 import { encontrarMatch } from "../matching/fuzzyMatch.js";
 import { criarLote, buscarLotePorId } from "../firestore/lotes.js";
@@ -7,7 +7,7 @@ import { carregarApelidos, apelidoDoNome } from "../firestore/apelidos.js";
 import { mostrarEtapa } from "./etapasLote.js";
 
 export async function tratarTabela(telegram, chatId, uid, texto) {
-  const resultado = interpretarTabela(texto);
+  const resultado = interpretarNota(texto);
   if (resultado.erro) {
     await telegram.enviarMensagem(chatId, resultado.erro);
     return;
@@ -45,6 +45,10 @@ export async function tratarTabela(telegram, chatId, uid, texto) {
     mercado: resultado.mercado,
     status: "aguardando_confirmacao",
     itens: itensComMatch,
+    totalNota: resultado.totalNota,
+    somaItens: resultado.somaItens,
+    linhasIgnoradas: resultado.linhasIgnoradas,
+    formato: resultado.formato,
   });
 
   const lote = await buscarLotePorId(loteId);

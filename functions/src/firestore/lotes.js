@@ -20,6 +20,10 @@ export async function criarLote({
   mercado,
   status,
   itens,
+  totalNota = null,
+  somaItens = null,
+  linhasIgnoradas = [],
+  formato = null,
 }) {
   const db = getFirestore();
   const ref = await db.collection("lotesNotaFiscal").add({
@@ -28,6 +32,10 @@ export async function criarLote({
     status,
     dataDaNota: dataDaNota || null,
     mercado,
+    totalNota,
+    somaItens,
+    linhasIgnoradas,
+    formato,
     etapaAtual: 1,
     itens: itens.map((item, indice) => ({
       indice,
@@ -38,7 +46,9 @@ export async function criarLote({
       precoExtraido: item.preco,
       unidade: item.unidade,
       quantidade: item.quantidade ?? null,
+      desconto: item.desconto ?? null,
       total: item.total ?? null,
+      precoPago: item.precoPago ?? null,
       produtoIdCasado: item.match.melhorMatch?.id || null,
       nomeProdutoCasado: item.match.melhorMatch?.nome || null,
       sugestoes: item.match.sugestoes,
