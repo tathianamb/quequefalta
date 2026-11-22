@@ -287,7 +287,7 @@ function Home({
             pointerEvents: "none",
           }}
         >
-          Modo Edição Ativo
+          Modo admin ativo
         </div>
       )}
       {/* Header */}

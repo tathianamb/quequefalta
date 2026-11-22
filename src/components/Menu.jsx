@@ -377,7 +377,7 @@ function Menu({
                               color: "var(--amarelo)",
                             }}
                           >
-                            ativa
+                            Ativa
                           </p>
                         )}
                       </div>
@@ -830,7 +830,7 @@ function Menu({
               }}
             >
               {sucesso
-                ? "Sugestão enviada! ✓"
+                ? "✓ Sugestão enviada!"
                 : enviando
                   ? "Enviando..."
                   : "Enviar sugestão"}
@@ -874,8 +874,8 @@ function Menu({
                     marginBottom: "4px",
                   }}
                 >
-                  Seu Telegram está vinculado. Mande fotos de notas fiscais
-                  para o bot registrar os preços automaticamente.
+                  Seu Telegram está vinculado. Cole a nota fiscal no bot (/nota)
+                  para registrar os preços automaticamente.
                 </p>
                 <button
                   onClick={desvincular}
@@ -949,7 +949,7 @@ function Menu({
                   }}
                 >
                   Vincule sua conta ao bot do Telegram para registrar preços
-                  enviando fotos de notas fiscais.
+                  colando notas fiscais no bot.
                 </p>
                 <button
                   onClick={handleGerarCodigo}
@@ -1004,7 +1004,7 @@ function Menu({
                   marginBottom: "4px",
                 }}
               >
-                Nenhum item marcado como comprado ainda.
+                Nenhum item marcado como tem em casa ainda.
               </p>
             ) : (
               <>

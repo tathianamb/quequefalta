@@ -125,7 +125,7 @@ function App() {
                 marginBottom: "8px",
               }}
             >
-              Entrar no grupo familiar?
+              Usar o grupo de {confirmandoLista.criadaPor} agora?
             </p>
             <p
               style={{
@@ -136,7 +136,7 @@ function App() {
               }}
             >
               Grupo de <strong>{confirmandoLista.criadaPor}</strong>.<br />
-              Vocês passam a dividir a lista de compras e as informações da casa (pessoas e observações).
+              Vocês passam a dividir a lista de compras e o que tem em casa.
             </p>
             <div style={{ display: "flex", gap: "12px" }}>
               <button
@@ -154,7 +154,7 @@ function App() {
                   cursor: "pointer",
                 }}
               >
-                Agora não
+                Depois
               </button>
               <button
                 onClick={() => handleConfirmarLista(true)}
@@ -171,7 +171,7 @@ function App() {
                   cursor: "pointer",
                 }}
               >
-                Acessar
+                Trocar agora
               </button>
             </div>
           </div>

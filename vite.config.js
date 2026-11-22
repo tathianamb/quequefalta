@@ -11,11 +11,14 @@ export default defineConfig({
       manifest: {
         name: 'QueQueFalta',
         short_name: 'QQF',
+        lang: 'pt-BR',
+        id: '/quequefalta/',
         description: 'Lista de compras compartilhada',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/quequefalta/',
+        scope: '/quequefalta/',
         icons: [
           {
             src: 'qqf-icon-192.png',

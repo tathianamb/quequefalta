@@ -567,7 +567,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
             }}
           >
             <Plus size={18} />
-            {sucesso ? "Registrado! ✓" : salvando ? "Salvando..." : "Registrar"}
+            {sucesso ? "✓ Registrado!" : salvando ? "Salvando..." : "Registrar"}
           </button>
         </div>}
 
