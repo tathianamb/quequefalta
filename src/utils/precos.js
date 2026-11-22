@@ -1,6 +1,8 @@
 // Regras de preço compartilhadas pela lista ("onde comprar") e pelas
 // sugestões do mês. Tudo sai do `historico` de cada produto do catálogo.
 
+import { normalizar } from "./texto";
+
 const DIA_MS = 24 * 60 * 60 * 1000;
 
 // Preço com mais de 4 meses só vale se não houver nada mais novo: o preço
@@ -14,11 +16,7 @@ export function dataDoRegistro(h) {
 
 // "Atacadão", "atacadao " e "ATACADÃO" são o mesmo mercado.
 export function chaveMercado(nome) {
-  return (nome ?? "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .trim()
-    .toLowerCase();
+  return normalizar(nome);
 }
 
 export function formatarPreco(valor) {

@@ -55,6 +55,7 @@ import { DicaFormulario } from "../components/dicas/DicaFormulario";
 import FiltroCategoria from "../components/FiltroCategoria";
 import SugestoesMes from "../components/SugestoesMes";
 import { ondeComprar, formatarPreco } from "../utils/precos";
+import { normalizar } from "../utils/texto";
 import {
   TIPOGRAFIA,
   FONTE,
@@ -131,9 +132,10 @@ function Home({
 
   const { pushBack } = useBackStack();
 
+  const termoBusca = normalizar(busca);
   const filtrar = (arr) =>
     arr.filter((p) => {
-      const buscaOk = (p.nome ?? "").toLowerCase().includes(busca.toLowerCase());
+      const buscaOk = normalizar(p.nome).includes(termoBusca);
       const grupoOk =
         grupoFiltro.length === 0 ||
         grupoFiltro.some(
@@ -208,7 +210,7 @@ function Home({
   const porCategoriaCatalogo = agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin });
   const carregando = carregandoLista || carregandoCatalogo;
   const receitasFiltradas = (() => {
-    const base = receitasAprovadas.filter(r => r.nome.toLowerCase().includes(busca.toLowerCase()));
+    const base = receitasAprovadas.filter(r => normalizar(r.nome).includes(termoBusca));
     if (ordenacaoReceitas === "az") return [...base].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
     if (ordenacaoReceitas === "za") return [...base].sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
     // relevancia: receitas com todos os ingredientes em casa primeiro — mesma
@@ -225,12 +227,12 @@ function Home({
       ? "lista"
       : telaDica;
   const dicasFiltradas = (() => {
-    const termo = busca.toLowerCase();
+    const termo = termoBusca;
     if (!termo) return dicas;
     return dicas.filter(
       (d) =>
-        (d.titulo ?? "").toLowerCase().includes(termo) ||
-        (d.texto ?? "").toLowerCase().includes(termo),
+        normalizar(d.titulo).includes(termo) ||
+        normalizar(d.texto).includes(termo),
     );
   })();
 
@@ -674,9 +676,9 @@ function Home({
                       {editando ? (
                         <>
                           {(() => {
-                            const termo = sugestaoEditando.nome.toLowerCase().trim();
+                            const termo = normalizar(sugestaoEditando.nome);
                             const sugestoes = termo.length >= 2
-                              ? catalogo.filter(p => p.nome.toLowerCase().includes(termo)).slice(0, 6)
+                              ? catalogo.filter(p => normalizar(p.nome).includes(termo)).slice(0, 6)
                               : [];
                             const mostrarDropdown = sugestaoNomeFoco && sugestoes.length > 0;
                             return (

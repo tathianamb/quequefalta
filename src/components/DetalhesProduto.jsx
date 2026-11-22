@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
+import { normalizar } from "../utils/texto";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
 import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from "../utils/estilos";
 
@@ -77,10 +78,10 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   }, [catalogo]);
 
   const sugestoesMercado = useMemo(() => {
-    const termo = mercado.trim().toLowerCase();
+    const termo = normalizar(mercado);
     if (!termo) return mercadosConhecidos;
     return mercadosConhecidos.filter(
-      (m) => m.toLowerCase().includes(termo) && m.toLowerCase() !== termo
+      (m) => normalizar(m).includes(termo) && normalizar(m) !== termo
     );
   }, [mercado, mercadosConhecidos]);
 

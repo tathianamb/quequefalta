@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, COR } from '../../utils/estilos'
+import { normalizar } from '../../utils/texto'
 
 const UNIDADES = [
   { valor: '',          label: '—',          plural: null         },
@@ -93,23 +94,23 @@ const labelStyle = {
 }
 
 function buscaCorresponde(produto, termo) {
-  const t = termo.toLowerCase()
-  if (produto.nome.toLowerCase().includes(t)) return true;
-  return (produto.grupoSubstituicao || []).some(g => g.toLowerCase().includes(t));
+  const t = normalizar(termo)
+  if (normalizar(produto.nome).includes(t)) return true;
+  return (produto.grupoSubstituicao || []).some(g => normalizar(g).includes(t));
 }
 
 function labelSugestao(produto, termo) {
-  const t = termo.toLowerCase()
-  const grupoMatch = (produto.grupoSubstituicao || []).find(g => g.toLowerCase().includes(t))
-  if (grupoMatch && !produto.nome.toLowerCase().includes(t)) {
+  const t = normalizar(termo)
+  const grupoMatch = (produto.grupoSubstituicao || []).find(g => normalizar(g).includes(t))
+  if (grupoMatch && !normalizar(produto.nome).includes(t)) {
     return `${produto.nome} · ${grupoMatch}`
   }
   return produto.nome
 }
 
 function temMatchExato(resultadosProduto, termo) {
-  const t = termo.toLowerCase().trim()
-  return resultadosProduto.some(p => p.nome.toLowerCase() === t)
+  const t = normalizar(termo)
+  return resultadosProduto.some(p => normalizar(p.nome) === t)
 }
 
 export function ReceitaFormulario({
@@ -187,9 +188,9 @@ export function ReceitaFormulario({
   }
 
   const selecionarProduto = (produto) => {
-    const t = termoAtivo.toLowerCase()
-    const grupoMatch = (produto.grupoSubstituicao || []).find(g => g.toLowerCase().includes(t))
-    const nomeDisplay = grupoMatch && !produto.nome.toLowerCase().includes(t)
+    const t = normalizar(termoAtivo)
+    const grupoMatch = (produto.grupoSubstituicao || []).find(g => normalizar(g).includes(t))
+    const nomeDisplay = grupoMatch && !normalizar(produto.nome).includes(t)
       ? `${produto.nome} (${grupoMatch})`
       : produto.nome
     aplicarSelecao({ produtoId: produto.id, nome: nomeDisplay })
