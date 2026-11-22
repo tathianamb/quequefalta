@@ -1,52 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { baixarCsv } from "../utils/csv";
 import Folha from "./Folha";
 import BotaoIcone from "./BotaoIcone";
 import Confirmacao from "./Confirmacao";
+import ItemMenu from "./menu/ItemMenu";
+import SeletorTema from "./menu/SeletorTema";
+import GruposFamiliares from "./menu/GruposFamiliares";
+import SugerirProduto from "./menu/SugerirProduto";
+import VincularTelegram from "./menu/VincularTelegram";
+import ExportarEmCasa from "./menu/ExportarEmCasa";
 import {
-  Moon,
   Lightbulb,
   Link,
   Shield,
   LogOut,
-  Share2,
   X,
   Download,
-  Check,
   Home as HomeIcon,
 } from "lucide-react";
-import { ORDEM_CATEGORIAS, CATEGORIAS_NAO_ALIMENTARES } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
-import { alternarLista, sairDaLista } from "../config/lista";
-import { sugerirProduto } from "../config/sugestoes";
+import { sairDaLista } from "../config/lista";
 import { useTelegramVinculo } from "../hooks/useTelegramVinculo";
-import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO, BORDA, COR } from "../utils/estilos";
-
-const TELEGRAM_BOT_USERNAME = "quequefalta_bot";
-
-// Última seleção de categorias da exportação "em casa" — conveniência por
-// aparelho, para não ter que remarcar tudo a cada exportação.
-const CHAVE_CATEGORIAS_EXPORTAR = "quequefalta:exportarCasa:categorias";
-
-function lerCategoriasExportar() {
-  try {
-    const salvo = JSON.parse(localStorage.getItem(CHAVE_CATEGORIAS_EXPORTAR));
-    return Array.isArray(salvo) ? salvo : [];
-  } catch {
-    return [];
-  }
-}
-
-function salvarCategoriasExportar(categorias) {
-  try {
-    localStorage.setItem(CHAVE_CATEGORIAS_EXPORTAR, JSON.stringify(categorias));
-  } catch {
-    // sem storage (aba anônima etc.) — só não lembra a seleção
-  }
-}
-
-const mesmasCategorias = (a, b) => a.length === b.length && a.every((c) => b.includes(c));
+import { TIPOGRAFIA, RAIO, COR } from "../utils/estilos";
 
 function Menu({
   onFechar,
@@ -69,36 +45,10 @@ function Menu({
   itensEmCasa = [],
 }) {
   const [tela, setTela] = useState(telaInicial || "menu");
-  const [nome, setNome] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [subcategoria, setSubcategoria] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
-  const [erroSugestao, setErroSugestao] = useState(false);
-  const [erroTelegram, setErroTelegram] = useState(false);
-  const timerSugestaoRef = useRef(null);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [saindoDoGrupo, setSaindoDoGrupo] = useState(null); // lista que a pessoa vai deixar
-  const [aviso, setAviso] = useState(null);
-  const timerAvisoRef = useRef(null);
-  const [codigoVinculo, setCodigoVinculo] = useState(null);
-  const [gerandoCodigo, setGerandoCodigo] = useState(false);
-  const [categoriasExportar, setCategoriasExportar] = useState(lerCategoriasExportar);
 
   const { vinculado, gerarCodigo, desvincular } = useTelegramVinculo(usuario);
-
-  // Não deixa o timer do "Sugestão enviada" disparar depois que o menu fechou.
-  useEffect(() => () => {
-    clearTimeout(timerSugestaoRef.current);
-    clearTimeout(timerAvisoRef.current);
-  }, []);
-
-  // Aviso curto na própria tela (some em 2s).
-  const mostrarAviso = (texto) => {
-    setAviso(texto);
-    clearTimeout(timerAvisoRef.current);
-    timerAvisoRef.current = setTimeout(() => setAviso(null), 2000);
-  };
 
   const confirmarSaidaDoGrupo = async () => {
     const lista = saindoDoGrupo;
@@ -122,30 +72,6 @@ function Menu({
     if (voltar) voltar(semPilha);
     else semPilha();
   };
-  const telaRef = useRef(tela);
-  useEffect(() => { telaRef.current = tela; }, [tela]);
-
-  const handleGerarCodigo = async () => {
-    setGerandoCodigo(true);
-    setErroTelegram(false);
-    try {
-      const { codigo } = await gerarCodigo();
-      setCodigoVinculo({ codigo });
-    } catch (e) {
-      console.error("Erro ao gerar código de vínculo:", e);
-      setErroTelegram(true);
-    } finally {
-      setGerandoCodigo(false);
-    }
-  };
-
-  const handleDesvincular = () => {
-    setErroTelegram(false);
-    desvincular().catch((e) => {
-      console.error("Erro ao desvincular o Telegram:", e);
-      setErroTelegram(true);
-    });
-  };
 
   const exportarCatalogo = () => {
     baixarCsv(
@@ -155,76 +81,6 @@ function Menu({
         .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
         .map((p) => [p.nome, p.categoria, p.subcategoria, (p.grupoSubstituicao ?? []).join("; ")]),
     );
-  };
-
-  // Mesma ordem da lista (alimentos primeiro, limpeza/higiene no fim).
-  const posicaoCategoria = (cat) => {
-    const i = ORDEM_CATEGORIAS.indexOf(cat);
-    return i === -1 ? ORDEM_CATEGORIAS.length : i;
-  };
-  const categoriasEmCasa = [
-    ...new Set(itensEmCasa.map((i) => i.categoria).filter(Boolean)),
-  ].sort((a, b) => posicaoCategoria(a) - posicaoCategoria(b) || a.localeCompare(b, "pt-BR"));
-
-  const alimentosEmCasa = categoriasEmCasa.filter((c) => !CATEGORIAS_NAO_ALIMENTARES.includes(c));
-  const naoAlimentosEmCasa = categoriasEmCasa.filter((c) => CATEGORIAS_NAO_ALIMENTARES.includes(c));
-
-  // A seleção lembrada pode citar categorias que hoje não têm item em casa —
-  // só as presentes contam (rótulo do botão e filtro do CSV).
-  const selecionadasExportar = categoriasExportar.filter((c) => categoriasEmCasa.includes(c));
-
-  const toggleCategoriaExportar = (cat) => {
-    setCategoriasExportar(
-      selecionadasExportar.includes(cat)
-        ? selecionadasExportar.filter((c) => c !== cat)
-        : [...selecionadasExportar, cat],
-    );
-  };
-
-  const exportarEmCasa = () => {
-    salvarCategoriasExportar(selecionadasExportar);
-    const itens =
-      selecionadasExportar.length === 0
-        ? itensEmCasa
-        : itensEmCasa.filter((i) => selecionadasExportar.includes(i.categoria));
-    baixarCsv(
-      "em-casa.csv",
-      ["nome", "categoria", "subcategoria"],
-      [...itens]
-        .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
-        .map((p) => [p.nome, p.categoria, p.subcategoria]),
-    );
-  };
-
-  const handleSugestao = async () => {
-    if (!nome || !categoria || enviando) return;
-    setEnviando(true);
-    setErroSugestao(false);
-    try {
-      // Só a checagem de duplicada espera o servidor; a gravação vale na hora
-      // (local) e o erro, se vier, aparece no formulário.
-      const { gravacao } = await sugerirProduto({ nome, categoria, subcategoria, usuario, listaAtiva });
-      gravacao.catch((e) => {
-        console.error("Erro ao enviar sugestão:", e);
-        setSucesso(false);
-        setErroSugestao(true);
-      });
-      setSucesso(true);
-      setNome("");
-      setCategoria("");
-      setSubcategoria("");
-      clearTimeout(timerSugestaoRef.current);
-      timerSugestaoRef.current = setTimeout(() => {
-        setSucesso(false);
-        // Só volta se a pessoa ainda estiver nesta tela.
-        if (telaRef.current === "sugestao") voltarTela();
-      }, 2000);
-    } catch (e) {
-      console.error("Erro ao enviar sugestão:", e);
-      setErroSugestao(true);
-    } finally {
-      setEnviando(false);
-    }
   };
 
   return (
@@ -299,207 +155,24 @@ function Menu({
               <div
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
-                {/* Tema */}
-                <div
-                  style={{
-                    padding: "14px 16px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    <Moon size={18} color="var(--text-soft)" />
-                    <span
-                      style={{
-                        ...TIPOGRAFIA.nomeProduto,
-                        color: "var(--text)",
-                      }}
-                    >
-                      Tema
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr 1fr",
-                      gap: "8px",
-                    }}
-                  >
-                    {[
-                      { id: "claro", label: "☀️ Claro" },
-                      { id: "escuro", label: "🌙 Escuro" },
-                      { id: "auto", label: "⚙️ Auto" },
-                    ].map(({ id, label }) => {
-                      const ativo = temaPreferencia === id;
-                      return (
-                        <button
-                          key={id}
-                          onClick={() => {
-                            if (id === "auto") seguirSistema();
-                            else if (id === "escuro" && !escuro) toggleTema();
-                            else if (id === "claro" && escuro) toggleTema();
-                          }}
-                          style={{
-                            padding: "10px 8px",
-                            ...BOTAO_SECUNDARIO,
-                            borderRadius: RAIO.sm,
-                            border: `1.5px solid ${ativo ? "var(--laranja)" : COR.borda}`,
-                            background: ativo ? "var(--laranja-suave)" : "var(--card)",
-                            color: ativo ? "var(--laranja)" : "var(--text-soft)",
-                            transition: "all 0.2s",
-                          }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <SeletorTema
+                  escuro={escuro}
+                  temaPreferencia={temaPreferencia}
+                  toggleTema={toggleTema}
+                  seguirSistema={seguirSistema}
+                />
               </div>
             </div>
 
-            {/* Minhas Listas */}
-            <div>
-              <p
-                style={{
-                  ...TIPOGRAFIA.label,
-                  color: "var(--text-soft)",
-                  marginBottom: "8px",
-                  paddingLeft: "4px",
-                }}
-              >
-                Grupo familiar
-              </p>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-              >
-                {todasListas.map((lista) => {
-                  const ativa = lista.id === listaAtiva;
-                  const propria = lista.id === usuario.uid;
-                  return (
-                    <div
-                      key={lista.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "14px 16px",
-                        background: ativa ? "var(--amarelo-suave)" : "var(--bg)",
-                        borderRadius: RAIO.md,
-                        border: `1.5px solid ${ativa ? "var(--amarelo)" : "transparent"}`,
-                        cursor: ativa ? "default" : "pointer",
-                      }}
-                      onClick={async () => {
-                        if (!ativa) {
-                          await alternarLista(usuario, lista.id);
-                          setListaAtiva(lista.id);
-                          onFechar();
-                        }
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
-                        <p
-                          style={{
-                            ...TIPOGRAFIA.nomeProduto,
-                            color: "var(--text)",
-                          }}
-                        >
-                          {propria
-                            ? "Meu grupo"
-                            : `Grupo de ${lista.criadaPor}`}
-                        </p>
-                        {ativa && (
-                          <p
-                            style={{
-                              ...TIPOGRAFIA.subcategoria,
-                              color: "var(--text)",
-                              fontWeight: FONTE.bold,
-                            }}
-                          >
-                            Ativa
-                          </p>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        {propria && ativa && (
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const url = `${window.location.origin}/quequefalta/?lista=${lista.id}`;
-                              try {
-                                if (navigator.share) {
-                                  await navigator.share({
-                                    title: "QueQueFalta",
-                                    text: "Entre no meu grupo familiar no QueQueFalta!",
-                                    url,
-                                  });
-                                } else {
-                                  await navigator.clipboard.writeText(url);
-                                  mostrarAviso("Link de convite copiado!");
-                                }
-                              } catch (erro) {
-                                // Cancelar o compartilhamento rejeita com AbortError: não é erro.
-                                if (erro?.name !== "AbortError") console.error("Erro ao convidar:", erro);
-                              }
-                            }}
-                            style={{
-                              ...BOTAO_SECUNDARIO,
-                              padding: "6px 12px",
-                              fontSize: "12px",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            <Share2 size={14} />
-                            Convidar
-                          </button>
-                        )}
-                        {!propria && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSaindoDoGrupo(lista);
-                            }}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: RAIO.sm,
-                              border: "none",
-                              background: COR.erroBg,
-                              color: COR.erro,
-                              cursor: "pointer",
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              fontFamily: "Nunito, sans-serif",
-                            }}
-                          >
-                            Sair do grupo
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {aviso && (
-                  <p role="status" style={{ ...TIPOGRAFIA.subcategoria, color: COR.sucesso, paddingLeft: "4px" }}>
-                    {aviso}
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* Grupo familiar */}
+            <GruposFamiliares
+              todasListas={todasListas}
+              listaAtiva={listaAtiva}
+              usuario={usuario}
+              setListaAtiva={setListaAtiva}
+              onFechar={onFechar}
+              aoSair={setSaindoDoGrupo}
+            />
 
             {/* Ações */}
             <div>
@@ -516,586 +189,105 @@ function Menu({
               <div
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
-                <div
-                  onClick={() => abrirTela("sugestao")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                    cursor: "pointer",
-                  }}
-                >
-                  <Lightbulb size={18} color="var(--text-soft)" />
-                  <span
-                    style={{
-                      ...TIPOGRAFIA.nomeProduto,
-                      color: "var(--text)",
-                      flex: 1,
-                    }}
-                  >
-                    Sugerir produto
-                  </span>
-                  <span style={{ color: "var(--text-soft)" }}>›</span>
-                </div>
+                <ItemMenu icone={Lightbulb} onClick={() => abrirTela("sugestao")} seta>
+                  Sugerir produto
+                </ItemMenu>
 
-                <div
+                <ItemMenu
+                  icone={Link}
                   onClick={() => abrirTela("telegram")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                    cursor: "pointer",
-                  }}
+                  seta
+                  extra={
+                    vinculado && (
+                      <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--verde-texto)" }}>
+                        vinculado
+                      </span>
+                    )
+                  }
                 >
-                  <Link size={18} color="var(--text-soft)" />
-                  <span
-                    style={{
-                      ...TIPOGRAFIA.nomeProduto,
-                      color: "var(--text)",
-                      flex: 1,
-                    }}
-                  >
-                    Vincular Telegram
-                  </span>
-                  {vinculado && (
-                    <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--verde-texto)" }}>
-                      vinculado
-                    </span>
-                  )}
-                  <span style={{ color: "var(--text-soft)" }}>›</span>
-                </div>
-
-{isAdmin && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 16px",
-                      background: "var(--bg)",
-                      borderRadius: RAIO.md,
-                    }}
-                  >
-                    <Shield size={18} color={COR.erro} />
-                    <span
-                      style={{
-                        ...TIPOGRAFIA.nomeProduto,
-                        color: COR.erro,
-                        flex: 1,
-                      }}
-                    >
-                      Modo admin
-                    </span>
-                    <div
-                      onClick={() => setModoAdmin(v => !v)}
-                      style={{
-                        width: "48px",
-                        height: "28px",
-                        borderRadius: RAIO.pill,
-                        background: modoAdmin ? "var(--laranja)" : "var(--text-soft)",
-                        position: "relative",
-                        cursor: "pointer",
-                        transition: "background 0.2s",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div style={{
-                        position: "absolute",
-                        top: "3px",
-                        left: modoAdmin ? "23px" : "3px",
-                        width: "22px",
-                        height: "22px",
-                        borderRadius: "50%",
-                        background: "white",
-                        transition: "left 0.2s",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
-                      }} />
-                    </div>
-                  </div>
-                )}
-                <div
-                  onClick={() => abrirTela("exportar-casa")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                    cursor: "pointer",
-                  }}
-                >
-                  <HomeIcon size={18} color="var(--text-soft)" />
-                  <span style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)", flex: 1 }}>
-                    Exportar o que tem em casa
-                  </span>
-                  <span style={{ color: "var(--text-soft)" }}>›</span>
-                </div>
+                  Vincular Telegram
+                </ItemMenu>
 
                 {isAdmin && (
-                  <div
-                    onClick={exportarCatalogo}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 16px",
-                      background: "var(--bg)",
-                      borderRadius: RAIO.md,
-                      cursor: "pointer",
-                    }}
+                  <ItemMenu
+                    icone={Shield}
+                    corIcone={COR.erro}
+                    corTexto={COR.erro}
+                    extra={
+                      <div
+                        onClick={() => setModoAdmin(v => !v)}
+                        style={{
+                          width: "48px",
+                          height: "28px",
+                          borderRadius: RAIO.pill,
+                          background: modoAdmin ? "var(--laranja)" : "var(--text-soft)",
+                          position: "relative",
+                          cursor: "pointer",
+                          transition: "background 0.2s",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <div style={{
+                          position: "absolute",
+                          top: "3px",
+                          left: modoAdmin ? "23px" : "3px",
+                          width: "22px",
+                          height: "22px",
+                          borderRadius: "50%",
+                          background: "white",
+                          transition: "left 0.2s",
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+                        }} />
+                      </div>
+                    }
                   >
-                    <Download size={18} color="var(--text-soft)" />
-                    <span style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)", flex: 1 }}>
-                      Exportar catálogo CSV
-                    </span>
-                  </div>
+                    Modo admin
+                  </ItemMenu>
                 )}
 
-                <div
+                <ItemMenu icone={HomeIcon} onClick={() => abrirTela("exportar-casa")} seta>
+                  Exportar o que tem em casa
+                </ItemMenu>
+
+                {isAdmin && (
+                  <ItemMenu icone={Download} onClick={exportarCatalogo}>
+                    Exportar catálogo CSV
+                  </ItemMenu>
+                )}
+
+                <ItemMenu
+                  icone={LogOut}
+                  corTexto="var(--text-soft)"
                   onClick={() => setConfirmandoSaida(true)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                    cursor: "pointer",
-                    marginTop: "4px",
-                  }}
+                  style={{ marginTop: "4px" }}
                 >
-                  <LogOut size={18} color="var(--text-soft)" />
-                  <span
-                    style={{
-                      ...TIPOGRAFIA.nomeProduto,
-                      color: "var(--text-soft)",
-                      flex: 1,
-                    }}
-                  >
-                    Sair da conta
-                  </span>
-                </div>
+                  Sair da conta
+                </ItemMenu>
               </div>
             </div>
           </div>
         )}
 
-        {/* Tela Sugestão */}
         {tela === "sugestao" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "4px",
-              }}
-            >
-              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
-                Sugerir produto
-              </p>
-              <BotaoIcone
-                icone={X}
-                tamanho={22}
-                rotulo="Fechar"
-                onClick={voltarTela}
-                style={{ margin: "-6px -10px -6px 0" }}
-              />
-            </div>
-
-            <p
-              style={{
-                color: "var(--text-soft)",
-                ...TIPOGRAFIA.corpo,
-                marginBottom: "4px",
-              }}
-            >
-              Encontrou um produto que não está no catálogo? Sugira e
-              avaliaremos a inclusão!
-            </p>
-
-            <input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome do produto *"
-              style={{
-                padding: "14px",
-                borderRadius: RAIO.md,
-                border: BORDA,
-                background: "var(--bg)",
-                fontFamily: "Nunito, sans-serif",
-                ...TIPOGRAFIA.corpo,
-                fontSize: FONTE.campo,
-                color: "var(--text)",
-              }}
-            />
-
-            <select
-              value={categoria}
-              onChange={(e) => { setCategoria(e.target.value); setSubcategoria(""); }}
-              style={{
-                padding: "14px",
-                borderRadius: RAIO.md,
-                border: BORDA,
-                background: "var(--bg)",
-                fontFamily: "Nunito, sans-serif",
-                ...TIPOGRAFIA.corpo,
-                fontSize: FONTE.campo,
-                color: categoria ? "var(--text)" : "var(--text-soft)",
-              }}
-            >
-              <option value="">Categoria *</option>
-              {[...ORDEM_CATEGORIAS]
-                .sort((a, b) => a.localeCompare(b, "pt-BR"))
-                .map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              <option value="Outro">Outro</option>
-            </select>
-
-            <select
-              value={subcategoria}
-              onChange={(e) => setSubcategoria(e.target.value)}
-              disabled={!categoria}
-              style={{
-                padding: "14px",
-                borderRadius: RAIO.md,
-                border: BORDA,
-                background: "var(--bg)",
-                fontFamily: "Nunito, sans-serif",
-                ...TIPOGRAFIA.corpo,
-                fontSize: FONTE.campo,
-                color: subcategoria ? "var(--text)" : "var(--text-soft)",
-                opacity: !categoria ? 0.5 : 1,
-              }}
-            >
-              <option value="">Subcategoria (opcional)</option>
-              {[...new Set(
-                catalogo
-                  .filter((p) => p.categoria === categoria && p.subcategoria)
-                  .map((p) => p.subcategoria)
-              )]
-                .sort((a, b) => a.localeCompare(b, "pt-BR"))
-                .map((sc) => (
-                  <option key={sc} value={sc}>
-                    {sc}
-                  </option>
-                ))}
-            </select>
-
-            <button
-              onClick={handleSugestao}
-              disabled={!nome || !categoria || enviando}
-              style={{
-                padding: "14px",
-                ...BOTAO_PRIMARIO,
-                cursor: !nome || !categoria ? "default" : "pointer",
-                marginTop: "4px",
-                ...(!nome || !categoria || enviando ? BOTAO_DESABILITADO : {}),
-              }}
-            >
-              {sucesso
-                ? "✓ Sugestão enviada!"
-                : enviando
-                  ? "Enviando..."
-                  : "Enviar sugestão"}
-            </button>
-            {erroSugestao && (
-              <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: 0 }}>
-                Não foi possível enviar a sugestão. Tente de novo.
-              </p>
-            )}
-          </div>
+          <SugerirProduto
+            voltarTela={voltarTela}
+            usuario={usuario}
+            listaAtiva={listaAtiva}
+            catalogo={catalogo}
+          />
         )}
 
-        {/* Tela Vincular Telegram */}
         {tela === "telegram" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "4px",
-              }}
-            >
-              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
-                Vincular Telegram
-              </p>
-              <BotaoIcone
-                icone={X}
-                tamanho={22}
-                rotulo="Fechar"
-                onClick={() => {
-                  voltarTela();
-                  setCodigoVinculo(null);
-                  setErroTelegram(false);
-                }}
-                style={{ margin: "-6px -10px -6px 0" }}
-              />
-            </div>
-
-            {vinculado ? (
-              <>
-                <p
-                  style={{
-                    color: "var(--text-soft)",
-                    ...TIPOGRAFIA.corpo,
-                    marginBottom: "4px",
-                  }}
-                >
-                  Seu Telegram está vinculado. Cole a nota fiscal no bot (/nota)
-                  para registrar os preços automaticamente.
-                </p>
-                <button
-                  onClick={handleDesvincular}
-                  style={{
-                    padding: "14px",
-                    ...BOTAO_SECUNDARIO,
-                    cursor: "pointer",
-                  }}
-                >
-                  Desvincular
-                </button>
-              </>
-            ) : codigoVinculo ? (
-              <>
-                <p
-                  style={{
-                    color: "var(--text-soft)",
-                    ...TIPOGRAFIA.corpo,
-                    marginBottom: "4px",
-                  }}
-                >
-                  Abra o bot no Telegram e envie o comando abaixo:
-                </p>
-                <div
-                  style={{
-                    padding: "20px",
-                    background: "var(--bg)",
-                    borderRadius: RAIO.md,
-                    textAlign: "center",
-                  }}
-                >
-                  <p
-                    style={{
-                      ...TIPOGRAFIA.display,
-                      color: "var(--text)",
-                      letterSpacing: "4px",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    {codigoVinculo.codigo}
-                  </p>
-                  <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
-                    /vincular {codigoVinculo.codigo}
-                  </p>
-                </div>
-                <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
-                  Válido por 10 minutos.
-                </p>
-                <a
-                  href={`https://t.me/${TELEGRAM_BOT_USERNAME}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    padding: "14px",
-                    ...BOTAO_PRIMARIO,
-                    textAlign: "center",
-                    textDecoration: "none",
-                    display: "block",
-                  }}
-                >
-                  Abrir bot no Telegram
-                </a>
-              </>
-            ) : (
-              <>
-                <p
-                  style={{
-                    color: "var(--text-soft)",
-                    ...TIPOGRAFIA.corpo,
-                    marginBottom: "4px",
-                  }}
-                >
-                  Vincule sua conta ao bot do Telegram para registrar preços
-                  colando notas fiscais no bot.
-                </p>
-                <button
-                  onClick={handleGerarCodigo}
-                  disabled={gerandoCodigo}
-                  style={{
-                    padding: "14px",
-                    ...BOTAO_PRIMARIO,
-                    cursor: gerandoCodigo ? "default" : "pointer",
-                    ...(gerandoCodigo && BOTAO_DESABILITADO),
-                  }}
-                >
-                  {gerandoCodigo ? "Gerando..." : "Gerar código"}
-                </button>
-              </>
-            )}
-            {erroTelegram && (
-              <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: 0 }}>
-                Não foi possível concluir. Verifique a conexão e tente de novo.
-              </p>
-            )}
-          </div>
+          <VincularTelegram
+            voltarTela={voltarTela}
+            vinculado={vinculado}
+            gerarCodigo={gerarCodigo}
+            desvincular={desvincular}
+          />
         )}
 
-        {/* Tela Exportar em casa */}
         {tela === "exportar-casa" && (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "4px",
-              }}
-            >
-              <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
-                Exportar o que tem em casa
-              </p>
-              <BotaoIcone
-                icone={X}
-                tamanho={22}
-                rotulo="Fechar"
-                onClick={voltarTela /* aberta direto pelo atalho do "Tem em casa": fecha o menu */}
-                style={{ margin: "-6px -10px -6px 0" }}
-              />
-            </div>
-
-            {itensEmCasa.length === 0 ? (
-              <p
-                style={{
-                  color: "var(--text-soft)",
-                  ...TIPOGRAFIA.corpo,
-                  marginBottom: "4px",
-                }}
-              >
-                Nenhum item marcado como tem em casa ainda.
-              </p>
-            ) : (
-              <>
-                <p
-                  style={{
-                    color: "var(--text-soft)",
-                    ...TIPOGRAFIA.corpo,
-                    marginBottom: "4px",
-                  }}
-                >
-                  Escolha as categorias que quer exportar. Deixe sem seleção
-                  para exportar tudo.
-                </p>
-
-                {/* Atalhos: marcam um conjunto de categorias de uma vez */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                  {[
-                    { rotulo: "🍎 Só alimentos", categorias: alimentosEmCasa },
-                    { rotulo: "🧴 Limpeza e higiene", categorias: naoAlimentosEmCasa },
-                  ]
-                    .filter((a) => a.categorias.length > 0)
-                    .map(({ rotulo, categorias }) => {
-                      const ativo = mesmasCategorias(selecionadasExportar, categorias);
-                      return (
-                        <button
-                          key={rotulo}
-                          onClick={() => setCategoriasExportar(ativo ? [] : categorias)}
-                          style={{
-                            flex: 1,
-                            whiteSpace: "nowrap",
-                            padding: "10px",
-                            border: `1.5px solid ${ativo ? "var(--laranja)" : "var(--borda-suave)"}`,
-                            background: ativo ? "var(--amarelo-suave)" : "var(--bg)",
-                            color: "var(--text)",
-                            borderRadius: RAIO.md,
-                            fontFamily: "Nunito, sans-serif",
-                            fontWeight: FONTE.bold,
-                            fontSize: FONTE.md,
-                            cursor: "pointer",
-                          }}
-                        >
-                          {rotulo}
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "10px",
-                  }}
-                >
-                  {categoriasEmCasa.map((cat) => {
-                    const selecionado = selecionadasExportar.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => toggleCategoriaExportar(cat)}
-                        style={{
-                          padding: "8px 10px",
-                          border: `1.5px solid ${selecionado ? "var(--amarelo-borda)" : "var(--borda-suave)"}`,
-                          background: selecionado ? "var(--amarelo-suave)" : "var(--card)",
-                          color: selecionado ? "var(--text)" : "var(--text-soft)",
-                          borderRadius: RAIO.pill,
-                          fontFamily: "Nunito, sans-serif",
-                          fontWeight: FONTE.medio,
-                          fontSize: FONTE.md,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          letterSpacing: "0.5px",
-                        }}
-                      >
-                        {selecionado && <Check size={14} color="var(--laranja)" />}
-                        {cat}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={exportarEmCasa}
-                  style={{
-                    padding: "14px",
-                    ...BOTAO_PRIMARIO,
-                    cursor: "pointer",
-                    marginTop: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <Download size={18} />
-                  {selecionadasExportar.length === 0
-                    ? "Exportar tudo"
-                    : `Exportar (${selecionadasExportar.length} categoria${selecionadasExportar.length > 1 ? "s" : ""})`}
-                </button>
-              </>
-            )}
-          </div>
+          <ExportarEmCasa voltarTela={voltarTela} itensEmCasa={itensEmCasa} />
         )}
 
       </Folha>
