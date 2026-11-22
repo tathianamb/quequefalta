@@ -7,16 +7,31 @@ service cloud.firestore {
     }
 
     function participaDaLista(listaId) {
-      return request.auth.uid in 
+      return request.auth.uid in
         get(/databases/$(database)/documents/listas/$(listaId)).data.participantes;
+    }
+
+    // Mesma lista de src/config/admins.js: ao mudar uma, mude a outra.
+    function ehAdmin() {
+      return logado() && request.auth.token.email in [
+        'tm_barchi@hotmail.com',
+        'guiicamargo98@gmail.com'
+      ];
+    }
+
+    // Quem ainda não participa do grupo só pode mexer em `participantes`,
+    // e só para se acrescentar (entrar pelo link ?lista=<id>).
+    function soEntrandoNoGrupo() {
+      let antes = resource.data.participantes.toSet();
+      let depois = request.resource.data.participantes.toSet();
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantes'])
+        && depois.difference(antes) == [request.auth.uid].toSet()
+        && antes.difference(depois).size() == 0;
     }
 
     match /catalogo/{produtoId} {
       allow read: if logado();
-      allow write: if logado() && request.auth.token.email in [
-        'tm_barchi@hotmail.com',
-        'guiicamargo98@gmail.com'
-      ];
+      allow write: if ehAdmin();
       // Qualquer logado registra preço, mas só acrescentando um registro:
       // apagar ou alterar o histórico continua sendo de admin.
       allow update: if logado()
@@ -46,16 +61,19 @@ service cloud.firestore {
     }
 
     match /listas/{listaId} {
-      // Qualquer logado pode ler — necessário para buscar lista pelo link
-      allow read: if logado();
-      
+      // Qualquer logado abre UMA lista pelo id (o link ?lista=<id>), mas não
+      // pode listar a coleção: isso expunha todas as casas e o e-mail de quem
+      // criou cada uma. O app só usa getDoc aqui.
+      allow get: if logado();
+
       // Criador pode fazer tudo
       // Participante pode atualizar
-      // Qualquer logado pode adicionar a si mesmo como participante
-      allow write: if logado() && (
+      // Quem não participa só pode se acrescentar como participante
+      allow create, delete: if logado() && request.auth.uid == listaId;
+      allow update: if logado() && (
         request.auth.uid == listaId ||
         participaDaLista(listaId) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantes'])
+        soEntrandoNoGrupo()
       );
 
       match /lista/{itemId} {
@@ -66,16 +84,12 @@ service cloud.firestore {
     match /receitas/{receitaId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null
-        && request.auth.token.email in ['tm_barchi@hotmail.com', 'guiicamargo98@gmail.com'];
+      allow update, delete: if ehAdmin();
     }
 
     match /dicas/{dicaId} {
       allow read: if logado();
-      allow write: if logado() && request.auth.token.email in [
-        'tm_barchi@hotmail.com',
-        'guiicamargo98@gmail.com'
-      ];
+      allow write: if ehAdmin();
     }
   }
 }
