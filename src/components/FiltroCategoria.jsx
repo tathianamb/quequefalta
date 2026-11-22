@@ -1,5 +1,6 @@
 import { SlidersHorizontal, X, Check } from "lucide-react";
 import Folha from "./Folha";
+import BotaoIcone from "./BotaoIcone";
 import { useState } from "react";
 import {
   FONTE,
@@ -67,6 +68,7 @@ function FiltroCategoria({
           }}
         >
           <button
+            type="button"
             onClick={abrirModal}
             style={{
               display: "flex",
@@ -86,34 +88,19 @@ function FiltroCategoria({
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
               <SlidersHorizontal size={14} style={{ flexShrink: 0 }} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Filtrado por: {resumo()}</span>
-            </div>
+            </span>
           </button>
-          <button
-            type="button"
-            aria-label="Limpar filtro"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCategoriasFiltro([]);
-            }}
-            style={{
-              width: "36px",
-              height: "36px",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: "none",
-              background: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "#212529",
-            }}
-          >
-            <X size={14} />
-          </button>
+          <BotaoIcone
+            icone={X}
+            rotulo="Limpar filtro"
+            tamanho={14}
+            cor="var(--text)"
+            onClick={() => setCategoriasFiltro([])}
+            style={{ width: "36px", height: "36px" }}
+          />
 
           {/* Botão expandir/recolher — passado como prop */}
           {botoesExtras}
@@ -131,6 +118,7 @@ function FiltroCategoria({
           }}
         >
           <button
+            type="button"
             onClick={abrirModal}
             style={{
               ...BOTAO_SECUNDARIO,
@@ -159,6 +147,7 @@ function FiltroCategoria({
           rodape={
             <div style={{ display: "flex", gap: "12px" }}>
               <button
+                type="button"
                 onClick={limpar}
                 style={{
                   flex: 1,
@@ -171,6 +160,7 @@ function FiltroCategoria({
                 Limpar
               </button>
               <button
+                type="button"
                 onClick={aplicar}
                 style={{
                   flex: 2,
@@ -200,6 +190,8 @@ function FiltroCategoria({
             return (
               <button
                 key={cat}
+                type="button"
+                aria-pressed={selecionado}
                 onClick={() => toggleCategoria(cat)}
                 style={{
                   padding: "8px 10px",
