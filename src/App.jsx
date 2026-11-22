@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RAIO, COR } from "./utils/estilos";
+import Confirmacao from "./components/Confirmacao";
 import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { auth } from "./config/firebase";
 import {
@@ -93,88 +93,17 @@ function App() {
 
       {/* Modal confirmar nova lista */}
       {confirmandoLista && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 200,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.5)",
-            padding: "20px",
-          }}
+        <Confirmacao
+          icone="👨‍👩‍👧"
+          titulo={`Usar o grupo de ${confirmandoLista.criadaPor} agora?`}
+          cancelar="Depois"
+          confirmar="Trocar agora"
+          aoCancelar={() => handleConfirmarLista(false)}
+          aoConfirmar={() => handleConfirmarLista(true)}
         >
-          <div
-            style={{
-              background: "var(--card)",
-              borderRadius: RAIO.pill,
-              padding: "28px 24px",
-              width: "100%",
-              maxWidth: "320px",
-              textAlign: "center",
-            }}
-          >
-            <p style={{ fontSize: "36px", marginBottom: "12px" }}>👨‍👩‍👧</p>
-            <p
-              style={{
-                fontWeight: 900,
-                fontSize: "18px",
-                color: "var(--text)",
-                marginBottom: "8px",
-              }}
-            >
-              Usar o grupo de {confirmandoLista.criadaPor} agora?
-            </p>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "var(--text-soft)",
-                marginBottom: "24px",
-                lineHeight: 1.5,
-              }}
-            >
-              Grupo de <strong>{confirmandoLista.criadaPor}</strong>.<br />
-              Vocês passam a dividir a lista de compras e o que tem em casa.
-            </p>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                onClick={() => handleConfirmarLista(false)}
-                style={{
-                  flex: 1,
-                  padding: "14px",
-                  borderRadius: RAIO.md,
-                  border: "none",
-                  background: "var(--bg)",
-                  color: "var(--text-soft)",
-                  fontFamily: "Nunito, sans-serif",
-                  fontWeight: 700,
-                  fontSize: "15px",
-                  cursor: "pointer",
-                }}
-              >
-                Depois
-              </button>
-              <button
-                onClick={() => handleConfirmarLista(true)}
-                style={{
-                  flex: 1,
-                  padding: "14px",
-                  borderRadius: RAIO.md,
-                  border: "none",
-                  background: "linear-gradient(135deg, var(--amarelo), var(--laranja))",
-                  color: COR.textoSobreDestaque,
-                  fontFamily: "Nunito, sans-serif",
-                  fontWeight: 700,
-                  fontSize: "15px",
-                  cursor: "pointer",
-                }}
-              >
-                Trocar agora
-              </button>
-            </div>
-          </div>
-        </div>
+          Grupo de <strong>{confirmandoLista.criadaPor}</strong>.<br />
+          Vocês passam a dividir a lista de compras e o que tem em casa.
+        </Confirmacao>
       )}
     </>
   );

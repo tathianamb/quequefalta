@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO, COR } from '../../utils/estilos'
 import { TextoDica } from './DicaDetalhe'
+import Confirmacao from '../Confirmacao'
 
 const inputStyle = {
   width: '100%',
@@ -31,6 +32,18 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
   const [texto, setTexto] = useState(dicaInicial?.texto ?? '')
   const [previa, setPrevia] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false)
+  const [aviso, setAviso] = useState(null)
+  const timerAvisoRef = useRef(null)
+
+  // O aviso some sozinho e o timer não sobrevive à saída da tela.
+  useEffect(() => () => clearTimeout(timerAvisoRef.current), [])
+
+  const mostrarAviso = (texto) => {
+    setAviso(texto)
+    clearTimeout(timerAvisoRef.current)
+    timerAvisoRef.current = setTimeout(() => setAviso(null), 2000)
+  }
 
   const podeSalvar = titulo.trim() && texto.trim() && !salvando
 
@@ -41,19 +54,19 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
       await onSalvar({ titulo: titulo.trim(), texto: texto.trim() })
     } catch (e) {
       console.error(e)
-      alert('Não foi possível salvar a dica. Tente novamente.')
+      mostrarAviso('Não foi possível salvar a dica. Tente novamente.')
       setSalvando(false)
     }
   }
 
   const excluir = async () => {
-    if (!window.confirm(`Excluir a dica "${dicaInicial.titulo}"?`)) return
+    setConfirmandoExcluir(false)
     setSalvando(true)
     try {
       await onExcluir()
     } catch (e) {
       console.error(e)
-      alert('Não foi possível excluir a dica. Tente novamente.')
+      mostrarAviso('Não foi possível excluir a dica. Tente novamente.')
       setSalvando(false)
     }
   }
@@ -80,7 +93,7 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
         </button>
         {editando && (
           <button
-            onClick={excluir}
+            onClick={() => setConfirmandoExcluir(true)}
             disabled={salvando}
             style={{
               ...BOTAO_SECUNDARIO,
@@ -126,6 +139,12 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
         />
       )}
 
+      {aviso && (
+        <p role="alert" style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, marginTop: '12px' }}>
+          {aviso}
+        </p>
+      )}
+
       <button
         onClick={salvar}
         disabled={!podeSalvar}
@@ -140,6 +159,18 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
       >
         {salvando ? 'Salvando...' : editando ? 'Salvar alterações' : 'Publicar dica'}
       </button>
+
+      {confirmandoExcluir && (
+        <Confirmacao
+          titulo="Excluir esta dica?"
+          confirmar="Excluir"
+          destrutiva
+          aoCancelar={() => setConfirmandoExcluir(false)}
+          aoConfirmar={excluir}
+        >
+          {`"${dicaInicial.titulo}" será apagada.`}
+        </Confirmacao>
+      )}
     </div>
   )
 }

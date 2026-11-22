@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { X, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
+import Folha from "./Folha";
 import { montarSugestoesDoMes, JANELA_DIAS, IDA_GRANDE_ITENS } from "../utils/sugestoesMes";
 import { formatarPreco } from "../utils/precos";
 import { corDaCategoria } from "../utils/categorias";
-import { TIPOGRAFIA, FONTE, RAIO, COR, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO } from "../utils/estilos";
+import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO } from "../utils/estilos";
 import CaixaMarcacao from "./CaixaMarcacao";
 
 // Bottom sheet "Sugestões do mês": o que a casa comprou nos últimos
@@ -86,95 +87,12 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
   const vazio = !recorrentes.length && !avulsos.length;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 200,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
-        background: "rgba(0,0,0,0.4)",
-      }}
-      onClick={onFechar}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--card)",
-          borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
-          maxHeight: "85vh",
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          maxWidth: "480px",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "16px 20px",
-            flexShrink: 0,
-            borderBottom: `1px solid ${COR.divisoria}`,
-          }}
-        >
-          <div>
-            <h2 style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>Sugestões do mês</h2>
-            <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
-              {idas} ida{idas === 1 ? "" : "s"} ao mercado nos últimos {JANELA_DIAS} dias
-            </p>
-          </div>
-          <X size={20} color="var(--text-soft)" style={{ cursor: "pointer" }} onClick={onFechar} />
-        </div>
-
-        <div style={{ padding: "16px 20px", overflowY: "auto", flex: 1 }}>
-          {vazio && (
-            <p style={{ ...TIPOGRAFIA.corpo, color: "var(--text-soft)", textAlign: "center", padding: "24px 0" }}>
-              Ainda não há compras registradas nos últimos {JANELA_DIAS} dias. Registre as notas pelo bot do
-              Telegram para as sugestões aparecerem aqui.
-            </p>
-          )}
-
-          {recorrentes.length > 0 && (
-            <>
-              <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "8px" }}>
-                Compras recorrentes ({recorrentes.length})
-              </p>
-              {recorrentes.map(renderizar)}
-            </>
-          )}
-
-          {avulsos.length > 0 && (
-            <div style={{ marginTop: recorrentes.length ? "20px" : 0 }}>
-              <div
-                onClick={() => setAvulsosAbertos((v) => !v)}
-                style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", marginBottom: "4px" }}
-              >
-                <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", flex: 1 }}>
-                  Avulsos de idas pequenas ({avulsos.length})
-                </p>
-                {avulsosAbertos ? <ChevronUp size={16} color="var(--text-soft)" /> : <ChevronDown size={16} color="var(--text-soft)" />}
-              </div>
-              <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginBottom: "8px" }}>
-                Comprados uma vez só, numa ida com menos de {IDA_GRANDE_ITENS} itens.
-              </p>
-              {avulsosAbertos && avulsos.map(renderizar)}
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            padding: "16px 20px 80px",
-            borderTop: `1px solid ${COR.divisoria}`,
-            flexShrink: 0,
-          }}
-        >
+    <Folha
+      onFechar={onFechar}
+      titulo="Sugestões do mês"
+      subtitulo={`${idas} ida${idas === 1 ? "" : "s"} ao mercado nos últimos ${JANELA_DIAS} dias`}
+      rodape={
+        <div style={{ display: "flex", gap: "12px" }}>
           <button
             onClick={onFechar}
             style={{ flex: 1, padding: "14px", ...BOTAO_SECUNDARIO, fontSize: FONTE.base }}
@@ -194,8 +112,42 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
             {`Adicionar ${selecao.size} à lista`}
           </button>
         </div>
-      </div>
-    </div>
+      }
+    >
+      {vazio && (
+        <p style={{ ...TIPOGRAFIA.corpo, color: "var(--text-soft)", textAlign: "center", padding: "24px 0" }}>
+          Ainda não há compras registradas nos últimos {JANELA_DIAS} dias. Registre as notas pelo bot do
+          Telegram para as sugestões aparecerem aqui.
+        </p>
+      )}
+
+      {recorrentes.length > 0 && (
+        <>
+          <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "8px" }}>
+            Compras recorrentes ({recorrentes.length})
+          </p>
+          {recorrentes.map(renderizar)}
+        </>
+      )}
+
+      {avulsos.length > 0 && (
+        <div style={{ marginTop: recorrentes.length ? "20px" : 0 }}>
+          <div
+            onClick={() => setAvulsosAbertos((v) => !v)}
+            style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", marginBottom: "4px" }}
+          >
+            <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", flex: 1 }}>
+              Avulsos de idas pequenas ({avulsos.length})
+            </p>
+            {avulsosAbertos ? <ChevronUp size={16} color="var(--text-soft)" /> : <ChevronDown size={16} color="var(--text-soft)" />}
+          </div>
+          <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginBottom: "8px" }}>
+            Comprados uma vez só, numa ida com menos de {IDA_GRANDE_ITENS} itens.
+          </p>
+          {avulsosAbertos && avulsos.map(renderizar)}
+        </div>
+      )}
+    </Folha>
   );
 }
 

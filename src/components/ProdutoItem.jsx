@@ -1,4 +1,5 @@
 import { Check, Home, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
+import BotaoIcone from "./BotaoIcone";
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
 import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
@@ -229,21 +230,14 @@ function ProdutoItem({
 
         {mostraOpcoes && (
           <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
-            <button
+            <BotaoIcone
+              icone={MoreVertical}
+              tamanho={18}
+              rotulo="Mais opções"
+              aria-expanded={menuAberto}
               onClick={(e) => { e.stopPropagation(); setMenuAberto((v) => !v); }}
-              style={{
-                background: "none",
-                border: "none",
-                padding: "4px",
-                cursor: "pointer",
-                color: "var(--text-soft)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <MoreVertical size={18} />
-            </button>
+              style={{ margin: "-7px -3px" }}
+            />
 
             {menuAberto && (
               <div

@@ -1,7 +1,7 @@
 import { SlidersHorizontal, X, Check } from "lucide-react";
+import Folha from "./Folha";
 import { useState } from "react";
 import {
-  TIPOGRAFIA,
   FONTE,
   RAIO,
   BOTAO_PRIMARIO,
@@ -152,107 +152,12 @@ function FiltroCategoria({
 
       {/* Bottom sheet */}
       {aberto && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 200,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-            background: "rgba(0,0,0,0.4)",
-          }}
-          onClick={fecharModal}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--card)",
-              borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
-              maxHeight: "85vh",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {/* Header fixo */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "16px 20px",
-                flexShrink: 0,
-                borderBottom: `1px solid ${COR.divisoria}`,
-              }}
-            >
-              <h2
-                style={{
-                  ...TIPOGRAFIA.h2,
-                  color: "var(--text)",
-                }}
-              >
-                Filtrar
-              </h2>
-              <X
-                size={20}
-                color="var(--text-soft)"
-                style={{ cursor: "pointer" }}
-                onClick={fecharModal}
-              />
-            </div>
-
-            {/* Lista em tags */}
-            <div
-              style={{
-                padding: "16px 20px",
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "10px",
-                overflowY: "auto",
-                flex: 1,
-              }}
-            >
-              {categorias.map((cat) => {
-                const selecionado = selecao.includes(cat);
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => toggleCategoria(cat)}
-                    style={{
-                      padding: "8px 10px",
-                      border: `1.5px solid ${selecionado ? "var(--amarelo-borda)" : "var(--borda-suave)"}`,
-                      background: selecionado ? "var(--amarelo-suave)" : "var(--card)",
-                      color: selecionado ? "var(--text)" : "var(--text-soft)",
-                      borderRadius: RAIO.pill,
-                      fontFamily: "Nunito, sans-serif",
-                      fontWeight: FONTE.medio,
-                      fontSize: FONTE.md,
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    {selecionado && <Check size={14} color="var(--laranja)" />}
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Rodapé fixo */}
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                padding: "16px 20px 80px",
-                borderTop: `1px solid ${COR.divisoria}`,
-                flexShrink: 0,
-                background: "var(--card)",
-              }}
-            >
+        <Folha
+          onFechar={fecharModal}
+          titulo="Filtrar"
+          corpoStyle={{ display: "flex", flexWrap: "wrap", gap: "10px", alignContent: "flex-start" }}
+          rodape={
+            <div style={{ display: "flex", gap: "12px" }}>
               <button
                 onClick={limpar}
                 style={{
@@ -288,8 +193,37 @@ function FiltroCategoria({
                   : `Aplicar (${selecao.length})`}
               </button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          {categorias.map((cat) => {
+            const selecionado = selecao.includes(cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => toggleCategoria(cat)}
+                style={{
+                  padding: "8px 10px",
+                  border: `1.5px solid ${selecionado ? "var(--amarelo-borda)" : "var(--borda-suave)"}`,
+                  background: selecionado ? "var(--amarelo-suave)" : "var(--card)",
+                  color: selecionado ? "var(--text)" : "var(--text-soft)",
+                  borderRadius: RAIO.pill,
+                  fontFamily: "Nunito, sans-serif",
+                  fontWeight: FONTE.medio,
+                  fontSize: FONTE.md,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {selecionado && <Check size={14} color="var(--laranja)" />}
+                {cat}
+              </button>
+            );
+          })}
+        </Folha>
       )}
     </>
   );

@@ -51,6 +51,8 @@ import { useDicas } from "../hooks/useDicas";
 import { DicaLista } from "../components/dicas/DicaLista";
 import { DicaDetalhe } from "../components/dicas/DicaDetalhe";
 import FiltroCategoria from "../components/FiltroCategoria";
+import Folha from "../components/Folha";
+import BotaoIcone from "../components/BotaoIcone";
 import { ondeComprar, formatarPreco } from "../utils/precos";
 import { normalizar } from "../utils/texto";
 import {
@@ -446,27 +448,29 @@ function Home({
               <span style={{ color: "var(--laranja)" }}>Falta</span>
             </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <div
-              style={{ position: "relative", cursor: "pointer" }}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <BotaoIcone
+              icone={MessageCircle}
+              tamanho={22}
+              rotulo="Chat"
               onClick={() => { setChatAberto(true); pushBack(() => setChatAberto(false), "chat"); }}
-              aria-label="Chat"
+              style={{ margin: "-6px 0" }}
             >
-              <MessageCircle size={22} color="var(--text-soft)" />
               {(chatNaoLido || chatEnviando) && !chatAberto && (
                 <div style={{
-                  position: "absolute", top: "-3px", right: "-4px",
+                  position: "absolute", top: "6px", right: "5px",
                   width: "10px", height: "10px", borderRadius: RAIO.full,
                   background: chatNaoLido ? "var(--laranja)" : "var(--text-soft)",
                 }} />
               )}
-            </div>
-            <div
-              style={{ position: "relative", cursor: "pointer" }}
+            </BotaoIcone>
+            <BotaoIcone
+              icone={MenuIcon}
+              tamanho={22}
+              rotulo="Menu"
               onClick={() => abrirMenu()}
-            >
-              <MenuIcon size={22} color="var(--text-soft)" />
-            </div>
+              style={{ margin: "-6px -9px -6px 0" }}
+            />
           </div>
         </div>
 
@@ -501,11 +505,12 @@ function Home({
               }}
             />
             {busca && (
-              <X
-                size={16}
-                color="var(--text-soft)"
-                style={{ cursor: "pointer" }}
+              <BotaoIcone
+                icone={X}
+                tamanho={16}
+                rotulo="Limpar busca"
                 onClick={() => setBusca("")}
+                style={{ margin: "-9px -11px -9px 0" }}
               />
             )}
           </div>
@@ -1602,45 +1607,33 @@ function Home({
 
       {/* Bottom sheet ordenação receitas */}
       {ordenacaoAberta && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(0,0,0,0.4)" }}
-          onClick={fecharOrdenacao}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: "var(--card)", borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`, padding: "24px 20px 48px" }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-              <h2 style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>Ordenar</h2>
-              <X size={20} color="var(--text-soft)" style={{ cursor: "pointer" }} onClick={fecharOrdenacao} />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {[
-                { id: "relevancia", label: "Relevância", descricao: "Receitas com mais ingredientes em casa primeiro" },
-                { id: "az", label: "A → Z", descricao: "Ordem alfabética crescente" },
-                { id: "za", label: "Z → A", descricao: "Ordem alfabética decrescente" },
-              ].map(op => (
-                <div
-                  key={op.id}
-                  onClick={() => { setOrdenacaoReceitas(op.id); fecharOrdenacao(); }}
-                  style={{
-                    display: "flex", alignItems: "center", gap: "12px",
-                    padding: "14px 16px", borderRadius: RAIO.md,
-                    background: ordenacaoReceitas === op.id ? "var(--amarelo-suave)" : "var(--bg)",
-                    border: `1.5px solid ${ordenacaoReceitas === op.id ? "var(--amarelo)" : "transparent"}`,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{op.label}</p>
-                    <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>{op.descricao}</p>
-                  </div>
-                  {ordenacaoReceitas === op.id && <Check size={16} color="var(--laranja)" strokeWidth={3} />}
+        <Folha onFechar={fecharOrdenacao} titulo="Ordenar">
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[
+              { id: "relevancia", label: "Relevância", descricao: "Receitas com mais ingredientes em casa primeiro" },
+              { id: "az", label: "A → Z", descricao: "Ordem alfabética crescente" },
+              { id: "za", label: "Z → A", descricao: "Ordem alfabética decrescente" },
+            ].map(op => (
+              <div
+                key={op.id}
+                onClick={() => { setOrdenacaoReceitas(op.id); fecharOrdenacao(); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: "12px",
+                  padding: "14px 16px", borderRadius: RAIO.md,
+                  background: ordenacaoReceitas === op.id ? "var(--amarelo-suave)" : "var(--bg)",
+                  border: `1.5px solid ${ordenacaoReceitas === op.id ? "var(--amarelo)" : "transparent"}`,
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{op.label}</p>
+                  <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>{op.descricao}</p>
                 </div>
-              ))}
-            </div>
+                {ordenacaoReceitas === op.id && <Check size={16} color="var(--laranja)" strokeWidth={3} />}
+              </div>
+            ))}
           </div>
-        </div>
+        </Folha>
       )}
 
     </div>

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_DESABILITADO, COR } from '../../utils/estilos'
 import { normalizar } from '../../utils/texto'
+import BotaoIcone from '../BotaoIcone'
 
 const UNIDADES = [
   { valor: '',          label: '—',          plural: null         },
@@ -493,12 +494,14 @@ export function ReceitaFormulario({
                   </td>
                   {/* Remover */}
                   <td style={{ padding: '2px 2px', textAlign: 'center' }}>
-                    <button
+                    <BotaoIcone
+                      icone={X}
+                      tamanho={14}
+                      cor={COR.neutro}
+                      rotulo={`Remover ingrediente${ing.nome ? ` ${ing.nome}` : ''}`}
                       onClick={() => removerIngrediente(idx)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: COR.neutro }}
-                    >
-                      <X size={14} />
-                    </button>
+                      style={{ margin: '-8px -6px' }}
+                    />
                   </td>
                 </tr>
               ))}

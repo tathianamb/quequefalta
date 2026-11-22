@@ -5,6 +5,9 @@ import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { normalizar } from "../utils/texto";
 import { ondeComprar, formatarPreco } from "../utils/precos";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
+import Folha from "./Folha";
+import BotaoIcone from "./BotaoIcone";
+import Confirmacao from "./Confirmacao";
 import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR, BOTAO_DESABILITADO } from "../utils/estilos";
 
 const MERCADOS_BASE = ["Atacadão", "Max", "Avenida", "Superbom"];
@@ -23,6 +26,8 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   const [sucesso, setSucesso] = useState(false);
   const [erroDuplicado, setErroDuplicado] = useState(false);
   const [erroGravacao, setErroGravacao] = useState(null);
+  // Confirmação pendente: { tipo: "registro", h } ou { tipo: "produto" }.
+  const [confirmacao, setConfirmacao] = useState(null);
   const timerSucessoRef = useRef(null);
 
   // Não deixa o timer do "Registrado!" disparar depois que o modal fechou.
@@ -142,10 +147,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
 
   // arrayRemove compara o objeto inteiro — `h` vem direto do snapshot (mesmos
   // campos e Timestamp), então remove exatamente esse registro e nenhum outro.
-  const handleApagarRegistro = (h) => {
-    const dia = h.data?.toDate ? h.data.toDate().toLocaleDateString("pt-BR") : "";
-    const precoTexto = `R$ ${h.preco.toFixed(2).replace(".", ",")}`;
-    if (!window.confirm(`Apagar o registro de ${precoTexto} no ${h.mercado} (${dia})?`)) return;
+  const apagarRegistro = (h) => {
     setErroGravacao(null);
     updateDoc(doc(db, "catalogo", produto.id), { historico: arrayRemove(h) })
       .catch(avisarErroGravacao("Não foi possível apagar o registro."));
@@ -154,28 +156,22 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   // Mesma regra de "Onde comprar" da lista: preço mais recente por mercado.
   const melhor = ondeComprar(produto);
 
+  const textoConfirmacao = () => {
+    if (confirmacao?.tipo === "registro") {
+      const h = confirmacao.h;
+      const dia = h.data?.toDate ? h.data.toDate().toLocaleDateString("pt-BR") : "";
+      const precoTexto = `R$ ${h.preco.toFixed(2).replace(".", ",")}`;
+      return { titulo: "Apagar este registro?", texto: `${precoTexto} no ${h.mercado} (${dia}).`, confirmar: "Apagar" };
+    }
+    return { titulo: "Excluir produto?", texto: `"${produto.nome}" sai do catálogo.`, confirmar: "Excluir" };
+  };
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
-        background: "rgba(0,0,0,0.4)",
-      }}
-      onClick={onFechar}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--card)",
-          borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
-          padding: "24px 20px 40px",
-          maxHeight: "85vh",
-          overflowY: "auto",
-        }}
+    <>
+      <Folha
+        onFechar={onFechar}
+        rotulo={produto.nome}
+        corpoStyle={{ padding: "24px 20px calc(32px + env(safe-area-inset-bottom))" }}
       >
         {erroGravacao && (
           <p
@@ -244,7 +240,13 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                       style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "var(--bg)", border: BORDA, color: "var(--text-soft)", ...TIPOGRAFIA.subcategoria, fontWeight: 600, padding: "2px 8px", borderRadius: RAIO.pill }}
                     >
                       {g}
-                      <X size={12} style={{ cursor: "pointer" }} onClick={() => removerGrupoSubstituicao(g)} />
+                      <BotaoIcone
+                        icone={X}
+                        tamanho={12}
+                        rotulo={`Remover grupo ${g}`}
+                        onClick={() => removerGrupoSubstituicao(g)}
+                        style={{ margin: "-12px -12px -12px -8px" }}
+                      />
                     </span>
                   ))}
                 </div>
@@ -256,12 +258,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                     placeholder="Novo grupo"
                     style={{ flex: 1, padding: "8px 10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo, color: "var(--text)" }}
                   />
-                  <button
+                  <BotaoIcone
+                    icone={Plus}
+                    tamanho={16}
+                    cor={COR.textoSobreDestaque}
+                    rotulo="Adicionar grupo de substituição"
                     onClick={adicionarGrupoSubstituicao}
-                    style={{ padding: "8px 12px", borderRadius: RAIO.sm, border: "none", background: "var(--amarelo)", color: COR.textoSobreDestaque, cursor: "pointer", display: "flex", alignItems: "center" }}
-                  >
-                    <Plus size={16} />
-                  </button>
+                    style={{ borderRadius: RAIO.sm, background: "var(--amarelo)" }}
+                  />
                 </div>
               </div>
               <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}>
@@ -290,12 +294,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   Cancelar
                 </button>
                 {onDeletar && (
-                  <button
-                    onClick={() => { if (window.confirm(`Excluir "${produto.nome}" do catálogo?`)) onDeletar(produto); }}
-                    style={{ padding: "10px 12px", borderRadius: RAIO.sm, border: "none", background: COR.erroBg, color: COR.erro, cursor: "pointer", display: "flex", alignItems: "center" }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <BotaoIcone
+                    icone={Trash2}
+                    tamanho={16}
+                    cor={COR.erro}
+                    rotulo="Excluir produto"
+                    onClick={() => setConfirmacao({ tipo: "produto" })}
+                    style={{ borderRadius: RAIO.sm, background: COR.erroBg }}
+                  />
                 )}
               </div>
             </div>
@@ -330,20 +336,22 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               </h2>
             </div>
           )}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
             {isAdmin && !editandoAdmin && !origemLista && (
-              <button
+              <BotaoIcone
+                icone={Edit2}
+                tamanho={18}
+                rotulo="Editar produto"
                 onClick={() => setEditandoAdmin(true)}
-                style={{ background: "none", border: "none", padding: "4px", cursor: "pointer", color: "var(--text-soft)", display: "flex", alignItems: "center" }}
-              >
-                <Edit2 size={18} />
-              </button>
+                style={{ margin: "-8px 0" }}
+              />
             )}
-            <X
-              size={22}
-              color="var(--text-soft)"
-              style={{ cursor: "pointer" }}
+            <BotaoIcone
+              icone={X}
+              tamanho={22}
+              rotulo="Fechar"
               onClick={onFechar}
+              style={{ margin: "-8px -10px -8px 0" }}
             />
           </div>
         </div>
@@ -645,13 +653,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   R$ {h.preco.toFixed(2).replace(".", ",")}
                 </p>
                 {isAdmin && (
-                  <button
-                    onClick={() => handleApagarRegistro(h)}
-                    aria-label="Apagar registro"
-                    style={{ marginLeft: "10px", padding: "6px", borderRadius: RAIO.sm, border: "none", background: COR.erroBg, color: COR.erro, cursor: "pointer", display: "flex", alignItems: "center" }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <BotaoIcone
+                    icone={Trash2}
+                    tamanho={14}
+                    cor={COR.erro}
+                    rotulo="Apagar registro"
+                    onClick={() => setConfirmacao({ tipo: "registro", h })}
+                    style={{ marginLeft: "10px", borderRadius: RAIO.sm, background: COR.erroBg }}
+                  />
                 )}
               </div>
             ))}
@@ -669,8 +678,25 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
             Nenhum preço registrado ainda.
           </p>
         )}
-      </div>
-    </div>
+      </Folha>
+
+      {confirmacao && (
+        <Confirmacao
+          titulo={textoConfirmacao().titulo}
+          confirmar={textoConfirmacao().confirmar}
+          destrutiva
+          aoCancelar={() => setConfirmacao(null)}
+          aoConfirmar={() => {
+            const c = confirmacao;
+            setConfirmacao(null);
+            if (c.tipo === "registro") apagarRegistro(c.h);
+            else onDeletar(produto);
+          }}
+        >
+          {textoConfirmacao().texto}
+        </Confirmacao>
+      )}
+    </>
   );
 }
 

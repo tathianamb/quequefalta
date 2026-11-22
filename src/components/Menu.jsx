@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { baixarCsv } from "../utils/csv";
+import Folha from "./Folha";
+import BotaoIcone from "./BotaoIcone";
+import Confirmacao from "./Confirmacao";
 import {
   Moon,
   Lightbulb,
@@ -75,6 +78,9 @@ function Menu({
   const [erroTelegram, setErroTelegram] = useState(false);
   const timerSugestaoRef = useRef(null);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const [saindoDoGrupo, setSaindoDoGrupo] = useState(null); // lista que a pessoa vai deixar
+  const [aviso, setAviso] = useState(null);
+  const timerAvisoRef = useRef(null);
   const [codigoVinculo, setCodigoVinculo] = useState(null);
   const [gerandoCodigo, setGerandoCodigo] = useState(false);
   const [categoriasExportar, setCategoriasExportar] = useState(lerCategoriasExportar);
@@ -82,7 +88,26 @@ function Menu({
   const { vinculado, gerarCodigo, desvincular } = useTelegramVinculo(usuario);
 
   // Não deixa o timer do "Sugestão enviada" disparar depois que o menu fechou.
-  useEffect(() => () => clearTimeout(timerSugestaoRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(timerSugestaoRef.current);
+    clearTimeout(timerAvisoRef.current);
+  }, []);
+
+  // Aviso curto na própria tela (some em 2s).
+  const mostrarAviso = (texto) => {
+    setAviso(texto);
+    clearTimeout(timerAvisoRef.current);
+    timerAvisoRef.current = setTimeout(() => setAviso(null), 2000);
+  };
+
+  const confirmarSaidaDoGrupo = async () => {
+    const lista = saindoDoGrupo;
+    setSaindoDoGrupo(null);
+    await sairDaLista(usuario, lista.id);
+    setTodasListas((prev) => prev.filter((l) => l.id !== lista.id));
+    if (lista.id === listaAtiva) setListaAtiva(usuario.uid);
+    onFechar();
+  };
 
   // Telas internas: abrir registra o voltar do aparelho, e os botões "←" usam
   // esse mesmo voltar. Aberto direto numa tela interna (atalhos da Home), o
@@ -203,28 +228,13 @@ function Menu({
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
-        background: "rgba(0,0,0,0.4)",
-      }}
-      onClick={onFechar}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--card)",
-          borderRadius: `${RAIO.xxl} ${RAIO.xxl} 0 0`,
-          padding: "24px 20px 40px",
-          maxHeight: "85vh",
-          overflowY: "auto",
-          ...TIPOGRAFIA.corpo,
-        }}
+    <>
+      {/* Nas telas internas o Esc volta uma tela; o fundo e o X continuam fechando/voltando como antes. */}
+      <Folha
+        onFechar={onFechar}
+        onEsc={tela === "menu" ? onFechar : voltarTela}
+        rotulo="Menu"
+        corpoStyle={{ padding: "24px 20px calc(32px + env(safe-area-inset-bottom))", ...TIPOGRAFIA.corpo }}
       >
         {/* Header */}
         {tela === "menu" && (
@@ -250,11 +260,12 @@ function Menu({
                 >
                   Perfil
                 </p>
-                <X
-                  size={22}
-                  color="var(--text-soft)"
-                  style={{ cursor: "pointer" }}
+                <BotaoIcone
+                  icone={X}
+                  tamanho={22}
+                  rotulo="Fechar"
                   onClick={onFechar}
+                  style={{ margin: "-8px -10px -8px 0" }}
                 />
               </div>
               <div
@@ -437,7 +448,7 @@ function Menu({
                                   });
                                 } else {
                                   await navigator.clipboard.writeText(url);
-                                  alert("Link de convite copiado!");
+                                  mostrarAviso("Link de convite copiado!");
                                 }
                               } catch (erro) {
                                 // Cancelar o compartilhamento rejeita com AbortError: não é erro.
@@ -459,14 +470,9 @@ function Menu({
                         )}
                         {!propria && (
                           <button
-                            onClick={async (e) => {
+                            onClick={(e) => {
                               e.stopPropagation();
-                              await sairDaLista(usuario, lista.id);
-                              setTodasListas((prev) =>
-                                prev.filter((l) => l.id !== lista.id),
-                              );
-                              if (ativa) setListaAtiva(usuario.uid);
-                              onFechar();
+                              setSaindoDoGrupo(lista);
                             }}
                             style={{
                               padding: "6px 10px",
@@ -487,6 +493,11 @@ function Menu({
                     </div>
                   );
                 })}
+                {aviso && (
+                  <p role="status" style={{ ...TIPOGRAFIA.subcategoria, color: COR.sucesso, paddingLeft: "4px" }}>
+                    {aviso}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -671,81 +682,6 @@ function Menu({
                     Sair da conta
                   </span>
                 </div>
-
-                {/* Modal confirmação */}
-                {confirmandoSaida && (
-                  <div
-                    style={{
-                      position: "fixed",
-                      inset: 0,
-                      zIndex: 200,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "rgba(0,0,0,0.5)",
-                      padding: "20px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        background: "var(--card)",
-                        borderRadius: RAIO.pill,
-                        padding: "28px 24px",
-                        width: "100%",
-                        maxWidth: "320px",
-                        textAlign: "center",
-                      }}
-                    >
-                      <p style={{ ...TIPOGRAFIA.titulo, marginBottom: "12px" }}>
-                        👋
-                      </p>
-                      <p
-                        style={{
-                          ...TIPOGRAFIA.titulo,
-                          color: "var(--text)",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        Sair da conta?
-                      </p>
-                      <p
-                        style={{
-                          ...TIPOGRAFIA.corpo,
-                          color: "var(--text-soft)",
-                          marginBottom: "24px",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        Você precisará fazer login novamente para acessar sua
-                        lista.
-                      </p>
-                      <div style={{ display: "flex", gap: "12px" }}>
-                        <button
-                          onClick={() => setConfirmandoSaida(false)}
-                          style={{
-                            flex: 1,
-                            padding: "14px",
-                            ...BOTAO_PRIMARIO,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={() => signOut(auth)}
-                          style={{
-                            flex: 1,
-                            padding: "14px",
-                            ...BOTAO_SECUNDARIO,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Sair
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -768,11 +704,12 @@ function Menu({
               <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
                 Sugerir produto
               </p>
-              <X
-                size={22}
-                color="var(--text-soft)"
-                style={{ cursor: "pointer" }}
+              <BotaoIcone
+                icone={X}
+                tamanho={22}
+                rotulo="Fechar"
                 onClick={voltarTela}
+                style={{ margin: "-6px -10px -6px 0" }}
               />
             </div>
 
@@ -899,15 +836,16 @@ function Menu({
               <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
                 Vincular Telegram
               </p>
-              <X
-                size={22}
-                color="var(--text-soft)"
-                style={{ cursor: "pointer" }}
+              <BotaoIcone
+                icone={X}
+                tamanho={22}
+                rotulo="Fechar"
                 onClick={() => {
                   voltarTela();
                   setCodigoVinculo(null);
                   setErroTelegram(false);
                 }}
+                style={{ margin: "-6px -10px -6px 0" }}
               />
             </div>
 
@@ -1035,11 +973,12 @@ function Menu({
               <p style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>
                 Exportar o que tem em casa
               </p>
-              <X
-                size={22}
-                color="var(--text-soft)"
-                style={{ cursor: "pointer" }}
+              <BotaoIcone
+                icone={X}
+                tamanho={22}
+                rotulo="Fechar"
                 onClick={voltarTela /* aberta direto pelo atalho do "Tem em casa": fecha o menu */}
+                style={{ margin: "-6px -10px -6px 0" }}
               />
             </div>
 
@@ -1159,8 +1098,32 @@ function Menu({
           </div>
         )}
 
-      </div>
-    </div>
+      </Folha>
+
+      {confirmandoSaida && (
+        <Confirmacao
+          icone="👋"
+          titulo="Sair da conta?"
+          confirmar="Sair"
+          aoCancelar={() => setConfirmandoSaida(false)}
+          aoConfirmar={() => signOut(auth)}
+        >
+          Você precisará fazer login novamente para acessar sua lista.
+        </Confirmacao>
+      )}
+
+      {saindoDoGrupo && (
+        <Confirmacao
+          titulo={`Sair do grupo de ${saindoDoGrupo.criadaPor}?`}
+          confirmar="Sair do grupo"
+          destrutiva
+          aoCancelar={() => setSaindoDoGrupo(null)}
+          aoConfirmar={confirmarSaidaDoGrupo}
+        >
+          Você deixa de ver a lista e o que tem em casa desse grupo.
+        </Confirmacao>
+      )}
+    </>
   );
 }
 

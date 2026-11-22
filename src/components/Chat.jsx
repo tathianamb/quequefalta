@@ -3,6 +3,8 @@ import { ArrowLeft, Trash2, Copy, Check, Loader2 } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { IconeClaude, IconeGemini } from './IconesIA'
 import { TextoDica } from './dicas/DicaDetalhe'
+import BotaoIcone from './BotaoIcone'
+import Confirmacao from './Confirmacao'
 import { FONTE, RAIO, TIPOGRAFIA, COR, BOTAO_DESABILITADO } from '../utils/estilos'
 import { CATEGORIAS_NAO_ALIMENTARES } from '../utils/categorias'
 
@@ -81,6 +83,7 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
   const [texto, setTexto] = useState('')
   const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
   const [avisoClaude, setAvisoClaude] = useState(false)
+  const [confirmandoLimpar, setConfirmandoLimpar] = useState(false)
   const fimRef = useRef(null)
   const timersRef = useRef({ aviso: null, copiada: null })
 
@@ -179,19 +182,18 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
             <ArrowLeft size={16} /> Voltar
           </button>
           <h2 style={{ ...TIPOGRAFIA.h3, color: 'var(--text)' }}>Chat</h2>
-          <button
-            onClick={limpar}
+          <BotaoIcone
+            icone={Trash2}
+            tamanho={18}
+            rotulo="Limpar conversa"
+            onClick={() => setConfirmandoLimpar(true)}
             disabled={!mensagens.length || enviando}
-            aria-label="Limpar conversa"
             style={{
-              background: 'none', border: 'none', padding: 0,
+              margin: '-6px -10px -6px 0',
               cursor: mensagens.length && !enviando ? 'pointer' : 'default',
               ...(!mensagens.length || enviando ? BOTAO_DESABILITADO : {}),
-              display: 'flex',
             }}
-          >
-            <Trash2 size={18} color="var(--text-soft)" />
-          </button>
+          />
         </div>
 
         {/* Conversa */}
@@ -248,7 +250,7 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
                   <button
                     onClick={() => copiar(i, m.texto)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: '5px',
+                      display: 'flex', alignItems: 'center', gap: '5px', minHeight: '40px', margin: '-8px 0 -10px',
                       background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px',
                       color: copiada === i ? COR.sucesso : 'var(--text-soft)',
                       fontFamily: 'Nunito, sans-serif', fontSize: FONTE.sm, fontWeight: FONTE.semibold,
@@ -350,6 +352,21 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
           </button>
         </form>
       </div>
+
+      {confirmandoLimpar && (
+        <Confirmacao
+          titulo="Limpar a conversa?"
+          confirmar="Limpar"
+          destrutiva
+          aoCancelar={() => setConfirmandoLimpar(false)}
+          aoConfirmar={() => {
+            setConfirmandoLimpar(false)
+            limpar()
+          }}
+        >
+          As mensagens desta conversa serão apagadas.
+        </Confirmacao>
+      )}
     </div>
   )
 }
