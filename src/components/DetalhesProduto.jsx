@@ -3,6 +3,7 @@ import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { normalizar } from "../utils/texto";
+import { ondeComprar, formatarPreco } from "../utils/precos";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
 import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR, BOTAO_DESABILITADO } from "../utils/estilos";
 
@@ -96,18 +97,6 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
     .slice()
     .sort((a, b) => b.data?.toDate?.() - a.data?.toDate?.());
 
-  const melhorPreco = () => {
-    if (!historico.length) return null;
-    const porMercado = {};
-    historico.forEach((h) => {
-      if (!porMercado[h.mercado] || h.preco < porMercado[h.mercado]) {
-        porMercado[h.mercado] = h.preco;
-      }
-    });
-    const melhor = Object.entries(porMercado).sort((a, b) => a[1] - b[1])[0];
-    return { mercado: melhor[0], preco: melhor[1] };
-  };
-
   const handleRegistrar = () => {
     if (!mercado.trim() || !preco) return;
     setErroDuplicado(false);
@@ -162,7 +151,8 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
       .catch(avisarErroGravacao("Não foi possível apagar o registro."));
   };
 
-  const melhor = melhorPreco();
+  // Mesma regra de "Onde comprar" da lista: preço mais recente por mercado.
+  const melhor = ondeComprar(produto);
 
   return (
     <div
@@ -372,7 +362,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               justifyContent: "space-between",
             }}
           >
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p
                 style={{
                   fontSize: FONTE.sm,
@@ -380,7 +370,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   fontWeight: FONTE.bold,
                 }}
               >
-                Melhor preço registrado
+                Menor preço atual
               </p>
               <p
                 style={{
@@ -389,18 +379,24 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   color: COR.sucesso,
                 }}
               >
-                R$ {melhor.preco.toFixed(2).replace(".", ",")}
+                {formatarPreco(melhor.preco)}
               </p>
             </div>
-            <p
-              style={{
-                fontWeight: FONTE.bold,
-                color: COR.sucesso,
-                fontSize: FONTE.base,
-              }}
-            >
-              {melhor.mercado}
-            </p>
+            <div style={{ textAlign: "right", minWidth: 0, marginLeft: "12px" }}>
+              <p
+                style={{
+                  fontWeight: FONTE.bold,
+                  color: COR.sucesso,
+                  fontSize: FONTE.base,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {melhor.mercado}
+              </p>
+              <p style={{ fontSize: FONTE.sm, color: COR.sucesso }}>
+                preço de {melhor.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+              </p>
+            </div>
           </div>
         )}
 

@@ -82,21 +82,41 @@ function FiltroCategoria({
               fontSize: "13px",
               cursor: "pointer",
               flex: 1,
+              minWidth: 0,
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <SlidersHorizontal size={14} />
-              <span>Filtrado por: {resumo()}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+              <SlidersHorizontal size={14} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Filtrado por: {resumo()}</span>
             </div>
-            <X
-              size={14}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCategoriasFiltro([]);
-              }}
-            />
           </button>
+          <button
+            type="button"
+            aria-label="Limpar filtro"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCategoriasFiltro([]);
+            }}
+            style={{
+              width: "36px",
+              height: "36px",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "none",
+              background: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "#212529",
+            }}
+          >
+            <X size={14} />
+          </button>
+
+          {/* Botão expandir/recolher — passado como prop */}
+          {botoesExtras}
         </div>
       )}
 

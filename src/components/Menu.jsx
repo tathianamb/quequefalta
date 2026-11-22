@@ -393,7 +393,7 @@ function Menu({
                         }
                       }}
                     >
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
                         <p
                           style={{
                             ...TIPOGRAFIA.nomeProduto,
@@ -1067,7 +1067,7 @@ function Menu({
                 </p>
 
                 {/* Atalhos: marcam um conjunto de categorias de uma vez */}
-                <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                   {[
                     { rotulo: "🍎 Só alimentos", categorias: alimentosEmCasa },
                     { rotulo: "🧴 Limpeza e higiene", categorias: naoAlimentosEmCasa },
@@ -1081,6 +1081,7 @@ function Menu({
                           onClick={() => setCategoriasExportar(ativo ? [] : categorias)}
                           style={{
                             flex: 1,
+                            whiteSpace: "nowrap",
                             padding: "10px",
                             border: `1.5px solid ${ativo ? "var(--laranja)" : "var(--borda-suave)"}`,
                             background: ativo ? "var(--amarelo-suave)" : "var(--bg)",

@@ -138,11 +138,12 @@ function ProdutoItem({
 
         <div
           onClick={() => onAbrir && onAbrir(produto)}
-          style={{ flex: 1, cursor: onAbrir ? "pointer" : "default" }}
+          style={{ flex: 1, minWidth: 0, cursor: onAbrir ? "pointer" : "default" }}
         >
           <p
             style={{
               ...TIPOGRAFIA.nomeProduto,
+              overflowWrap: "anywhere",
               textDecoration: comprado ? "line-through" : "none",
               color: comprado
                 ? "var(--text-soft)"

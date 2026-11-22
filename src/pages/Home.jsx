@@ -334,6 +334,10 @@ function Home({
     (telaDica === "detalhe" || (telaDica === "formulario" && editandoDica)) && !dicaSelecionada
       ? "lista"
       : telaDica;
+  // A busca só filtra a listagem: no detalhe/formulário de receita ou dica ela não faz nada.
+  const mostrarBusca =
+    !(aba === "receitas" && telaReceitaEfetiva !== "lista") &&
+    !(aba === "dicas" && telaDicaEfetiva !== "lista");
   const dicasFiltradas = (() => {
     const termo = termoBusca;
     if (!termo) return dicas;
@@ -467,7 +471,7 @@ function Home({
         </div>
 
         {/* Busca */}
-        <div style={{ padding: "0 16px 12px" }}>
+        {mostrarBusca && <div style={{ padding: "0 16px 12px" }}>
           <div
             style={{
               display: "flex",
@@ -505,7 +509,7 @@ function Home({
               />
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Filtro categorias — lista e catálogo */}
         {(aba === "lista" || aba === "catalogo") && <FiltroCategoria
@@ -667,8 +671,51 @@ function Home({
                 </button>
               </div>
             )}
+          {!carregando && !erroLista && !busca && lista.length === 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                marginTop: "60px",
+                padding: "0 20px",
+              }}
+            >
+              <p style={{ fontSize: "48px" }}>🛒</p>
+              <p
+                style={{
+                  ...TIPOGRAFIA.h2,
+                  marginTop: "12px",
+                  color: "var(--text)",
+                }}
+              >
+                Sua lista está vazia
+              </p>
+              <p
+                style={{
+                  ...TIPOGRAFIA.corpo,
+                  color: "var(--text-soft)",
+                  marginTop: "8px",
+                  lineHeight: 1.5,
+                }}
+              >
+                Escolha no catálogo o que você precisa comprar.
+              </p>
+              <button
+                onClick={() => { const abaAtual = aba; pushBack(() => setAba(abaAtual)); setAba("catalogo"); }}
+                style={{
+                  marginTop: "20px",
+                  padding: "14px 24px",
+                  ...BOTAO_PRIMARIO,
+                  borderRadius: RAIO.md,
+                  color: "white",
+                  boxShadow: SOMBRA_LARANJA,
+                }}
+              >
+                🛍️ Abrir catálogo
+              </button>
+            </div>
+          )}
           {!carregando && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "16px" }}>
               <div style={{ display: "flex", background: "var(--card)", borderRadius: RAIO.pill, padding: "3px", boxShadow: "var(--shadow)" }}>
                 {[["categoria", "Categoria"], ["mercado", "Mercado"]].map(([valor, rotulo]) => {
                   const ativo = agrupamentoLista === valor;
@@ -686,6 +733,7 @@ function Home({
                         fontFamily: "Nunito, sans-serif",
                         fontWeight: FONTE.bold,
                         fontSize: "13px",
+                        whiteSpace: "nowrap",
                         cursor: "pointer",
                       }}
                     >
@@ -696,7 +744,7 @@ function Home({
               </div>
               <button
                 onClick={() => { setSugestoesAbertas(true); pushBack(() => setSugestoesAbertas(false), "sugestoes"); }}
-                style={{ ...BOTAO_SECUNDARIO, padding: "6px 12px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
+                style={{ ...BOTAO_SECUNDARIO, padding: "6px 12px", fontSize: "13px", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <Sparkles size={14} /> Sugestões do mês
               </button>
@@ -1001,7 +1049,38 @@ function Home({
               Não foi possível carregar o catálogo. Verifique a conexão.
             </p>
           )}
-          {!carregando && catalogoFiltrado.length === 0 && (
+          {!carregando && catalogoFiltrado.length === 0 && !busca && grupoFiltro.length > 0 && (
+            <div
+              style={{
+                textAlign: "center",
+                marginTop: "60px",
+                padding: "0 20px",
+              }}
+            >
+              <p style={{ fontSize: "48px" }}>🔍</p>
+              <p
+                style={{
+                  ...TIPOGRAFIA.h2,
+                  marginTop: "12px",
+                  color: "var(--text)",
+                }}
+              >
+                Nenhum produto neste filtro
+              </p>
+              <button
+                onClick={() => setGrupoFiltro([])}
+                style={{
+                  marginTop: "20px",
+                  padding: "14px 24px",
+                  ...BOTAO_SECUNDARIO,
+                  borderRadius: RAIO.md,
+                }}
+              >
+                Limpar filtro
+              </button>
+            </div>
+          )}
+          {!carregando && catalogoFiltrado.length === 0 && busca && (
             <div
               style={{
                 textAlign: "center",

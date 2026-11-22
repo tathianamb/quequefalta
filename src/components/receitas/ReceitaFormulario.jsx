@@ -685,13 +685,14 @@ export function ReceitaFormulario({
           gap: '12px',
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
           zIndex: 100,
-          whiteSpace: 'nowrap',
+          maxWidth: 'calc(100% - 32px)',
           ...TIPOGRAFIA.corpo,
         }}>
-          <span>"{toastRemovido.nome}" removido</span>
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{toastRemovido.nome}" removido</span>
           <button
             onClick={desfazerRemocao}
             style={{
+              flexShrink: 0,
               background: 'none',
               border: 'none',
               cursor: 'pointer',
