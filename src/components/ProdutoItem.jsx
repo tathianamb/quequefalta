@@ -3,6 +3,10 @@ import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
 import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
 
+// Caixa de lista (à esquerda) e botão "tem em casa" (à direita) têm o mesmo tamanho.
+const TAMANHO_CONTROLE = "28px";
+const TAMANHO_ICONE = 14;
+
 function ProdutoItem({
   produto,
   onToggle,
@@ -98,8 +102,8 @@ function ProdutoItem({
         <div
           onClick={handleToggle}
           style={{
-            width: "28px",
-            height: "28px",
+            width: TAMANHO_CONTROLE,
+            height: TAMANHO_CONTROLE,
             borderRadius: RAIO.sm,
             border: `1.5px solid ${comprado || naLista || feedback ? "var(--laranja)" : COR.borda}`,
             background: comprado
@@ -118,13 +122,13 @@ function ProdutoItem({
           }}
         >
           {comprado && <Check size={16} color="white" strokeWidth={3} />}
-          {emCasa && !comprado && <Check size={14} color="var(--laranja)" />}
-          {naLista && !emCasa && !comprado && <ShoppingCart size={14} color="var(--laranja)" />}
+          {emCasa && !comprado && <Check size={TAMANHO_ICONE} color="var(--laranja)" />}
+          {naLista && !emCasa && !comprado && <ShoppingCart size={TAMANHO_ICONE} color="var(--laranja)" />}
           {!naLista && !comprado && feedback && (
-            <Check size={14} color="var(--laranja)" />
+            <Check size={TAMANHO_ICONE} color="var(--laranja)" />
           )}
           {!naLista && !comprado && !feedback && onToggle && (
-            <Plus size={14} color={COR.borda} />
+            <Plus size={TAMANHO_ICONE} color={COR.borda} />
           )}
         </div>
 
@@ -213,8 +217,8 @@ function ProdutoItem({
             aria-label={emCasa ? "Tirar de tem em casa" : "Marcar como tem em casa"}
             aria-pressed={!!emCasa}
             style={{
-              width: "36px",
-              height: "36px",
+              width: TAMANHO_CONTROLE,
+              height: TAMANHO_CONTROLE,
               flexShrink: 0,
               borderRadius: RAIO.sm,
               border: `1.5px solid ${emCasa ? "var(--laranja)" : COR.borda}`,
@@ -227,7 +231,7 @@ function ProdutoItem({
               transition: "all 0.2s",
             }}
           >
-            <Home size={18} color={emCasa ? "white" : "var(--text-soft)"} />
+            <Home size={TAMANHO_ICONE} color={emCasa ? "white" : "var(--text-soft)"} />
           </button>
         )}
 
