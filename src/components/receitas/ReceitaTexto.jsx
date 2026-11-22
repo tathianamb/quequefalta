@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO } from '../../utils/estilos'
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_DESABILITADO } from '../../utils/estilos'
 import { parseReceita } from '../../utils/parseReceita'
 
 const inputStyle = {
@@ -83,8 +83,8 @@ export function ReceitaTexto({ textoInicial = '', catalogo, onContinuar, onVolta
           ...BOTAO_PRIMARIO,
           padding: '14px',
           width: '100%',
-          opacity: !texto.trim() ? 0.5 : 1,
-          cursor: !texto.trim() ? 'not-allowed' : 'pointer',
+          cursor: 'pointer',
+          ...(!texto.trim() && BOTAO_DESABILITADO),
         }}
       >
         Continuar →

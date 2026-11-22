@@ -2,10 +2,14 @@ import { Check, Home, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-re
 import { corDaCategoria } from "../utils/categorias";
 import { useState, useRef, useEffect } from "react";
 import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
+import CaixaMarcacao from "./CaixaMarcacao";
 
-// Caixa de lista (à esquerda) e botão "tem em casa" (à direita) têm o mesmo tamanho.
-const TAMANHO_CONTROLE = "28px";
+// Caixa de lista (à esquerda) e botão "tem em casa" (à direita): ver CaixaMarcacao.
 const TAMANHO_ICONE = 14;
+
+// Texto das etiquetas: a cor da categoria misturada com preto (claro) ou branco
+// (escuro, --mistura-tag) para ler bem sobre o fundo da mesma cor a 13%.
+const corTextoTag = (cor) => `color-mix(in srgb, ${cor} 50%, var(--mistura-tag))`;
 
 function ProdutoItem({
   produto,
@@ -106,35 +110,22 @@ function ProdutoItem({
           background: feedback ? "color-mix(in srgb, var(--laranja) 8%, var(--card))" : "var(--card)",
           borderRadius: RAIO.md,
           boxShadow: "var(--shadow)",
-          borderLeft: `4px solid ${feedback ? "var(--laranja)" : comprado ? "var(--laranja)" : cor}`,
-          opacity: comprado ? 0.4 : 1,
-          transition: "background 0.3s, opacity 0.2s",
+          borderLeft: `4px solid ${feedback ? "var(--laranja)" : comprado ? COR.neutro : cor}`,
+          transition: "background 0.3s",
           position: "relative",
         }}
       >
-        <div
-          onClick={handleToggle}
-          style={{
-            width: TAMANHO_CONTROLE,
-            height: TAMANHO_CONTROLE,
-            borderRadius: RAIO.sm,
-            border: `1.5px solid ${comprado || naLista || feedback ? "var(--laranja)" : COR.borda}`,
-            background: comprado
-              ? "var(--laranja)"
-              : naLista
-                ? "var(--laranja-suave)"
-                : feedback
-                  ? "var(--laranja-suave)"
-                  : "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "all 0.2s",
-            cursor: onToggle ? "pointer" : "default",
-          }}
+        <CaixaMarcacao
+          marcado={comprado}
+          destaque={!comprado && (naLista || feedback)}
+          onClick={onToggle ? handleToggle : undefined}
+          rotulo={
+            contexto === "lista"
+              ? comprado ? "Desmarcar como comprado" : "Marcar como comprado"
+              : naLista ? "Tirar da lista de compras" : "Adicionar à lista de compras"
+          }
         >
-          {comprado && <Check size={16} color="white" strokeWidth={3} />}
+          {comprado && <Check size={TAMANHO_ICONE} color="white" strokeWidth={3} />}
           {emCasa && !comprado && <Check size={TAMANHO_ICONE} color="var(--laranja)" />}
           {naLista && !emCasa && !comprado && <ShoppingCart size={TAMANHO_ICONE} color="var(--laranja)" />}
           {!naLista && !comprado && feedback && (
@@ -143,7 +134,7 @@ function ProdutoItem({
           {!naLista && !comprado && !feedback && onToggle && (
             <Plus size={TAMANHO_ICONE} color={COR.borda} />
           )}
-        </div>
+        </CaixaMarcacao>
 
         <div
           onClick={() => onAbrir && onAbrir(produto)}
@@ -171,7 +162,8 @@ function ProdutoItem({
               style={{
                 display: "inline-block",
                 background: cor + "22",
-                color: cor,
+                color: corTextoTag(cor),
+                opacity: comprado ? 0.7 : 1,
                 ...TIPOGRAFIA.subcategoria,
                 fontWeight: 600,
                 padding: "2px 8px",
@@ -190,7 +182,8 @@ function ProdutoItem({
                 style={{
                   display: "inline-block",
                   background: cor + "22",
-                  color: cor,
+                  color: corTextoTag(cor),
+                  opacity: comprado ? 0.7 : 1,
                   ...TIPOGRAFIA.subcategoria,
                   fontWeight: 600,
                   padding: "2px 8px",
@@ -225,27 +218,12 @@ function ProdutoItem({
         </div>
 
         {onEmCasa && (
-          <button
+          <CaixaMarcacao
+            marcado={!!emCasa}
             onClick={handleEmCasa}
-            aria-label={emCasa ? "Tirar de tem em casa" : "Marcar como tem em casa"}
-            aria-pressed={!!emCasa}
-            style={{
-              width: TAMANHO_CONTROLE,
-              height: TAMANHO_CONTROLE,
-              flexShrink: 0,
-              borderRadius: RAIO.sm,
-              border: `1.5px solid ${emCasa ? "var(--laranja)" : COR.borda}`,
-              background: emCasa ? "var(--laranja)" : "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              padding: 0,
-              transition: "all 0.2s",
-            }}
-          >
-            <Home size={TAMANHO_ICONE} color={emCasa ? "white" : "var(--text-soft)"} />
-          </button>
+            icone={Home}
+            rotulo={emCasa ? "Tirar de tem em casa" : "Marcar como tem em casa"}
+          />
         )}
 
         {mostraOpcoes && (

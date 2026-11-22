@@ -96,7 +96,7 @@ function CategoriaGrupo({
           style={{
             fontSize: FONTE.sm,
             background: cor + "22",
-            color: cor,
+            color: `color-mix(in srgb, ${cor} 50%, var(--mistura-tag))`,
             padding: "2px 8px",
             borderRadius: RAIO.pill,
             fontWeight: FONTE.bold,

@@ -553,7 +553,7 @@ function Home({
                 alignItems: "center",
                 gap: "6px",
                 background: "var(--amarelo)",
-                color: "#212529",
+                color: COR.textoSobreDestaque,
                 border: "none",
               }}
             >
@@ -658,7 +658,7 @@ function Home({
                     padding: "14px 24px",
                     ...BOTAO_PRIMARIO,
                     borderRadius: RAIO.md,
-                    color: "white",
+                    color: COR.textoSobreDestaque,
                     boxShadow: SOMBRA_LARANJA,
                   }}
                 >
@@ -681,7 +681,7 @@ function Home({
                         borderRadius: RAIO.pill,
                         padding: "6px 12px",
                         background: ativo ? "var(--amarelo)" : "transparent",
-                        color: ativo ? "#212529" : "var(--text-soft)",
+                        color: ativo ? COR.textoSobreDestaque : "var(--text-soft)",
                         fontFamily: "Nunito, sans-serif",
                         fontWeight: FONTE.bold,
                         fontSize: "13px",
@@ -1035,7 +1035,7 @@ function Home({
                   padding: "14px 24px",
                   ...BOTAO_PRIMARIO,
                   borderRadius: RAIO.md,
-                  color: "white",
+                  color: COR.textoSobreDestaque,
                   boxShadow: SOMBRA_LARANJA,
                 }}
               >
@@ -1500,7 +1500,7 @@ function Home({
                   top: "-6px",
                   right: "-8px",
                   background: "var(--amarelo)",
-                  color: "var(--text)",
+                  color: COR.textoSobreDestaque,
                   borderRadius: RAIO.full,
                   width: "16px",
                   height: "16px",

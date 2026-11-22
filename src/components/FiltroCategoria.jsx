@@ -76,7 +76,7 @@ function FiltroCategoria({
               borderRadius: RAIO.pill,
               border: "none",
               background: "var(--amarelo)",
-              color: "#212529",
+              color: COR.textoSobreDestaque,
               fontFamily: "Nunito, sans-serif",
               fontWeight: FONTE.bold,
               fontSize: "13px",

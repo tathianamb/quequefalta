@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RAIO } from "./utils/estilos";
+import { RAIO, COR } from "./utils/estilos";
 import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { auth } from "./config/firebase";
 import {
@@ -163,7 +163,7 @@ function App() {
                   borderRadius: RAIO.md,
                   border: "none",
                   background: "linear-gradient(135deg, var(--amarelo), var(--laranja))",
-                  color: "#212529",
+                  color: COR.textoSobreDestaque,
                   fontFamily: "Nunito, sans-serif",
                   fontWeight: 700,
                   fontSize: "15px",

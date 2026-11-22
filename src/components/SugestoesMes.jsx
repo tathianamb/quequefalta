@@ -3,7 +3,8 @@ import { X, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { montarSugestoesDoMes, JANELA_DIAS, IDA_GRANDE_ITENS } from "../utils/sugestoesMes";
 import { formatarPreco } from "../utils/precos";
 import { corDaCategoria } from "../utils/categorias";
-import { TIPOGRAFIA, FONTE, RAIO, COR, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from "../utils/estilos";
+import { TIPOGRAFIA, FONTE, RAIO, COR, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO } from "../utils/estilos";
+import CaixaMarcacao from "./CaixaMarcacao";
 
 // Bottom sheet "Sugestões do mês": o que a casa comprou nos últimos
 // JANELA_DIAS, com os recorrentes já marcados e os avulsos (comprados uma vez
@@ -66,21 +67,12 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
           cursor: "pointer",
         }}
       >
-        <div
-          style={{
-            width: "24px",
-            height: "24px",
-            flexShrink: 0,
-            borderRadius: RAIO.sm,
-            border: `1.5px solid ${marcado ? "var(--laranja)" : COR.borda}`,
-            background: marcado ? "var(--laranja)" : "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {marcado && <Check size={14} color="white" strokeWidth={3} />}
-        </div>
+        <CaixaMarcacao
+          marcado={marcado}
+          icone={Check}
+          rotulo={`${marcado ? "Desmarcar" : "Marcar"} ${s.produto.nome}`}
+          onClick={(e) => { e.stopPropagation(); alternar(s.produto.id); }}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{s.produto.nome}</p>
           <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
@@ -196,7 +188,7 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
               flex: 2,
               padding: "14px",
               ...BOTAO_PRIMARIO,
-              opacity: !selecao.size ? 0.5 : 1,
+              ...(!selecao.size && BOTAO_DESABILITADO),
             }}
           >
             {`Adicionar ${selecao.size} à lista`}

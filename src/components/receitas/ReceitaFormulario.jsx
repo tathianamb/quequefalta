@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, COR } from '../../utils/estilos'
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_DESABILITADO, COR } from '../../utils/estilos'
 import { normalizar } from '../../utils/texto'
 
 const UNIDADES = [
@@ -633,11 +633,11 @@ export function ReceitaFormulario({
               ...BOTAO_PRIMARIO,
               flex: 1,
               padding: '14px',
-              opacity: enviando ? 0.5 : 1,
-              cursor: enviando ? 'not-allowed' : 'pointer',
+              cursor: 'pointer',
               background: 'var(--bg)',
               color: 'var(--text-soft)',
               border: '1.5px solid var(--borda, #DEE2E6)',
+              ...(enviando && BOTAO_DESABILITADO),
             }}
           >
             Salvar rascunho
@@ -650,8 +650,8 @@ export function ReceitaFormulario({
             ...BOTAO_PRIMARIO,
             flex: 1,
             padding: '14px',
-            opacity: !podeSalvar || enviando ? 0.5 : 1,
-            cursor: !podeSalvar || enviando ? 'not-allowed' : 'pointer',
+            cursor: 'pointer',
+            ...((!podeSalvar || enviando) && BOTAO_DESABILITADO),
           }}
         >
           {enviando ? 'Enviando...' : 'Publicar receita'}

@@ -49,7 +49,7 @@ function Login() {
         <span style={{ color: "var(--amarelo)" }}>QueQue</span>
         <span style={{ color: "var(--laranja)" }}>Falta</span>
       </h1>
-      <p style={{ color: "var(--verde-sage)", marginBottom: "48px", fontSize: "15px" }}>
+      <p style={{ color: "#F1F3EC", marginBottom: "48px", fontSize: "15px" }}>
         Lista de compras compartilhada
       </p>
       <button
@@ -83,13 +83,13 @@ function Login() {
       {erro && (
         <p
           style={{
-            color: "var(--laranja)",
+            color: "white",
             marginTop: "16px",
             fontSize: "14px",
             textAlign: "center",
           }}
         >
-          {erro}
+          {"⚠ "}{erro}
         </p>
       )}
     </div>

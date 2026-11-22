@@ -1,5 +1,6 @@
-import { ArrowLeft, Clock, Users, ShoppingCart, Check, Pencil } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../../utils/estilos'
+import { ArrowLeft, Clock, Users, ShoppingCart, Home, Pencil } from 'lucide-react'
+import { TIPOGRAFIA, RAIO, COR, BOTAO_PRIMARIO, BOTAO_SECUNDARIO } from '../../utils/estilos'
+import CaixaMarcacao from '../CaixaMarcacao'
 import { criarVerificadorEmCasa } from '../../utils/ingredientesEmCasa'
 
 export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdicionarFaltantes, onToggleEmCasa, isAdmin, onEditar, onBuscarIngrediente }) {
@@ -101,10 +102,10 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                 borderRadius: RAIO.md,
                 background: isNaoVerificado
                   ? 'var(--card)'
-                  : ing.temEmCasa ? 'var(--verde-bg, #EBFBEE)' : 'var(--card)',
+                  : ing.temEmCasa ? 'var(--laranja-suave)' : 'var(--card)',
                 border: `1.5px solid ${isNaoVerificado
                   ? 'var(--borda, #DEE2E6)'
-                  : ing.temEmCasa ? 'var(--verde-borda, #69DB7C)' : 'var(--borda, #DEE2E6)'}`,
+                  : ing.temEmCasa ? 'color-mix(in srgb, var(--laranja) 45%, transparent)' : 'var(--borda, #DEE2E6)'}`,
               }}
             >
               {isNaoVerificado ? (
@@ -127,23 +128,12 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                   ?
                 </div>
               ) : (
-                <div
-                  onClick={() => onToggleEmCasa && ing.produtoId && onToggleEmCasa(ing)}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    background: ing.temEmCasa ? 'var(--verde, #2F9E44)' : 'transparent',
-                    border: `2px solid ${ing.temEmCasa ? 'var(--verde, #2F9E44)' : 'var(--borda, #DEE2E6)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    cursor: ing.produtoId ? 'pointer' : 'default',
-                  }}
-                >
-                  {ing.temEmCasa && <Check size={12} color="white" strokeWidth={3} />}
-                </div>
+                <CaixaMarcacao
+                  marcado={ing.temEmCasa}
+                  icone={Home}
+                  onClick={onToggleEmCasa && ing.produtoId ? () => onToggleEmCasa(ing) : undefined}
+                  rotulo={`${ing.temEmCasa ? 'Tirar de tem em casa' : 'Marcar como tem em casa'}: ${ing.nome}`}
+                />
               )}
               <span style={{ flex: 1 }}>
                 {(ing.quantidade || ing.unidade) && (
@@ -176,7 +166,7 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                 <span style={{ ...TIPOGRAFIA.label, color: 'var(--laranja)' }}>não verificado</span>
               )}
               {!isNaoVerificado && ing.temEmCasa && (
-                <span style={{ ...TIPOGRAFIA.label, color: 'var(--verde, #2F9E44)' }}>em casa</span>
+                <span style={{ ...TIPOGRAFIA.label, color: COR.laranjaTexto }}>em casa</span>
               )}
             </div>
           )
@@ -205,11 +195,11 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
         <div style={{
           padding: '14px',
           borderRadius: RAIO.md,
-          background: 'var(--verde-bg, #EBFBEE)',
-          border: '1.5px solid var(--verde-borda, #69DB7C)',
+          background: 'var(--laranja-suave)',
+          border: '1.5px solid color-mix(in srgb, var(--laranja) 45%, transparent)',
           textAlign: 'center',
           ...TIPOGRAFIA.corpo,
-          color: 'var(--verde, #2F9E44)',
+          color: COR.laranjaTexto,
           fontWeight: 600,
           marginBottom: '24px',
         }}>
@@ -231,7 +221,7 @@ export function ReceitaDetalhe({ receita, itensEmCasa, catalogo, onVoltar, onAdi
                   height: '28px',
                   borderRadius: '50%',
                   background: 'var(--laranja)',
-                  color: '#212529',
+                  color: COR.textoSobreDestaque,
                   fontWeight: 800,
                   fontSize: '13px',
                   display: 'flex',

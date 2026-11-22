@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowLeft, Trash2 } from 'lucide-react'
-import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, COR } from '../../utils/estilos'
+import { TIPOGRAFIA, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO, COR } from '../../utils/estilos'
 import { TextoDica } from './DicaDetalhe'
 
 const inputStyle = {
@@ -63,7 +63,7 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
     ...BOTAO_SECUNDARIO,
     padding: '6px 14px',
     fontSize: '13px',
-    ...(ativa ? { background: 'var(--amarelo)', color: '#212529', border: 'none' } : {}),
+    ...(ativa ? { background: 'var(--amarelo)', color: COR.textoSobreDestaque, border: 'none' } : {}),
   })
 
   return (
@@ -135,8 +135,8 @@ export function DicaFormulario({ dicaInicial, onSalvar, onExcluir, onVoltar }) {
           padding: '14px',
           width: '100%',
           marginTop: '20px',
-          opacity: podeSalvar ? 1 : 0.5,
-          cursor: podeSalvar ? 'pointer' : 'not-allowed',
+          cursor: 'pointer',
+          ...(!podeSalvar && BOTAO_DESABILITADO),
         }}
       >
         {salvando ? 'Salvando...' : editando ? 'Salvar alterações' : 'Publicar dica'}

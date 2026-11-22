@@ -1,5 +1,5 @@
 import { ChefHat, Clock, Users } from 'lucide-react'
-import { TIPOGRAFIA, RAIO } from '../../utils/estilos'
+import { TIPOGRAFIA, RAIO, COR } from '../../utils/estilos'
 
 function CardReceita({ receita, faltam, onClick }) {
   const total = receita.ingredientes.length
@@ -52,7 +52,7 @@ function CardReceita({ receita, faltam, onClick }) {
           )}
           <span style={{
             ...TIPOGRAFIA.subcategoria,
-            color: temTudo ? 'var(--verde, #2F9E44)' : 'var(--laranja)',
+            color: temTudo ? COR.laranjaTexto : 'var(--text-soft)',
             fontWeight: 600,
             marginLeft: 'auto',
           }}>

@@ -3,7 +3,7 @@ import { ArrowLeft, Trash2, Copy, Check, Loader2 } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { IconeClaude, IconeGemini } from './IconesIA'
 import { TextoDica } from './dicas/DicaDetalhe'
-import { FONTE, RAIO, TIPOGRAFIA, COR } from '../utils/estilos'
+import { FONTE, RAIO, TIPOGRAFIA, COR, BOTAO_DESABILITADO } from '../utils/estilos'
 import { CATEGORIAS_NAO_ALIMENTARES } from '../utils/categorias'
 
 const SUGESTOES = [
@@ -186,7 +186,7 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
             style={{
               background: 'none', border: 'none', padding: 0,
               cursor: mensagens.length && !enviando ? 'pointer' : 'default',
-              opacity: mensagens.length && !enviando ? 1 : 0.3,
+              ...(!mensagens.length || enviando ? BOTAO_DESABILITADO : {}),
               display: 'flex',
             }}
           >
@@ -234,7 +234,7 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
                     padding: '10px 14px',
                     borderRadius: RAIO.lg,
                     background: doUsuario ? 'var(--amarelo)' : m.erro ? COR.erroBg : 'var(--card)',
-                    color: doUsuario ? '#212529' : m.erro ? COR.erro : 'var(--text)',
+                    color: doUsuario ? COR.textoSobreDestaque : m.erro ? COR.erro : 'var(--text)',
                     border: doUsuario ? 'none' : `1px solid ${COR.divisoria}`,
                     fontSize: FONTE.md,
                     lineHeight: 1.5,
@@ -341,8 +341,8 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
             title="Perguntar ao Gemini"
             style={{
               ...estiloBotaoIA,
-              opacity: !texto.trim() || aguardando ? 0.4 : 1,
-              cursor: !texto.trim() || aguardando ? 'default' : 'pointer',
+              cursor: 'pointer',
+              ...(!texto.trim() || aguardando ? BOTAO_DESABILITADO : {}),
             }}
           >
             {aguardando

@@ -18,7 +18,7 @@ import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
 import { sugerirProduto } from "../config/sugestoes";
 import { useTelegramVinculo } from "../hooks/useTelegramVinculo";
-import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
+import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO, BORDA, COR } from "../utils/estilos";
 
 const TELEGRAM_BOT_USERNAME = "quequefalta_bot";
 
@@ -246,7 +246,6 @@ function Menu({
                   style={{
                     ...TIPOGRAFIA.label,
                     color: "var(--text-soft)",
-                    opacity: 0.6,
                   }}
                 >
                   Perfil
@@ -282,7 +281,6 @@ function Menu({
                   color: "var(--text-soft)",
                   marginBottom: "8px",
                   paddingLeft: "4px",
-                  opacity: 0.6,
                 }}
               >
                 Configurações
@@ -364,7 +362,6 @@ function Menu({
                   color: "var(--text-soft)",
                   marginBottom: "8px",
                   paddingLeft: "4px",
-                  opacity: 0.6,
                 }}
               >
                 Grupo familiar
@@ -411,7 +408,8 @@ function Menu({
                           <p
                             style={{
                               ...TIPOGRAFIA.subcategoria,
-                              color: "var(--amarelo)",
+                              color: "var(--text)",
+                              fontWeight: FONTE.bold,
                             }}
                           >
                             Ativa
@@ -500,7 +498,6 @@ function Menu({
                   color: "var(--text-soft)",
                   marginBottom: "8px",
                   paddingLeft: "4px",
-                  opacity: 0.6,
                 }}
               >
                 Ações
@@ -556,7 +553,7 @@ function Menu({
                     Vincular Telegram
                   </span>
                   {vinculado && (
-                    <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--verde)" }}>
+                    <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--verde-texto)" }}>
                       vinculado
                     </span>
                   )}
@@ -869,6 +866,7 @@ function Menu({
                 ...BOTAO_PRIMARIO,
                 cursor: !nome || !categoria ? "default" : "pointer",
                 marginTop: "4px",
+                ...(!nome || !categoria || enviando ? BOTAO_DESABILITADO : {}),
               }}
             >
               {sucesso
@@ -1006,6 +1004,7 @@ function Menu({
                     padding: "14px",
                     ...BOTAO_PRIMARIO,
                     cursor: gerandoCodigo ? "default" : "pointer",
+                    ...(gerandoCodigo && BOTAO_DESABILITADO),
                   }}
                 >
                   {gerandoCodigo ? "Gerando..." : "Gerar código"}

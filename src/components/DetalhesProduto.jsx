@@ -4,7 +4,7 @@ import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { normalizar } from "../utils/texto";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
-import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR } from "../utils/estilos";
+import { TIPOGRAFIA, FONTE, RAIO, BORDA, COR, BOTAO_DESABILITADO } from "../utils/estilos";
 
 const MERCADOS_BASE = ["Atacadão", "Max", "Avenida", "Superbom"];
 
@@ -268,7 +268,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   />
                   <button
                     onClick={adicionarGrupoSubstituicao}
-                    style={{ padding: "8px 12px", borderRadius: RAIO.sm, border: "none", background: "var(--laranja)", color: "white", cursor: "pointer", display: "flex", alignItems: "center" }}
+                    style={{ padding: "8px 12px", borderRadius: RAIO.sm, border: "none", background: "var(--amarelo)", color: COR.textoSobreDestaque, cursor: "pointer", display: "flex", alignItems: "center" }}
                   >
                     <Plus size={16} />
                   </button>
@@ -583,13 +583,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               padding: "14px",
               borderRadius: RAIO.md,
               border: "none",
-              background: !mercado.trim() || !preco ? COR.borda : "var(--laranja)",
-              color: !mercado.trim() || !preco ? "var(--text-soft)" : "white",
+              background: "var(--amarelo)",
+              color: COR.textoSobreDestaque,
               fontFamily: "Nunito, sans-serif",
               fontWeight: FONTE.extrabold,
               fontSize: FONTE.lg,
-              cursor: !mercado.trim() || !preco ? "default" : "pointer",
+              cursor: "pointer",
               transition: "all 0.2s",
+              ...(!mercado.trim() || !preco ? BOTAO_DESABILITADO : {}),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

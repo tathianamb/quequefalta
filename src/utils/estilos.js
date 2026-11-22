@@ -31,6 +31,13 @@ export const COR = {
   // neutro, erro, sucesso e as cores de categoria seguem em hex: são usados em cor + "22".
   neutro: '#ADB5BD',
 
+  // Texto sobre fundo amarelo/laranja da marca (nunca branco: contraste baixo).
+  textoSobreDestaque: '#212529',
+
+  // Laranja da marca para TEXTO (o --laranja puro tem só ~3:1 sobre o branco):
+  // misturado com preto no claro e com branco no escuro (--mistura-tag).
+  laranjaTexto: 'color-mix(in srgb, var(--laranja) 65%, var(--mistura-tag))',
+
   erro: '#FA5252',
   erroBg: 'var(--erro-bg)',
 
@@ -60,7 +67,7 @@ export const TIPOGRAFIA = {
 
 export const BOTAO_PRIMARIO = {
   background: 'linear-gradient(135deg, var(--amarelo), var(--laranja))',
-  color: '#212529',
+  color: COR.textoSobreDestaque,
   borderRadius: RAIO.md,
   border: 'none',
   fontFamily: 'Nunito, sans-serif',
@@ -81,3 +88,5 @@ export const BOTAO_SECUNDARIO = {
   letterSpacing: '0.3px',
   cursor: 'pointer',
 }
+// Botão desabilitado: aplique `...(desabilitado && BOTAO_DESABILITADO)` por último.
+export const BOTAO_DESABILITADO = { opacity: 0.45, cursor: 'not-allowed' }
