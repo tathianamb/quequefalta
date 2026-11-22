@@ -1,10 +1,12 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { DicaLista } from "../dicas/DicaLista";
 import { DicaDetalhe } from "../dicas/DicaDetalhe";
 import { filtrarDicas } from "../../utils/listagens";
+import { lazyComNovaTentativa } from "../../utils/lazy";
+import LimiteDeErro from "../LimiteDeErro";
 
 // Tela rara: fica fora do pacote de abertura (carrega na primeira vez).
-const DicaFormulario = lazy(() => import("../dicas/DicaFormulario").then((m) => ({ default: m.DicaFormulario })));
+const DicaFormulario = lazyComNovaTentativa(() => import("../dicas/DicaFormulario").then((m) => ({ default: m.DicaFormulario })));
 
 /**
  * Aba Dicas com a sub-navegação lista / detalhe / formulario. O estado da
@@ -60,6 +62,7 @@ export default function AbaDicas({
         />
       )}
       {telaDicaEfetiva === "formulario" && (
+        <LimiteDeErro>
         <Suspense fallback={null}>
         <DicaFormulario
           key={editandoDica ? dicaSelecionada.id : "nova"}
@@ -82,6 +85,7 @@ export default function AbaDicas({
           }}
         />
         </Suspense>
+        </LimiteDeErro>
       )}
     </div>
   );

@@ -1,15 +1,17 @@
-import { useMemo, lazy, Suspense } from "react";
+import { useMemo, Suspense } from "react";
 import { ReceitaLista } from "../receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../receitas/ReceitaDetalhe";
 import ReceitasPendentesAdmin from "./ReceitasPendentesAdmin";
 import { sugerirProduto } from "../../config/sugestoes";
 import { escolherVariante } from "../../utils/ingredientesEmCasa";
 import { ordenarReceitas } from "../../utils/listagens";
+import { lazyComNovaTentativa } from "../../utils/lazy";
+import LimiteDeErro from "../LimiteDeErro";
 
 // Telas raras: ficam fora do pacote de abertura e carregam na primeira vez que
 // são abertas (o service worker já deixa os arquivos em cache).
-const ReceitaTexto = lazy(() => import("../receitas/ReceitaTexto").then((m) => ({ default: m.ReceitaTexto })));
-const ReceitaFormulario = lazy(() => import("../receitas/ReceitaFormulario").then((m) => ({ default: m.ReceitaFormulario })));
+const ReceitaTexto = lazyComNovaTentativa(() => import("../receitas/ReceitaTexto").then((m) => ({ default: m.ReceitaTexto })));
+const ReceitaFormulario = lazyComNovaTentativa(() => import("../receitas/ReceitaFormulario").then((m) => ({ default: m.ReceitaFormulario })));
 
 /**
  * Aba Receitas com a sub-navegação lista / detalhe / texto / formulario.
@@ -160,6 +162,7 @@ export default function AbaReceitas({
         />
       )}
       {telaReceitaEfetiva === "texto" && (
+        <LimiteDeErro>
         <Suspense fallback={null}>
         <ReceitaTexto
           textoInicial={textoReceita}
@@ -173,8 +176,10 @@ export default function AbaReceitas({
           }}
         />
         </Suspense>
+        </LimiteDeErro>
       )}
       {telaReceitaEfetiva === "formulario" && (
+        <LimiteDeErro>
         <Suspense fallback={null}>
         <ReceitaFormulario
           catalogo={catalogo}
@@ -205,6 +210,7 @@ export default function AbaReceitas({
           }}
         />
         </Suspense>
+        </LimiteDeErro>
       )}
     </div>
   );

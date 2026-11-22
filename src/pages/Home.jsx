@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useDeferredValue, lazy, Suspense } from "react";
+﻿import { useState, useMemo, useDeferredValue, Suspense } from "react";
 import { db } from "../config/firebase";
 import { deleteDoc, doc } from "firebase/firestore";
 import { isAdmin } from "../config/admins";
@@ -27,11 +27,13 @@ import OrdenacaoReceitas from "../components/home/OrdenacaoReceitas";
 import AvisoErro from "../components/home/AvisoErro";
 import { categoriasDoFiltro } from "../utils/listagens";
 import { normalizar } from "../utils/texto";
+import { lazyComNovaTentativa } from "../utils/lazy";
+import LimiteDeErro from "../components/LimiteDeErro";
 
 // Telas raras: ficam fora do pacote de abertura e carregam na primeira vez que
 // são abertas (o service worker já deixa os arquivos em cache).
-const Chat = lazy(() => import("../components/Chat"));
-const SugestoesMes = lazy(() => import("../components/SugestoesMes"));
+const Chat = lazyComNovaTentativa(() => import("../components/Chat"));
+const SugestoesMes = lazyComNovaTentativa(() => import("../components/SugestoesMes"));
 
 /**
  * Tela principal: coordena dados (hooks), aba ativa, busca/filtro, modais e a
@@ -285,6 +287,7 @@ function Home({
 
       {/* Modal detalhes */}
       {sugestoesAbertas && (
+        <LimiteDeErro aoFechar={fecharSugestoesMes}>
         <Suspense fallback={null}>
         <SugestoesMes
           catalogo={catalogo}
@@ -295,6 +298,7 @@ function Home({
           onFechar={fecharSugestoesMes}
         />
         </Suspense>
+        </LimiteDeErro>
       )}
 
       {produtoSelecionado && (
@@ -337,7 +341,7 @@ function Home({
       {(avisoErro || avisoGravacao) && <AvisoErro mensagem={avisoErro || avisoGravacao} />}
 
       {/* Chat */}
-      {chatAberto && <Suspense fallback={null}><Chat onFechar={fecharChat} itensEmCasa={itensEmCasa} /></Suspense>}
+      {chatAberto && <LimiteDeErro aoFechar={fecharChat}><Suspense fallback={null}><Chat onFechar={fecharChat} itensEmCasa={itensEmCasa} /></Suspense></LimiteDeErro>}
 
       <NavInferior
         aba={aba}
