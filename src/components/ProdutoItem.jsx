@@ -1,7 +1,7 @@
 import { Check, Home, Plus, ShoppingCart, Trash2, MoreVertical } from "lucide-react";
 import BotaoIcone from "./BotaoIcone";
 import { corDaCategoria } from "../utils/categorias";
-import { useState, useRef, useEffect } from "react";
+import { memo, useState, useRef, useEffect } from "react";
 import { TIPOGRAFIA, RAIO, COR } from '../utils/estilos'
 import CaixaMarcacao from "./CaixaMarcacao";
 
@@ -283,4 +283,4 @@ function ProdutoItem({
   );
 }
 
-export default ProdutoItem;
+export default memo(ProdutoItem);

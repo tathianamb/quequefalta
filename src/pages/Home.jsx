@@ -11,6 +11,7 @@ import { useReceitas } from "../hooks/useReceitas";
 import { useDicas } from "../hooks/useDicas";
 import { useBackStack } from "../hooks/useBackStack";
 import { useAbasHome } from "../hooks/useAbasHome";
+import { useCallbackEstavel } from "../hooks/useCallbackEstavel";
 import { useAvisoErro } from "../hooks/useAvisoErro";
 import { useAgrupamentoLista } from "../hooks/useAgrupamentoLista";
 import { useNavegacaoReceitas } from "../hooks/useNavegacaoReceitas";
@@ -98,10 +99,12 @@ function Home({
 
   // Modais: abrir registra o voltar com uma chave; fechar pelo X ou pelo fundo
   // descarta essa entrada, para o voltar do aparelho não virar toque morto.
-  const selecionarProduto = (produto) => {
+  // Os callbacks que vão para os cartões de produto (React.memo) têm identidade
+  // fixa: eles chamam a última versão, então leem o estado atual do render.
+  const selecionarProduto = useCallbackEstavel((produto) => {
     setProdutoSelecionado(produto);
     pushBack(() => setProdutoSelecionado(null), "produto");
-  };
+  });
   const fecharProduto = () => { setProdutoSelecionado(null); descartar("produto"); };
   const abrirMenu = (tela = "menu") => {
     setTelaMenu(tela);
@@ -139,15 +142,17 @@ function Home({
   );
   const carregando = carregandoLista || carregandoCatalogo;
 
-  const abrirProduto = (item) => {
+  const abrirProduto = useCallbackEstavel((item) => {
     const produto = catalogo.find((p) => p.id === item.produtoId);
     if (produto) selecionarProduto({ ...produto, _origemLista: true });
-  };
+  });
 
-  const removerItemPorProdutoId = (produto) => {
+  const removerItemPorProdutoId = useCallbackEstavel((produto) => {
     const item = lista.find((i) => i.produtoId === produto.id);
     if (item) removerItem(item);
-  };
+  });
+
+  const irParaGrupoEstavel = useCallbackEstavel(irParaGrupo);
 
   const deletarProdutoCatalogo = (produto) => {
     // Remove também da lista ativa, para não deixar item órfão apontando
@@ -211,7 +216,7 @@ function Home({
           toggleComprado={toggleComprado}
           removerItem={removerItem}
           onAbrirProduto={abrirProduto}
-          irParaGrupo={irParaGrupo}
+          irParaGrupo={irParaGrupoEstavel}
           irParaAba={irParaAba}
           onAbrirSugestoesMes={abrirSugestoesMes}
           onAbrirMenu={abrirMenu}
@@ -236,7 +241,7 @@ function Home({
           alternarEmCasa={alternarEmCasa}
           onRemover={removerItemPorProdutoId}
           onAbrirProduto={selecionarProduto}
-          irParaGrupo={irParaGrupo}
+          irParaGrupo={irParaGrupoEstavel}
           onAbrirMenu={abrirMenu}
           emAndamento={emAndamento}
           rodarUmaVez={rodarUmaVez}

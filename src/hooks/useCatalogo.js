@@ -9,10 +9,16 @@ export function useCatalogo() {
 
   useEffect(() => {
     const ref = collection(db, 'catalogo')
+    // Só os documentos que mudaram viram objetos novos: os demais mantêm a
+    // identidade, para os cartões de produto (React.memo) não re-renderizarem.
+    const porId = new Map()
     const unsub = onSnapshot(ref, (snap) => {
       setErro(false)
-      setCatalogo(snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
+      for (const mudanca of snap.docChanges()) {
+        if (mudanca.type === 'removed') porId.delete(mudanca.doc.id)
+        else porId.set(mudanca.doc.id, { id: mudanca.doc.id, ...mudanca.doc.data() })
+      }
+      setCatalogo([...porId.values()]
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
         )
       setCarregando(false)

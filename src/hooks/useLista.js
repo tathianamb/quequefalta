@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   onSnapshot,
@@ -11,6 +11,39 @@ import { db } from "../config/firebase";
 
 const SEM_CATALOGO = [];
 const MS_AVISO = 5000;
+
+// Os objetos devolvidos em `lista` mantêm a mesma identidade enquanto o item e o
+// produto do catálogo não mudam, para o ProdutoItem (React.memo) só re-renderizar
+// o cartão que de fato mudou. Cache por (item cru, produto), sem segurar memória.
+const objetosDaLista = new WeakMap();
+function objetoDaLista(item, prod) {
+  let porProduto = objetosDaLista.get(item);
+  if (!porProduto) {
+    porProduto = new WeakMap();
+    objetosDaLista.set(item, porProduto);
+  }
+  let objeto = porProduto.get(prod);
+  if (!objeto) {
+    objeto = {
+      id: item.id,
+      produtoId: item.produtoId,
+      comprado: item.comprado,
+      nome: prod.nome,
+      categoria: prod.categoria,
+      subcategoria: prod.subcategoria,
+      grupoSubstituicao: prod.grupoSubstituicao ?? [],
+      receitas: prod.receitas ?? [],
+    };
+    porProduto.set(prod, objeto);
+  }
+  return objeto;
+}
+
+// Igualdade rasa de dois documentos do snapshot (campos simples).
+function mesmosCampos(a, b) {
+  const chaves = Object.keys(a);
+  return chaves.length === Object.keys(b).length && chaves.every((k) => Object.is(a[k], b[k]));
+}
 
 // Todas as escritas daqui são "disparar e seguir": a promise do Firestore só
 // resolve quando o servidor confirma, mas a gravação local e o onSnapshot são
@@ -41,7 +74,13 @@ export function useLista(listaAtiva, catalogo = SEM_CATALOGO) {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        const itens = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // Reaproveita o objeto do snapshot anterior quando o documento não mudou.
+        const anteriores = new Map(itensRef.current.map((i) => [i.id, i]));
+        const itens = snap.docs.map((d) => {
+          const novo = { id: d.id, ...d.data() };
+          const anterior = anteriores.get(d.id);
+          return anterior && mesmosCampos(anterior, novo) ? anterior : novo;
+        });
         itensRef.current = itens;
         idsRef.current = new Set(itens.map((i) => i.produtoId).filter(Boolean));
         // O que já apareceu no snapshot deixa de ser "pendente".
@@ -65,12 +104,14 @@ export function useLista(listaAtiva, catalogo = SEM_CATALOGO) {
   const carregando = listaAtiva ? !daListaAtiva : false;
   const erro = daListaAtiva && estado.erro;
 
-  const avisarErro = (mensagem, e) => {
+  // As funções expostas abaixo só leem refs e `listaAtiva`, então mudam de
+  // identidade apenas ao trocar de lista (o ProdutoItem é React.memo).
+  const avisarErro = useCallback((mensagem, e) => {
     console.error(mensagem, e);
     setAvisoGravacao(mensagem);
     clearTimeout(avisoTimerRef.current);
     avisoTimerRef.current = setTimeout(() => setAvisoGravacao(null), MS_AVISO);
-  };
+  }, []);
 
   // Cruza itens com catálogo para montar objetos completos
   const lista = useMemo(() => {
@@ -84,73 +125,76 @@ export function useLista(listaAtiva, catalogo = SEM_CATALOGO) {
           // guardam o próprio nome continuam aparecendo como fallback.
           return item.nome ? item : null;
         }
-        return {
-          id: item.id,
-          produtoId: item.produtoId,
-          comprado: item.comprado,
-          nome: prod.nome,
-          categoria: prod.categoria,
-          subcategoria: prod.subcategoria,
-          grupoSubstituicao: prod.grupoSubstituicao ?? [],
-          receitas: prod.receitas ?? [],
-        };
+        return objetoDaLista(item, prod);
       })
       .filter(Boolean)
       .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"));
   }, [itensRaw, catalogo]);
 
   // Devolve true (síncrono) se criou, false se o produto já está na lista.
-  const criarItem = (produto, comprado) => {
-    if (!listaAtiva) return false;
-    if (idsRef.current.has(produto.id) || pendentesRef.current.has(produto.id)) return false;
-    pendentesRef.current.add(produto.id);
-    addDoc(collection(db, "listas", listaAtiva, "lista"), {
-      produtoId: produto.id,
-      comprado,
-    }).catch((e) => {
-      pendentesRef.current.delete(produto.id);
-      avisarErro("Não foi possível adicionar à lista. Tente de novo.", e);
-    });
-    return true;
-  };
+  const criarItem = useCallback(
+    (produto, comprado) => {
+      if (!listaAtiva) return false;
+      if (idsRef.current.has(produto.id) || pendentesRef.current.has(produto.id)) return false;
+      pendentesRef.current.add(produto.id);
+      addDoc(collection(db, "listas", listaAtiva, "lista"), {
+        produtoId: produto.id,
+        comprado,
+      }).catch((e) => {
+        pendentesRef.current.delete(produto.id);
+        avisarErro("Não foi possível adicionar à lista. Tente de novo.", e);
+      });
+      return true;
+    },
+    [listaAtiva, avisarErro],
+  );
 
-  const adicionarItem = (produto) => criarItem(produto, false);
-  const adicionarItemComprado = (produto) => criarItem(produto, true);
+  const adicionarItem = useCallback((produto) => criarItem(produto, false), [criarItem]);
+  const adicionarItemComprado = useCallback((produto) => criarItem(produto, true), [criarItem]);
+
+  const toggleComprado = useCallback(
+    (item) => {
+      if (!listaAtiva) return;
+      const ref = doc(db, "listas", listaAtiva, "lista", item.id);
+      updateDoc(ref, { comprado: !item.comprado }).catch((e) =>
+        avisarErro("Não foi possível atualizar o item. Tente de novo.", e),
+      );
+    },
+    [listaAtiva, avisarErro],
+  );
 
   // Botão de casinha do catálogo: liga/desliga "tem em casa". Fora da lista,
   // cria o item já comprado; na lista, alterna o comprado (desligar deixa o
   // item na lista, a comprar). Devolve o novo estado: true = em casa.
-  const alternarEmCasa = (produto) => {
-    const item = itensRef.current.find((i) => i.produtoId === produto.id);
-    if (!item) {
-      adicionarItemComprado(produto);
-      return true;
-    }
-    toggleComprado(item);
-    return !item.comprado;
-  };
-
-  const toggleComprado = (item) => {
-    if (!listaAtiva) return;
-    const ref = doc(db, "listas", listaAtiva, "lista", item.id);
-    updateDoc(ref, { comprado: !item.comprado }).catch((e) =>
-      avisarErro("Não foi possível atualizar o item. Tente de novo.", e),
-    );
-  };
+  const alternarEmCasa = useCallback(
+    (produto) => {
+      const item = itensRef.current.find((i) => i.produtoId === produto.id);
+      if (!item) {
+        adicionarItemComprado(produto);
+        return true;
+      }
+      toggleComprado(item);
+      return !item.comprado;
+    },
+    [adicionarItemComprado, toggleComprado],
+  );
 
   // Devolve a promise (já com o erro tratado) para quem precisa esperar o
   // servidor, como a exclusão de produto do catálogo.
-  const removerItem = (item) => {
-    if (!listaAtiva) return Promise.resolve();
-    if (item.produtoId) {
-      idsRef.current.delete(item.produtoId);
-      pendentesRef.current.delete(item.produtoId);
-    }
-    return deleteDoc(doc(db, "listas", listaAtiva, "lista", item.id)).catch((e) => {
-      if (item.produtoId) idsRef.current.add(item.produtoId);
-      avisarErro("Não foi possível remover o item. Tente de novo.", e);
-    });
-  };
+  const removerItem = useCallback(
+    (item) => {
+      if (!listaAtiva) return Promise.resolve();
+      if (item.produtoId) {
+        idsRef.current.delete(item.produtoId);
+        pendentesRef.current.delete(item.produtoId);
+      }
+      return deleteDoc(doc(db, "listas", listaAtiva, "lista", item.id)).catch((e) => {
+        if (item.produtoId) idsRef.current.add(item.produtoId);
+        avisarErro("Não foi possível remover o item. Tente de novo.", e);
+      });
+    },
+    [listaAtiva, avisarErro],
+  );
 
   return {
     lista,
