@@ -118,7 +118,9 @@ function Home({
   const [sugestaoNomeFoco, setSugestaoNomeFoco] = useState(false);
   const admin = isAdmin(usuario.email);
   const [telaMenu, setTelaMenu] = useState("menu");
-  const [receitaSelecionada, setReceitaSelecionada] = useState(null);
+  // Guarda o id (não a cópia): se a receita for editada ou rejeitada por outro
+  // admin, o detalhe acompanha, como nas dicas.
+  const [receitaSelecionadaId, setReceitaSelecionadaId] = useState(null);
   const [telaReceita, setTelaReceita] = useState("lista"); // "lista" | "detalhe" | "texto" | "formulario"
   const [textoReceita, setTextoReceita] = useState("");
   const [dadosParseados, setDadosParseados] = useState(null);
@@ -137,7 +139,30 @@ function Home({
   const [dicaSelecionadaId, setDicaSelecionadaId] = useState(null);
   const [editandoDica, setEditandoDica] = useState(false); // formulário edita a dica selecionada (senão cria nova)
 
-  const { pushBack } = useBackStack();
+  const { pushBack, voltar, descartar, trocar } = useBackStack();
+
+  // Modais: abrir registra o voltar com uma chave; fechar pelo X ou pelo fundo
+  // descarta essa entrada, para o voltar do aparelho não virar toque morto.
+  const fecharProduto = () => { setProdutoSelecionado(null); descartar("produto"); };
+  const abrirMenu = (tela = "menu") => {
+    setTelaMenu(tela);
+    setMenuAberto(true);
+    pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); }, "menu");
+  };
+  const fecharMenu = () => { setMenuAberto(false); setTelaMenu("menu"); descartar("menu"); };
+  const fecharChat = () => { setChatAberto(false); descartar("chat"); };
+  const fecharSugestoesMes = () => { setSugestoesAbertas(false); descartar("sugestoes"); };
+  const fecharOrdenacao = () => { setOrdenacaoAberta(false); descartar("ordenacao"); };
+  // Fim do formulário de receita (enviada): volta à listagem e tira da pilha
+  // as telas de receita que ficaram abertas (texto, detalhe...).
+  const concluirFormularioReceita = () => {
+    setTextoReceita("");
+    setDadosParseados(null);
+    setReceitaEditando(null);
+    setReceitaSelecionadaId(null);
+    setTelaReceita("lista");
+    descartar("receita");
+  };
 
   const termoBusca = normalizar(busca);
 
@@ -257,6 +282,10 @@ function Home({
     return [...base].sort((a, b) => faltam.get(a.id) - faltam.get(b.id));
   })();
 
+  const receitaSelecionada = receitasAprovadas.find((r) => r.id === receitaSelecionadaId) ?? null;
+  // Se a receita aberta sumir (rejeitada ou editada para pendente), volta pra lista.
+  const telaReceitaEfetiva = telaReceita === "detalhe" && !receitaSelecionada ? "lista" : telaReceita;
+
   const dicaSelecionada = dicas.find((d) => d.id === dicaSelecionadaId) ?? null;
   // Se a dica aberta sumir (excluída aqui ou por outro admin), volta pra lista.
   const telaDicaEfetiva =
@@ -277,7 +306,7 @@ function Home({
     const produto = catalogo.find((p) => p.id === item.produtoId);
     if (produto) {
       setProdutoSelecionado({ ...produto, _origemLista: true });
-      pushBack(() => setProdutoSelecionado(null));
+      pushBack(() => setProdutoSelecionado(null), "produto");
     }
   };
 
@@ -298,7 +327,7 @@ function Home({
     deleteDoc(doc(db, "catalogo", produto.id)).catch((e) =>
       avisarErro("Não foi possível excluir o produto do catálogo.", e),
     );
-    setProdutoSelecionado(null);
+    fecharProduto();
   };
 
   const [todasExpandidas, setTodasExpandidas] = useState(true);
@@ -366,7 +395,7 @@ function Home({
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
               style={{ position: "relative", cursor: "pointer" }}
-              onClick={() => { setChatAberto(true); pushBack(() => setChatAberto(false)); }}
+              onClick={() => { setChatAberto(true); pushBack(() => setChatAberto(false), "chat"); }}
               aria-label="Chat"
             >
               <MessageCircle size={22} color="var(--text-soft)" />
@@ -380,7 +409,7 @@ function Home({
             </div>
             <div
               style={{ position: "relative", cursor: "pointer" }}
-              onClick={() => { setMenuAberto(true); pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); }); }}
+              onClick={() => abrirMenu()}
             >
               <MenuIcon size={22} color="var(--text-soft)" />
             </div>
@@ -431,6 +460,8 @@ function Home({
         {(aba === "lista" || aba === "catalogo") && <FiltroCategoria
           categoriasFiltro={grupoFiltro}
           setCategoriasFiltro={setGrupoFiltro}
+          pushBack={pushBack}
+          descartar={descartar}
           categorias={aba === "catalogo"
             ? [...new Set(catalogo.flatMap(p => [...(p.grupoSubstituicao ?? []), ...(p.subcategoria ? [p.subcategoria] : [])]))]
                 .filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))
@@ -466,10 +497,10 @@ function Home({
         />}
 
         {/* Ordenação + nova receita — só na listagem de receitas */}
-        {aba === "receitas" && telaReceita === "lista" && (
+        {aba === "receitas" && telaReceitaEfetiva === "lista" && (
           <div style={{ padding: "0 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <button
-              onClick={() => { setOrdenacaoAberta(true); pushBack(() => setOrdenacaoAberta(false)); }}
+              onClick={() => { setOrdenacaoAberta(true); pushBack(() => setOrdenacaoAberta(false), "ordenacao"); }}
               style={{
                 ...BOTAO_SECUNDARIO,
                 padding: "6px 14px",
@@ -487,7 +518,7 @@ function Home({
             </button>
             {admin && (
               <button
-                onClick={() => { setTelaReceita("texto"); pushBack(() => setTelaReceita("lista")); }}
+                onClick={() => { setTelaReceita("texto"); pushBack(() => setTelaReceita("lista"), "receita"); }}
                 style={{
                   ...BOTAO_SECUNDARIO,
                   padding: "6px 14px",
@@ -510,7 +541,7 @@ function Home({
               onClick={() => {
                 setEditandoDica(false);
                 setTelaDica("formulario");
-                pushBack(() => setTelaDica("lista"));
+                pushBack(() => setTelaDica("lista"), "dica");
               }}
               style={{
                 ...BOTAO_SECUNDARIO,
@@ -619,7 +650,7 @@ function Home({
                 })}
               </div>
               <button
-                onClick={() => { setSugestoesAbertas(true); pushBack(() => setSugestoesAbertas(false)); }}
+                onClick={() => { setSugestoesAbertas(true); pushBack(() => setSugestoesAbertas(false), "sugestoes"); }}
                 style={{ ...BOTAO_SECUNDARIO, padding: "6px 12px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <Sparkles size={14} /> Sugestões do mês
@@ -674,11 +705,7 @@ function Home({
                 acao={{
                   icone: Download,
                   rotulo: "Exportar o que tem em casa",
-                  onClick: () => {
-                    setMenuAberto(true);
-                    setTelaMenu("exportar-casa");
-                    pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); });
-                  },
+                  onClick: () => abrirMenu("exportar-casa"),
                 }}
                 contexto="lista"
                 onToggle={toggleComprado}
@@ -958,11 +985,7 @@ function Home({
                 Esse produto ainda não está no catálogo.
               </p>
               <button
-                onClick={() => {
-                  setMenuAberto(true);
-                  setTelaMenu("sugestao");
-                  pushBack(() => { setMenuAberto(false); setTelaMenu("menu"); });
-                }}
+                onClick={() => abrirMenu("sugestao")}
                 style={{
                   marginTop: "20px",
                   padding: "14px 24px",
@@ -983,7 +1006,7 @@ function Home({
               itens={itens}
               onToggle={adicionarItem}
               onEmCasa={alternarEmCasa}
-              onAbrir={(p) => { setProdutoSelecionado(p); pushBack(() => setProdutoSelecionado(null)); }}
+              onAbrir={(p) => { setProdutoSelecionado(p); pushBack(() => setProdutoSelecionado(null), "produto"); }}
               busca={busca}
               itensDaLista={lista}
               contexto="catalogo"
@@ -998,7 +1021,7 @@ function Home({
       {/* Aba Receitas */}
       {aba === "receitas" && (
         <div style={{ padding: "20px 16px 96px" }}>
-          {admin && modoAdmin && receitasPendentes.length > 0 && telaReceita === "lista" && (
+          {admin && modoAdmin && receitasPendentes.length > 0 && telaReceitaEfetiva === "lista" && (
             <div style={{ marginBottom: "24px" }}>
               <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "10px" }}>
                 Pendentes ({receitasPendentes.length})
@@ -1040,6 +1063,7 @@ function Home({
                             setReceitaEditando(r);
                             setDadosParseados(r);
                             setTelaReceita("formulario");
+                            pushBack(() => { setReceitaEditando(null); setDadosParseados(null); setTelaReceita("lista"); }, "receita");
                           }}
                           style={{
                             padding: "6px 12px",
@@ -1098,17 +1122,17 @@ function Home({
               })}
             </div>
           )}
-          {telaReceita === "lista" && (
+          {telaReceitaEfetiva === "lista" && (
             <ReceitaLista
               receitas={receitasFiltradas}
               carregando={carregandoReceitas}
               erro={erroReceitas}
               itensEmCasa={lista.filter(i => i.comprado)}
               catalogo={catalogo}
-              onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); pushBack(() => { setReceitaSelecionada(null); setTelaReceita("lista"); }); }}
+              onVerReceita={(r) => { setReceitaSelecionadaId(r.id); setTelaReceita("detalhe"); pushBack(() => { setReceitaSelecionadaId(null); setTelaReceita("lista"); }, "receita"); }}
             />
           )}
-          {telaReceita === "detalhe" && receitaSelecionada && (
+          {telaReceitaEfetiva === "detalhe" && (
             <ReceitaDetalhe
               receita={receitaSelecionada}
               itensEmCasa={lista.filter(i => i.comprado)}
@@ -1117,11 +1141,11 @@ function Home({
               onEditar={() => {
                 setReceitaEditando(receitaSelecionada);
                 setDadosParseados(receitaSelecionada);
-                setReceitaSelecionada(null);
                 setTelaReceita("formulario");
-                pushBack(() => { setReceitaEditando(null); setTelaReceita("lista"); });
+                // Voltar do formulário reabre o detalhe (a receita continua selecionada).
+                pushBack(() => { setReceitaEditando(null); setDadosParseados(null); setTelaReceita("detalhe"); }, "receita");
               }}
-              onVoltar={() => { setReceitaSelecionada(null); setTelaReceita("lista"); }}
+              onVoltar={() => voltar(() => { setReceitaSelecionadaId(null); setTelaReceita("lista"); })}
               onToggleEmCasa={async (ing) => {
                 const produto = catalogo.find(p => p.id === ing.produtoId);
                 if (!produto) return;
@@ -1155,16 +1179,19 @@ function Home({
                   if (variante) pedir(variante);
                   else if (!jaNaLista) grupoParaEscolher ??= produto.grupoSubstituicao?.[0] ?? null;
                 }
-                setReceitaSelecionada(null);
+                // Sai do detalhe por outro caminho: a entrada dele sai da pilha.
+                setReceitaSelecionadaId(null);
                 setTelaReceita("lista");
+                descartar("receita");
                 if (grupoParaEscolher) { irParaGrupo(grupoParaEscolher); return; }
                 const abaAntesFaltantes = aba;
                 pushBack(() => setAba(abaAntesFaltantes));
                 setAba("lista");
               }}
               onBuscarIngrediente={(nome) => {
-                setReceitaSelecionada(null);
+                setReceitaSelecionadaId(null);
                 setTelaReceita("lista");
+                descartar("receita");
                 const abaAntesIngrediente = aba;
                 pushBack(() => setAba(abaAntesIngrediente));
                 setAba("catalogo");
@@ -1173,20 +1200,20 @@ function Home({
               }}
             />
           )}
-          {telaReceita === "texto" && (
+          {telaReceitaEfetiva === "texto" && (
             <ReceitaTexto
               textoInicial={textoReceita}
               catalogo={catalogo}
-              onVoltar={() => setTelaReceita("lista")}
+              onVoltar={() => voltar(() => setTelaReceita("lista"))}
               onContinuar={(texto, dados) => {
                 setTextoReceita(texto);
                 setDadosParseados(dados);
                 setTelaReceita("formulario");
-                pushBack(() => setTelaReceita("texto"));
+                pushBack(() => setTelaReceita("texto"), "receita");
               }}
             />
           )}
-          {telaReceita === "formulario" && (
+          {telaReceitaEfetiva === "formulario" && (
             <ReceitaFormulario
               catalogo={catalogo}
               isAdmin={admin && modoAdmin}
@@ -1194,15 +1221,19 @@ function Home({
               textoOriginal={receitaEditando ? null : textoReceita}
               onVoltarTexto={receitaEditando ? null : (texto) => {
                 setTextoReceita(texto);
-                setTelaReceita("texto");
+                voltar(() => setTelaReceita("texto"));
               }}
-              onVoltar={() => { setTextoReceita(""); setDadosParseados(null); setReceitaEditando(null); setTelaReceita("lista"); }}
+              onVoltar={() => voltar(concluirFormularioReceita)}
+              onConcluir={concluirFormularioReceita}
               onEnviar={async (dados) => {
                 if (receitaEditando) {
                   await atualizarReceita(receitaEditando, dados);
                 } else {
                   await sugerirReceita(dados);
                 }
+                // Enviada: na tela de sucesso, o voltar do aparelho também
+                // encerra o fluxo (não reabre o texto já enviado).
+                trocar("receita", concluirFormularioReceita);
               }}
               onSugerirIngrediente={async (nome) => {
                 // O formulário só chama isto ao enviar/salvar rascunho, e o
@@ -1227,7 +1258,7 @@ function Home({
               onVerDica={(d) => {
                 setDicaSelecionadaId(d.id);
                 setTelaDica("detalhe");
-                pushBack(() => { setDicaSelecionadaId(null); setTelaDica("lista"); });
+                pushBack(() => { setDicaSelecionadaId(null); setTelaDica("lista"); }, "dica");
               }}
             />
           )}
@@ -1235,11 +1266,11 @@ function Home({
             <DicaDetalhe
               dica={dicaSelecionada}
               isAdmin={admin}
-              onVoltar={() => { setDicaSelecionadaId(null); setTelaDica("lista"); }}
+              onVoltar={() => voltar(() => { setDicaSelecionadaId(null); setTelaDica("lista"); })}
               onEditar={() => {
                 setEditandoDica(true);
                 setTelaDica("formulario");
-                pushBack(() => setTelaDica("detalhe"));
+                pushBack(() => setTelaDica("detalhe"), "dica");
               }}
             />
           )}
@@ -1247,20 +1278,22 @@ function Home({
             <DicaFormulario
               key={editandoDica ? dicaSelecionada.id : "nova"}
               dicaInicial={editandoDica ? dicaSelecionada : null}
-              onVoltar={() => setTelaDica(editandoDica ? "detalhe" : "lista")}
+              onVoltar={() => voltar(() => setTelaDica(editandoDica ? "detalhe" : "lista"))}
               onSalvar={async (dados) => {
                 if (editandoDica) {
                   await atualizarDica(dicaSelecionada, dados);
-                  setTelaDica("detalhe");
                 } else {
                   await criarDica(dados);
-                  setTelaDica("lista");
                 }
+                // Salvou: volta uma tela (edição → detalhe; nova → lista),
+                // tirando o formulário da pilha.
+                voltar(() => setTelaDica(editandoDica ? "detalhe" : "lista"));
               }}
               onExcluir={async () => {
                 await deletarDica(dicaSelecionada);
                 setDicaSelecionadaId(null);
                 setTelaDica("lista");
+                descartar("dica");
               }}
             />
           )}
@@ -1275,7 +1308,7 @@ function Home({
           lista={lista}
           adicionarItem={adicionarItem}
           toggleComprado={toggleComprado}
-          onFechar={() => setSugestoesAbertas(false)}
+          onFechar={fecharSugestoesMes}
         />
       )}
 
@@ -1285,7 +1318,7 @@ function Home({
             catalogo.find((p) => p.id === produtoSelecionado.id) ||
             produtoSelecionado
           }
-          onFechar={() => setProdutoSelecionado(null)}
+          onFechar={fecharProduto}
           listaAtiva={listaAtiva}
           catalogo={catalogo}
           isAdmin={admin && modoAdmin}
@@ -1297,10 +1330,9 @@ function Home({
       {/* Menu */}
       {menuAberto && (
         <Menu
-          onFechar={() => {
-            setMenuAberto(false);
-            setTelaMenu("menu");
-          }}
+          onFechar={fecharMenu}
+          pushBack={(fn) => pushBack(fn, "menu")}
+          voltar={voltar}
           escuro={escuro}
           temaPreferencia={temaPreferencia}
           toggleTema={toggleTema}
@@ -1346,7 +1378,7 @@ function Home({
 
       {/* Chat */}
 
-      {chatAberto && <Chat onFechar={() => setChatAberto(false)} itensEmCasa={lista.filter((i) => i.comprado)} />}
+      {chatAberto && <Chat onFechar={fecharChat} itensEmCasa={lista.filter((i) => i.comprado)} />}
 
       {/* Navegação inferior */}
       <div
@@ -1378,15 +1410,18 @@ function Home({
                   setAba(abaAtual);
                   setBusca("");
                   setGrupoFiltro([]);
-                  if (abaAtual !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
+                  if (abaAtual !== "receitas") { setTelaReceita("lista"); setReceitaSelecionadaId(null); }
                   if (abaAtual !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); }
                 });
               }
               setAba(id);
               setBusca("");
               setGrupoFiltro([]);
-              if (id !== "receitas") { setTelaReceita("lista"); setReceitaSelecionada(null); }
-              if (id !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); }
+              // As telas internas da aba que fica para trás voltam à listagem,
+              // então as entradas delas saem da pilha (depois do pushBack acima,
+              // para a pilha não esvaziar no meio da troca).
+              if (id !== "receitas") { setTelaReceita("lista"); setReceitaSelecionadaId(null); descartar("receita"); }
+              if (id !== "dicas") { setTelaDica("lista"); setDicaSelecionadaId(null); descartar("dica"); }
             }}
             style={{
               flex: 1,
@@ -1437,7 +1472,7 @@ function Home({
       {ordenacaoAberta && (
         <div
           style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(0,0,0,0.4)" }}
-          onClick={() => setOrdenacaoAberta(false)}
+          onClick={fecharOrdenacao}
         >
           <div
             onClick={e => e.stopPropagation()}
@@ -1445,7 +1480,7 @@ function Home({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
               <h2 style={{ ...TIPOGRAFIA.h2, color: "var(--text)" }}>Ordenar</h2>
-              <X size={20} color="var(--text-soft)" style={{ cursor: "pointer" }} onClick={() => setOrdenacaoAberta(false)} />
+              <X size={20} color="var(--text-soft)" style={{ cursor: "pointer" }} onClick={fecharOrdenacao} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {[
@@ -1455,7 +1490,7 @@ function Home({
               ].map(op => (
                 <div
                   key={op.id}
-                  onClick={() => { setOrdenacaoReceitas(op.id); setOrdenacaoAberta(false); }}
+                  onClick={() => { setOrdenacaoReceitas(op.id); fecharOrdenacao(); }}
                   style={{
                     display: "flex", alignItems: "center", gap: "12px",
                     padding: "14px 16px", borderRadius: RAIO.md,

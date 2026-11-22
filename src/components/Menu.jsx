@@ -47,6 +47,8 @@ const mesmasCategorias = (a, b) => a.length === b.length && a.every((c) => b.inc
 
 function Menu({
   onFechar,
+  pushBack, // opcionais (useBackStack da Home): voltar das telas internas
+  voltar,
   escuro,
   temaPreferencia,
   toggleTema,
@@ -81,6 +83,22 @@ function Menu({
 
   // Não deixa o timer do "Sugestão enviada" disparar depois que o menu fechou.
   useEffect(() => () => clearTimeout(timerSugestaoRef.current), []);
+
+  // Telas internas: abrir registra o voltar do aparelho, e os botões "←" usam
+  // esse mesmo voltar. Aberto direto numa tela interna (atalhos da Home), o
+  // voltar fecha o menu, porque a entrada no topo é a do próprio menu.
+  const abertoDiretoNaTela = !!telaInicial && telaInicial !== "menu";
+  const abrirTela = (t) => {
+    setTela(t);
+    pushBack?.(() => setTela("menu"));
+  };
+  const voltarTela = () => {
+    const semPilha = () => (abertoDiretoNaTela ? onFechar() : setTela("menu"));
+    if (voltar) voltar(semPilha);
+    else semPilha();
+  };
+  const telaRef = useRef(tela);
+  useEffect(() => { telaRef.current = tela; }, [tela]);
 
   const handleGerarCodigo = async () => {
     setGerandoCodigo(true);
@@ -173,8 +191,8 @@ function Menu({
       clearTimeout(timerSugestaoRef.current);
       timerSugestaoRef.current = setTimeout(() => {
         setSucesso(false);
-        // Só volta ao menu se a pessoa ainda estiver nesta tela.
-        setTela((atual) => (atual === "sugestao" ? "menu" : atual));
+        // Só volta se a pessoa ainda estiver nesta tela.
+        if (telaRef.current === "sugestao") voltarTela();
       }, 2000);
     } catch (e) {
       console.error("Erro ao enviar sugestão:", e);
@@ -412,15 +430,20 @@ function Menu({
                             onClick={async (e) => {
                               e.stopPropagation();
                               const url = `${window.location.origin}/quequefalta/?lista=${lista.id}`;
-                              if (navigator.share) {
-                                await navigator.share({
-                                  title: "QueQueFalta",
-                                  text: "Entre no meu grupo familiar no QueQueFalta!",
-                                  url,
-                                });
-                              } else {
-                                await navigator.clipboard.writeText(url);
-                                alert("Link de convite copiado!");
+                              try {
+                                if (navigator.share) {
+                                  await navigator.share({
+                                    title: "QueQueFalta",
+                                    text: "Entre no meu grupo familiar no QueQueFalta!",
+                                    url,
+                                  });
+                                } else {
+                                  await navigator.clipboard.writeText(url);
+                                  alert("Link de convite copiado!");
+                                }
+                              } catch (erro) {
+                                // Cancelar o compartilhamento rejeita com AbortError: não é erro.
+                                if (erro?.name !== "AbortError") console.error("Erro ao convidar:", erro);
                               }
                             }}
                             style={{
@@ -486,7 +509,7 @@ function Menu({
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
                 <div
-                  onClick={() => setTela("sugestao")}
+                  onClick={() => abrirTela("sugestao")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -511,7 +534,7 @@ function Menu({
                 </div>
 
                 <div
-                  onClick={() => setTela("telegram")}
+                  onClick={() => abrirTela("telegram")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -589,7 +612,7 @@ function Menu({
                   </div>
                 )}
                 <div
-                  onClick={() => setTela("exportar-casa")}
+                  onClick={() => abrirTela("exportar-casa")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -752,7 +775,7 @@ function Menu({
                 size={22}
                 color="var(--text-soft)"
                 style={{ cursor: "pointer" }}
-                onClick={() => setTela("menu")}
+                onClick={voltarTela}
               />
             </div>
 
@@ -883,7 +906,7 @@ function Menu({
                 color="var(--text-soft)"
                 style={{ cursor: "pointer" }}
                 onClick={() => {
-                  setTela("menu");
+                  voltarTela();
                   setCodigoVinculo(null);
                   setErroTelegram(false);
                 }}
@@ -1017,12 +1040,7 @@ function Menu({
                 size={22}
                 color="var(--text-soft)"
                 style={{ cursor: "pointer" }}
-                onClick={() => {
-                  // Aberta direto pelo atalho do "Tem em casa": fechar volta
-                  // para a lista, não para o menu.
-                  if (telaInicial === "exportar-casa") onFechar();
-                  else setTela("menu");
-                }}
+                onClick={voltarTela /* aberta direto pelo atalho do "Tem em casa": fecha o menu */}
               />
             </div>
 

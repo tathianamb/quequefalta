@@ -122,6 +122,7 @@ export function ReceitaFormulario({
   dadosIniciais = null,
   textoOriginal = '',
   onVoltarTexto = null,
+  onConcluir = null, // depois de enviar: encerra o fluxo (onVoltar só volta uma tela)
 }) {
   const [nome, setNome] = useState(dadosIniciais?.nome ?? '')
   const [foto, setFoto] = useState(dadosIniciais?.foto ?? '')
@@ -295,7 +296,7 @@ export function ReceitaFormulario({
             ? 'A receita ficará pendente até um admin resolver os ingredientes não catalogados.'
             : isAdmin ? 'A receita já está disponível.' : 'Um admin irá revisar em breve.'}
         </p>
-        <button onClick={onVoltar} style={{ ...BOTAO_PRIMARIO, padding: '14px 32px', marginTop: '24px' }}>
+        <button onClick={onConcluir ?? onVoltar} style={{ ...BOTAO_PRIMARIO, padding: '14px 32px', marginTop: '24px' }}>
           Voltar
         </button>
       </div>

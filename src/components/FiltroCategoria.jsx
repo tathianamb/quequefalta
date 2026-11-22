@@ -14,6 +14,8 @@ function FiltroCategoria({
   setCategoriasFiltro,
   botoesExtras,
   categorias,
+  pushBack, // opcionais (useBackStack da Home): o voltar do aparelho fecha a folha
+  descartar,
 }) {
   const [aberto, setAberto] = useState(false);
   const [selecao, setSelecao] = useState(categoriasFiltro);
@@ -21,6 +23,12 @@ function FiltroCategoria({
   const abrirModal = () => {
     setSelecao(categoriasFiltro);
     setAberto(true);
+    pushBack?.(() => setAberto(false), "filtro");
+  };
+
+  const fecharModal = () => {
+    setAberto(false);
+    descartar?.("filtro");
   };
 
   const toggleCategoria = (cat) => {
@@ -31,7 +39,7 @@ function FiltroCategoria({
 
   const aplicar = () => {
     setCategoriasFiltro(selecao);
-    setAberto(false);
+    fecharModal();
   };
 
   const limpar = () => {
@@ -134,7 +142,7 @@ function FiltroCategoria({
             justifyContent: "flex-end",
             background: "rgba(0,0,0,0.4)",
           }}
-          onClick={() => setAberto(false)}
+          onClick={fecharModal}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -169,7 +177,7 @@ function FiltroCategoria({
                 size={20}
                 color="var(--text-soft)"
                 style={{ cursor: "pointer" }}
-                onClick={() => setAberto(false)}
+                onClick={fecharModal}
               />
             </div>
 

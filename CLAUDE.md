@@ -63,19 +63,19 @@ In CI/CD (`.github/workflows/deploy.yml`), these are injected from GitHub reposi
 
 `src/App.jsx` is the central coordinator: Firebase auth state, active list selection, URL param `?lista=<id>` for shared list joining, and routing between `Login` and `Home` screens. There is no router library and no global state — everything flows via props.
 
-`src/hooks/useBackStack.js` fakes Android/browser back-button navigation for this router-less SPA: it pushes a single collapsed `history.pushState` entry per "screen," and `pushBack(fn)` registers a closure that reverses the current UI transition (e.g. closing a modal) when the user presses back. Used throughout `Home.jsx` for modals, detail views, and the recipes sub-navigation.
+`src/hooks/useBackStack.js` fakes Android/browser back-button navigation for this router-less SPA: the whole stack takes a single collapsed `history.pushState` entry, and `pushBack(fn, chave)` registers a closure that reverses the current UI transition (e.g. closing a modal) when the user presses back. In-app "← Voltar" buttons call `voltar()` (same as the device back). Anything closed another way (X, backdrop, save, tab switch) must call `descartar(chave)` so its entry leaves the stack — otherwise the next device back is a dead tap or reopens a closed screen. `trocar(chave, fn)` replaces a flow's entries (e.g. after a recipe is sent). Keys in use: `produto`, `menu` (also the Menu's inner screens), `chat`, `sugestoes`, `ordenacao`, `filtro`, `receita`, `dica`. Used throughout `Home.jsx`, and passed as props to `Menu` and `FiltroCategoria`.
 
 ### Real-time data hooks
 
 All Firestore reads use `onSnapshot` listeners inside custom hooks:
 
-- `src/hooks/useLista.js` — items in the active list (`listas/{listaId}/lista/`). Exposes `adicionarItem`, `adicionarItemComprado`, `alternarEmCasa`, `toggleComprado`, `removerItem`.
+- `src/hooks/useLista.js` — items in the active list (`listas/{listaId}/lista/`). Exposes `adicionarItem`, `adicionarItemComprado`, `alternarEmCasa`, `toggleComprado`, `removerItem`, `erro`, `avisoGravacao`. Writes never wait for the server (a Firestore write promise only resolves on server ack, which hangs on weak signal in the market): each function decides synchronously from local state, returns the decision right away, and handles the promise's error itself. Duplicate protection lives here: refs with the last snapshot's produtoIds plus the ones being created, checked synchronously before `addDoc` — never rely on the render-time `lista` for this.
 - `src/hooks/useCatalogo.js` — global product catalog (`catalogo/`), auto-sorted pt-BR.
 - `src/hooks/useSugestoes.js` — product suggestions + one-admin approval flow. Exposes `pendentes`, `aprovar`, `rejeitar`, `atualizar`.
 - `src/hooks/useReceitas.js` — recipes (`receitas/`) with a similar approval flow. Exposes `aprovadas`, `pendentes`, `sugerir`, `aprovar`, `rejeitar`, `atualizar`. `sugerir()` auto-approves unless an ingredient references an uncatalogued product (`nomeTemp`) or `dados.status` is `pendente` ("Salvar rascunho"), in which case it goes to `pendente`. There is no UI to delete a recipe.
 - `src/hooks/useDicas.js` — blog-style tips (`dicas/`), newest first. Exposes `dicas`, `criar`, `atualizar`, `deletar`. Admin-only writes, no approval flow.
 - `src/hooks/useTelegramVinculo.js` — watches `usuarios/{uid}.telegramChatId` to reflect Telegram account linking in real time. Exposes `vinculado`, `gerarCodigo()`, `desvincular()`.
-- `src/hooks/useTema.js` — light/dark/system theme; persists to localStorage and injects CSS variables on `document.root`.
+- `src/hooks/useTema.js` — light/dark/system theme; persists to localStorage (`tema`: `claro` | `escuro` | absent = Auto) and sets `data-tema` on `<html>`. Both palettes live in `src/index.css`; `src/main.jsx` applies the saved theme before the first render (no light flash).
 
 ### Firestore schema
 
@@ -129,6 +129,8 @@ travasGemini/{uid}             # per-user wait between Gemini calls of the app c
 
 `src/config/lista.js` contains non-realtime list operations (create, join, switch active list, leave) used by `Menu.jsx` and `App.jsx`.
 
+`src/config/sugestoes.js` — `sugerirProduto()`, the single place the app creates a `sugestoes` doc (deduped by normalized name against pending ones, like the bot).
+
 `src/config/telegram.js` contains the app-side half of Telegram account linking: `gerarCodigoVinculo(usuario)` creates the 6-digit code doc; `desvincularTelegram(usuario, chatId)` clears the link on both `usuarios/{uid}` and `telegramVinculos/{chatId}`.
 
 ### Pages
@@ -156,7 +158,7 @@ All components use **inline styles only** — no CSS modules, no Tailwind. Const
 
 ### Admins
 
-Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin approval is enough for a suggestion to enter the catalog.
+Defined by email in `src/config/admins.js` (`isAdmin(email)` helper) and mirrored in `firestore.rules` (`ehAdmin()`): change both together. One admin approval is enough for a suggestion to enter the catalog.
 
 ### Key behaviors
 
@@ -164,7 +166,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper). One admin 
 - **Ingrediente "em casa" nas receitas**: regra única em `src/utils/ingredientesEmCasa.js`, usada pelo detalhe, pelo cartão ("faltam N de M") e pela ordenação por relevância. Um ingrediente-produto conta como em casa se o próprio produto estiver em casa **ou qualquer item em casa compartilhar um `grupoSubstituicao` com ele** (nomes comparados sem acento/caixa). Os grupos são substituição por uso: nas proteínas são usos do corte ("Bife", "Carne moída"…, mistura de animais é aceita); nos demais, variantes intercambiáveis ("Óleo", "Vinagre", "Leite"…). Integral/baixo índice glicêmico nunca entra no mesmo grupo do refinado. Produto `generico` (Óleo, Sal, Leite) não entra na lista de compras: "Adicionar faltantes" troca pela variante do grupo que a casa mais registrou preço (`escolherVariante`) ou, sem pista, abre o catálogo filtrado pelo grupo. O bot carrega o catálogo sem genéricos via `carregarCatalogoParaMatch` (`functions/src/firestore/catalogo.js`).
 - **Chat do app** (`src/components/Chat.jsx`, `src/hooks/useChat.js`): o Gemini é chamado pela function `perguntarChat` (`functions/src/chatApp.js`, com a trava por usuário de `travaGemini.js`). O único contexto da casa são os itens em casa: `obterItensComprados` (`functions/src/firestore/itensEmCasa.js`) devolve só `{ nome, categoria }` (alimentos) e `functions/src/gemini/prompt.js` lista os nomes numa linha. Não há pessoas, restrições nem observações. O botão do Claude monta o mesmo contexto no próprio app (`montarContextoLocal`, sem servidor) e abre o claude.ai com ele.
 - **Onde comprar / Sugestões do mês** (aba Lista): um seletor "Categoria | Mercado" agrupa os itens a comprar pelo mercado com o menor preço *atual* (o registro mais recente de cada mercado, ignorando mercados sem preço há mais de 120 dias se houver algum mais novo; `ondeComprar` em `src/utils/precos.js`); a escolha fica no `localStorage` do aparelho. "Sugestões do mês" (`src/components/SugestoesMes.jsx`, regra em `src/utils/sugestoesMes.js`) lê o `historico` dos últimos 60 dias com o `listaAtiva` da casa, agrupa em idas (mercado + dia) e sugere marcados os recorrentes (2+ idas, ou presentes numa ida com 8+ produtos); os comprados uma vez numa ida pequena vão para "Avulsos", desmarcados. A lista não tem quantidade, então nada disso estima total.
-- **Offline**: Firestore SDK caches locally; the Service Worker (via `vite-plugin-pwa`, `registerType: 'autoUpdate'`) caches assets. Writes made offline are queued and synced on reconnect.
+- **Offline**: Firestore uses the default in-memory cache (no persistent cache — opening the app with no network is not supported, by choice); the Service Worker (via `vite-plugin-pwa`, `registerType: 'autoUpdate'`) caches assets. Writes made while the app is open without signal are queued and synced on reconnect, which is why the UI never awaits write promises.
 - **Base path**: `vite.config.js` sets `base: '/quequefalta/'` — required for GitHub Pages and the PWA manifest's `start_url`.
 
 ## Architecture — Telegram bot (`functions/`)
