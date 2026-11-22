@@ -1,4 +1,4 @@
-import{r as e,t}from"./react-DVaF1CHI.js";import{C as n,E as r,S as i,T as a,b as o,o as s,t as c,u as l,x as u,y as d}from"./index-DwT8FDGl.js";var f=e(),p=t(),m={width:`100%`,padding:`12px`,borderRadius:a.md,border:`1.5px solid var(--borda, #DEE2E6)`,background:`var(--bg)`,color:`var(--text)`,fontFamily:`Nunito, sans-serif`,fontSize:`16px`,boxSizing:`border-box`},h=`Escreva a dica aqui. Dá pra formatar assim:
+import{r as e,t}from"./react-DVaF1CHI.js";import{C as n,E as r,S as i,T as a,b as o,o as s,t as c,u as l,x as u,y as d}from"./index-BaxBXx89.js";var f=e(),p=t(),m={width:`100%`,padding:`12px`,borderRadius:a.md,border:`1.5px solid var(--borda, #DEE2E6)`,background:`var(--bg)`,color:`var(--text)`,fontFamily:`Nunito, sans-serif`,fontSize:`16px`,boxSizing:`border-box`},h=`Escreva a dica aqui. Dá pra formatar assim:
 
 ## Subtítulo
 - item de lista
