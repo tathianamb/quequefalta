@@ -1,9 +1,7 @@
 import { ChefHat, Clock, Users } from 'lucide-react'
 import { TIPOGRAFIA, RAIO } from '../../utils/estilos'
-import { criarVerificadorEmCasa, ingredientesFaltantes } from '../../utils/ingredientesEmCasa'
 
-function CardReceita({ receita, temEmCasa, onClick }) {
-  const faltam = ingredientesFaltantes(receita, temEmCasa).length
+function CardReceita({ receita, faltam, onClick }) {
   const total = receita.ingredientes.length
   const temTudo = faltam === 0
   return (
@@ -68,8 +66,8 @@ function CardReceita({ receita, temEmCasa, onClick }) {
   )
 }
 
-export function ReceitaLista({ receitas, itensEmCasa, catalogo, onVerReceita, carregando = false, erro = false }) {
-  const temEmCasa = criarVerificadorEmCasa(itensEmCasa, catalogo)
+// faltam: Map receitaId -> quantos ingredientes faltam (calculado na Home)
+export function ReceitaLista({ receitas, faltam, onVerReceita, carregando = false, erro = false }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Lista de cards */}
@@ -91,7 +89,7 @@ export function ReceitaLista({ receitas, itensEmCasa, catalogo, onVerReceita, ca
           <CardReceita
             key={r.id}
             receita={r}
-            temEmCasa={temEmCasa}
+            faltam={faltam.get(r.id) ?? 0}
             onClick={onVerReceita}
           />
         ))

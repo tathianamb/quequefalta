@@ -11,7 +11,7 @@ function CategoriaGrupo({
   onEmCasa,
   onAbrir,
   busca,
-  itensDaLista,
+  itemPorProduto, // Map produtoId -> item da lista, montado uma vez na Home
   collapsed,
   corOverride,
   onRemover,
@@ -41,8 +41,8 @@ function CategoriaGrupo({
       onToggle={onToggle}
       onEmCasa={onEmCasa}
       onAbrir={onAbrir}
-      naLista={itensDaLista?.some((i) => i.produtoId === p.id)}
-      emCasa={contexto === "catalogo" && itensDaLista?.some((i) => i.produtoId === p.id && i.comprado)}
+      naLista={itemPorProduto?.has(p.id)}
+      emCasa={contexto === "catalogo" && !!itemPorProduto?.get(p.id)?.comprado}
       comprado={p.comprado}
       onRemover={onRemover}
       contexto={contexto}

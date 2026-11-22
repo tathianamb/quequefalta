@@ -6,6 +6,7 @@ import {
   inicializarLista,
   obterListaAtiva,
   entrarNaLista,
+  alternarLista,
 } from "./config/lista";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -54,9 +55,7 @@ function App() {
 
   const handleConfirmarLista = async (confirmar) => {
     if (confirmar && confirmandoLista) {
-      await import("./config/lista").then(({ alternarLista }) =>
-        alternarLista(usuario, confirmandoLista.id),
-      );
+      await alternarLista(usuario, confirmandoLista.id);
       setListaAtiva(confirmandoLista.id);
       setTodasListas((prev) =>
         prev.some((l) => l.id === confirmandoLista.id)

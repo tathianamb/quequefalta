@@ -1,13 +1,24 @@
 import { useSyncExternalStore } from 'react'
-import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../config/firebase'
+import { app, auth } from '../config/firebase'
 
 // O estado do chat vive neste módulo, fora do componente: se a tela do chat
 // for fechada enquanto a resposta ainda está a caminho, a requisição segue e a
 // resposta é gravada do mesmo jeito (antes ela se perdia, porque o componente
 // já tinha sido desmontado).
 
-const perguntarChat = httpsCallable(functions, 'perguntarChat')
+// O SDK de functions só é baixado no primeiro envio (o hook roda na abertura do
+// app, só para o indicador de não lida). Se o download falhar, tenta de novo.
+let perguntarChatPromessa = null
+function obterPerguntarChat() {
+  perguntarChatPromessa ??= import('firebase/functions')
+    .then(({ getFunctions, httpsCallable }) =>
+      httpsCallable(getFunctions(app, 'southamerica-east1'), 'perguntarChat'))
+    .catch((erro) => {
+      perguntarChatPromessa = null
+      throw erro
+    })
+  return perguntarChatPromessa
+}
 
 const MAX_SALVAS = 40
 // Espelha a espera do servidor (functions/src/firestore/travaGemini.js): depois
@@ -97,6 +108,7 @@ async function enviar(conteudo) {
   let resposta
   let falhou = false
   try {
+    const perguntarChat = await obterPerguntarChat()
     const { data } = await perguntarChat({ mensagem, historico })
     resposta = { papel: 'assistente', texto: data.resposta }
   } catch (erro) {

@@ -1,7 +1,7 @@
 ﻿import { useState } from "react";
 import { db } from "../config/firebase";
 import { deleteDoc, doc } from "firebase/firestore";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo, useDeferredValue, lazy, Suspense } from "react";
 import { sugerirProduto } from "../config/sugestoes";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { criarVerificadorEmCasa, ingredientesFaltantes, escolherVariante } from "../utils/ingredientesEmCasa";
@@ -11,7 +11,6 @@ import { useTema } from "../hooks/useTema";
 import CategoriaGrupo from "../components/CategoriaGrupo";
 import DetalhesProduto from "../components/DetalhesProduto";
 import Menu from "../components/Menu";
-import Chat from "../components/Chat";
 import { useChat } from "../hooks/useChat";
 import {
   ChevronsUp,
@@ -48,14 +47,10 @@ import { useReceitas } from "../hooks/useReceitas";
 import { useBackStack } from "../hooks/useBackStack";
 import { ReceitaLista } from "../components/receitas/ReceitaLista";
 import { ReceitaDetalhe } from "../components/receitas/ReceitaDetalhe";
-import { ReceitaFormulario } from "../components/receitas/ReceitaFormulario";
-import { ReceitaTexto } from "../components/receitas/ReceitaTexto";
 import { useDicas } from "../hooks/useDicas";
 import { DicaLista } from "../components/dicas/DicaLista";
 import { DicaDetalhe } from "../components/dicas/DicaDetalhe";
-import { DicaFormulario } from "../components/dicas/DicaFormulario";
 import FiltroCategoria from "../components/FiltroCategoria";
-import SugestoesMes from "../components/SugestoesMes";
 import { ondeComprar, formatarPreco } from "../utils/precos";
 import { normalizar } from "../utils/texto";
 import {
@@ -67,6 +62,40 @@ import {
   COR,
   SOMBRA_LARANJA,
 } from "../utils/estilos";
+
+// Telas raras: ficam fora do pacote de abertura e carregam na primeira vez que
+// são abertas (o service worker já deixa os arquivos em cache).
+const Chat = lazy(() => import("../components/Chat"));
+const SugestoesMes = lazy(() => import("../components/SugestoesMes"));
+const ReceitaTexto = lazy(() => import("../components/receitas/ReceitaTexto").then((m) => ({ default: m.ReceitaTexto })));
+const ReceitaFormulario = lazy(() => import("../components/receitas/ReceitaFormulario").then((m) => ({ default: m.ReceitaFormulario })));
+const DicaFormulario = lazy(() => import("../components/dicas/DicaFormulario").then((m) => ({ default: m.DicaFormulario })));
+
+function filtrarProdutos(arr, termoBusca, grupoFiltro) {
+  return arr.filter((p) => {
+    const buscaOk = normalizar(p.nome).includes(termoBusca);
+    const grupoOk =
+      grupoFiltro.length === 0 ||
+      grupoFiltro.some(
+        (g) =>
+          (p.grupoSubstituicao ?? []).includes(g) || p.subcategoria === g,
+      );
+    return buscaOk && grupoOk;
+  });
+}
+
+function agrupar(arr, { incluirOutras = false } = {}) {
+  const acc = ORDEM_CATEGORIAS.reduce((acc, cat) => {
+    const itens = arr.filter((p) => p.categoria === cat);
+    if (itens.length > 0) acc[cat] = itens;
+    return acc;
+  }, {});
+  if (incluirOutras) {
+    const semCategoriaValida = arr.filter((p) => !ORDEM_CATEGORIAS.includes(p.categoria));
+    if (semCategoriaValida.length > 0) acc["Outras"] = semCategoriaValida;
+  }
+  return acc;
+}
 
 function Home({
   usuario,
@@ -164,7 +193,10 @@ function Home({
     descartar("receita");
   };
 
-  const termoBusca = normalizar(busca);
+  // A digitação atualiza o campo na hora; filtros e agrupamentos seguem o
+  // valor adiado, para a tecla não esperar o recálculo da lista.
+  const buscaAdiada = useDeferredValue(busca);
+  const termoBusca = useMemo(() => normalizar(buscaAdiada), [buscaAdiada]);
 
   // Aviso de gravação que falhou. As gravações não esperam o servidor (com
   // sinal fraco a promise demora); o erro, quando vem, aparece aqui.
@@ -195,18 +227,6 @@ function Home({
       });
   };
 
-  const filtrar = (arr) =>
-    arr.filter((p) => {
-      const buscaOk = normalizar(p.nome).includes(termoBusca);
-      const grupoOk =
-        grupoFiltro.length === 0 ||
-        grupoFiltro.some(
-          (g) =>
-            (p.grupoSubstituicao ?? []).includes(g) || p.subcategoria === g,
-        );
-      return buscaOk && grupoOk;
-    });
-
   const irParaGrupo = (grupo) => {
     const abaAtual = aba;
     pushBack(() => { setAba(abaAtual); setGrupoFiltro([]); });
@@ -215,44 +235,53 @@ function Home({
     setGrupoFiltro([grupo]);
   };
 
-  const agrupar = (arr, { incluirOutras = false } = {}) => {
-    const acc = ORDEM_CATEGORIAS.reduce((acc, cat) => {
-      const itens = arr.filter((p) => p.categoria === cat);
-      if (itens.length > 0) acc[cat] = itens;
-      return acc;
-    }, {});
-    if (incluirOutras) {
-      const semCategoriaValida = arr.filter((p) => !ORDEM_CATEGORIAS.includes(p.categoria));
-      if (semCategoriaValida.length > 0) acc["Outras"] = semCategoriaValida;
+  const itensEmCasa = useMemo(() => lista.filter((i) => i.comprado), [lista]);
+  // produtoId -> item da lista (prefere o que está em casa quando houver
+  // duplicados antigos), para o catálogo saber o que já está na lista.
+  const itemPorProduto = useMemo(() => {
+    const mapa = new Map();
+    for (const item of lista) {
+      const atual = mapa.get(item.produtoId);
+      if (!atual || (!atual.comprado && item.comprado)) mapa.set(item.produtoId, item);
     }
-    return acc;
-  };
-
-  const pendentes = filtrar(lista.filter((i) => !i.comprado));
-  const comprados = filtrar(lista.filter((i) => i.comprado));
-  const porCategoriaPendentes = agrupar(pendentes);
+    return mapa;
+  }, [lista]);
+  const pendentes = useMemo(
+    () => (aba === "lista" ? filtrarProdutos(lista.filter((i) => !i.comprado), termoBusca, grupoFiltro) : []),
+    [aba, lista, termoBusca, grupoFiltro],
+  );
+  const comprados = useMemo(
+    () => (aba === "lista" ? filtrarProdutos(itensEmCasa, termoBusca, grupoFiltro) : []),
+    [aba, itensEmCasa, termoBusca, grupoFiltro],
+  );
+  const porCategoriaPendentes = useMemo(() => agrupar(pendentes), [pendentes]);
 
   // "Onde comprar": cada item pendente vai para o mercado com o menor preço
   // atual registrado (regra em utils/precos.js). Mercados com mais itens
-  // primeiro; itens sem nenhum preço ficam num grupo no fim.
-  const produtoPorId = new Map(catalogo.map((p) => [p.id, p]));
-  const ondeDoItem = new Map(pendentes.map((i) => [i.id, ondeComprar(produtoPorId.get(i.produtoId))]));
-  const porMercadoPendentes = (() => {
+  // primeiro; itens sem nenhum preço ficam num grupo no fim. Só calcula quando
+  // esse agrupamento está na tela.
+  const produtoPorId = useMemo(() => new Map(catalogo.map((p) => [p.id, p])), [catalogo]);
+  const { ondeDoItem, porMercadoPendentes } = useMemo(() => {
+    if (aba !== "lista" || agrupamentoLista !== "mercado") {
+      return { ondeDoItem: new Map(), porMercadoPendentes: [] };
+    }
+    const onde = new Map(pendentes.map((i) => [i.id, ondeComprar(produtoPorId.get(i.produtoId))]));
     const grupos = new Map();
     for (const item of pendentes) {
-      const onde = ondeDoItem.get(item.id);
-      const chave = onde?.chave ?? "";
-      if (!grupos.has(chave)) grupos.set(chave, { nome: onde?.mercado ?? "Sem preço registrado", itens: [] });
+      const o = onde.get(item.id);
+      const chave = o?.chave ?? "";
+      if (!grupos.has(chave)) grupos.set(chave, { nome: o?.mercado ?? "Sem preço registrado", itens: [] });
       grupos.get(chave).itens.push(item);
     }
-    return [...grupos.entries()]
+    const porMercado = [...grupos.entries()]
       .sort(([a, ga], [b, gb]) => (a === "") - (b === "") || gb.itens.length - ga.itens.length)
       .map(([chave, g], i) => ({
         ...g,
         chave: chave || "sem-preco",
         cor: chave ? CORES_MERCADO[i % CORES_MERCADO.length] : COR.neutro,
       }));
-  })();
+    return { ondeDoItem: onde, porMercadoPendentes: porMercado };
+  }, [aba, agrupamentoLista, pendentes, produtoPorId]);
   const detalhePrecoDoItem = (item) => {
     const onde = ondeDoItem.get(item.id);
     if (!onde) return null;
@@ -265,22 +294,35 @@ function Home({
   };
   // incluirOutras: o "Tem em casa" mostra a contagem total no cabeçalho, então
   // nenhum item pode sumir dos subgrupos por não ter categoria conhecida.
-  const porCategoriaComprados = agrupar(comprados, { incluirOutras: true });
+  const porCategoriaComprados = useMemo(() => agrupar(comprados, { incluirOutras: true }), [comprados]);
   // Genéricos ("Óleo") existem só como ingrediente de receita — não aparecem
   // no catálogo para entrar na lista, exceto no modo admin (para editar).
-  const catalogoFiltrado = filtrar(admin && modoAdmin ? catalogo : catalogo.filter((p) => !p.generico));
-  const porCategoriaCatalogo = agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin });
+  const catalogoFiltrado = useMemo(
+    () =>
+      aba === "catalogo"
+        ? filtrarProdutos(admin && modoAdmin ? catalogo : catalogo.filter((p) => !p.generico), termoBusca, grupoFiltro)
+        : [],
+    [aba, admin, modoAdmin, catalogo, termoBusca, grupoFiltro],
+  );
+  const porCategoriaCatalogo = useMemo(
+    () => agrupar(catalogoFiltrado, { incluirOutras: admin && modoAdmin }),
+    [catalogoFiltrado, admin, modoAdmin],
+  );
   const carregando = carregandoLista || carregandoCatalogo;
-  const receitasFiltradas = (() => {
-    const base = receitasAprovadas.filter(r => normalizar(r.nome).includes(termoBusca));
-    if (ordenacaoReceitas === "az") return [...base].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-    if (ordenacaoReceitas === "za") return [...base].sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
-    // relevancia: receitas com todos os ingredientes em casa primeiro — mesma
-    // regra do cartão e do detalhe (ver utils/ingredientesEmCasa.js)
-    const temEmCasa = criarVerificadorEmCasa(lista.filter(i => i.comprado), catalogo);
-    const faltam = new Map(base.map(r => [r.id, ingredientesFaltantes(r, temEmCasa).length]));
-    return [...base].sort((a, b) => faltam.get(a.id) - faltam.get(b.id));
-  })();
+  // Receitas e quantos ingredientes faltam em cada uma (mesma regra do cartão e
+  // do detalhe, ver utils/ingredientesEmCasa.js). Só calcula na aba de receitas.
+  const { receitasFiltradas, faltam } = useMemo(() => {
+    if (aba !== "receitas") return { receitasFiltradas: [], faltam: new Map() };
+    const base = receitasAprovadas.filter((r) => normalizar(r.nome).includes(termoBusca));
+    const temEmCasa = criarVerificadorEmCasa(itensEmCasa, catalogo);
+    const faltamPorReceita = new Map(base.map((r) => [r.id, ingredientesFaltantes(r, temEmCasa).length]));
+    let ordenadas;
+    if (ordenacaoReceitas === "az") ordenadas = [...base].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    else if (ordenacaoReceitas === "za") ordenadas = [...base].sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
+    // relevancia: receitas com todos os ingredientes em casa primeiro
+    else ordenadas = [...base].sort((a, b) => faltamPorReceita.get(a.id) - faltamPorReceita.get(b.id));
+    return { receitasFiltradas: ordenadas, faltam: faltamPorReceita };
+  }, [aba, receitasAprovadas, termoBusca, itensEmCasa, catalogo, ordenacaoReceitas]);
 
   const receitaSelecionada = receitasAprovadas.find((r) => r.id === receitaSelecionadaId) ?? null;
   // Se a receita aberta sumir (rejeitada ou editada para pendente), volta pra lista.
@@ -301,6 +343,14 @@ function Home({
         normalizar(d.texto).includes(termo),
     );
   })();
+
+  const categoriasFiltro = useMemo(() => {
+    if (aba !== "lista" && aba !== "catalogo") return [];
+    const origem = aba === "catalogo" ? catalogo : lista.map((item) => produtoPorId.get(item.produtoId) ?? item);
+    return [...new Set(origem.flatMap((p) => [...(p.grupoSubstituicao ?? []), ...(p.subcategoria ? [p.subcategoria] : [])]))]
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [aba, catalogo, lista, produtoPorId]);
 
   const abrirProduto = (item) => {
     const produto = catalogo.find((p) => p.id === item.produtoId);
@@ -462,13 +512,7 @@ function Home({
           setCategoriasFiltro={setGrupoFiltro}
           pushBack={pushBack}
           descartar={descartar}
-          categorias={aba === "catalogo"
-            ? [...new Set(catalogo.flatMap(p => [...(p.grupoSubstituicao ?? []), ...(p.subcategoria ? [p.subcategoria] : [])]))]
-                .filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))
-            : [...new Set(lista.flatMap(item => {
-                const prod = catalogo.find(p => p.id === item.produtoId) ?? item;
-                return [...(prod.grupoSubstituicao ?? []), ...(prod.subcategoria ? [prod.subcategoria] : [])];
-              }))].filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR"))}
+          categorias={categoriasFiltro}
           botoesExtras={
               <button
                 onClick={() => aba === "catalogo"
@@ -577,7 +621,7 @@ function Home({
             </p>
           )}
           {!carregando &&
-            busca &&
+            buscaAdiada &&
             pendentes.length === 0 &&
             comprados.length === 0 && (
               <div
@@ -595,7 +639,7 @@ function Home({
                     color: "var(--text)",
                   }}
                 >
-                  "{busca}" não está na sua lista
+                  "{buscaAdiada}" não está na sua lista
                 </p>
                 <p
                   style={{
@@ -665,8 +709,8 @@ function Home({
               contexto="lista"
               onToggle={toggleComprado}
               onAbrir={abrirProduto}
-              busca={busca}
-              itensDaLista={lista}
+              busca={buscaAdiada}
+              itemPorProduto={itemPorProduto}
               onRemover={removerItem}
               onFiltrarGrupo={irParaGrupo}
               forcarAberto={todasExpandidasLista}
@@ -682,8 +726,8 @@ function Home({
               contexto="lista"
               onToggle={toggleComprado}
               onAbrir={abrirProduto}
-              busca={busca}
-              itensDaLista={lista}
+              busca={buscaAdiada}
+              itemPorProduto={itemPorProduto}
               onRemover={removerItem}
               onFiltrarGrupo={irParaGrupo}
               forcarAberto={todasExpandidasLista}
@@ -710,8 +754,8 @@ function Home({
                 contexto="lista"
                 onToggle={toggleComprado}
                 onAbrir={abrirProduto}
-                busca={busca}
-                itensDaLista={lista}
+                busca={buscaAdiada}
+                itemPorProduto={itemPorProduto}
                 collapsed={true}
                 corOverride={COR.neutro}
                 onRemover={removerItem}
@@ -972,7 +1016,7 @@ function Home({
                   color: "var(--text)",
                 }}
               >
-                Não encontramos "{busca}"
+                Não encontramos "{buscaAdiada}"
               </p>
               <p
                 style={{
@@ -1007,8 +1051,8 @@ function Home({
               onToggle={adicionarItem}
               onEmCasa={alternarEmCasa}
               onAbrir={(p) => { setProdutoSelecionado(p); pushBack(() => setProdutoSelecionado(null), "produto"); }}
-              busca={busca}
-              itensDaLista={lista}
+              busca={buscaAdiada}
+              itemPorProduto={itemPorProduto}
               contexto="catalogo"
               onRemover={removerItemPorProdutoId}
               forcarAberto={todasExpandidas}
@@ -1127,15 +1171,14 @@ function Home({
               receitas={receitasFiltradas}
               carregando={carregandoReceitas}
               erro={erroReceitas}
-              itensEmCasa={lista.filter(i => i.comprado)}
-              catalogo={catalogo}
+              faltam={faltam}
               onVerReceita={(r) => { setReceitaSelecionadaId(r.id); setTelaReceita("detalhe"); pushBack(() => { setReceitaSelecionadaId(null); setTelaReceita("lista"); }, "receita"); }}
             />
           )}
           {telaReceitaEfetiva === "detalhe" && (
             <ReceitaDetalhe
               receita={receitaSelecionada}
-              itensEmCasa={lista.filter(i => i.comprado)}
+              itensEmCasa={itensEmCasa}
               catalogo={catalogo}
               isAdmin={admin}
               onEditar={() => {
@@ -1201,6 +1244,7 @@ function Home({
             />
           )}
           {telaReceitaEfetiva === "texto" && (
+            <Suspense fallback={null}>
             <ReceitaTexto
               textoInicial={textoReceita}
               catalogo={catalogo}
@@ -1212,8 +1256,10 @@ function Home({
                 pushBack(() => setTelaReceita("texto"), "receita");
               }}
             />
+            </Suspense>
           )}
           {telaReceitaEfetiva === "formulario" && (
+            <Suspense fallback={null}>
             <ReceitaFormulario
               catalogo={catalogo}
               isAdmin={admin && modoAdmin}
@@ -1242,6 +1288,7 @@ function Home({
                 await gravacao;
               }}
             />
+            </Suspense>
           )}
         </div>
       )}
@@ -1254,7 +1301,7 @@ function Home({
               dicas={dicasFiltradas}
               carregando={carregandoDicas}
               erro={erroDicas}
-              busca={busca}
+              busca={buscaAdiada}
               onVerDica={(d) => {
                 setDicaSelecionadaId(d.id);
                 setTelaDica("detalhe");
@@ -1275,6 +1322,7 @@ function Home({
             />
           )}
           {telaDicaEfetiva === "formulario" && (
+            <Suspense fallback={null}>
             <DicaFormulario
               key={editandoDica ? dicaSelecionada.id : "nova"}
               dicaInicial={editandoDica ? dicaSelecionada : null}
@@ -1296,12 +1344,14 @@ function Home({
                 descartar("dica");
               }}
             />
+            </Suspense>
           )}
         </div>
       )}
 
       {/* Modal detalhes */}
       {sugestoesAbertas && (
+        <Suspense fallback={null}>
         <SugestoesMes
           catalogo={catalogo}
           listaAtiva={listaAtiva}
@@ -1310,6 +1360,7 @@ function Home({
           toggleComprado={toggleComprado}
           onFechar={fecharSugestoesMes}
         />
+        </Suspense>
       )}
 
       {produtoSelecionado && (
@@ -1347,7 +1398,7 @@ function Home({
           setModoAdmin={setModoAdmin}
           telaInicial={telaMenu}
           catalogo={catalogo}
-          itensEmCasa={lista.filter((i) => i.comprado)}
+          itensEmCasa={itensEmCasa}
         />
       )}
 
@@ -1378,7 +1429,7 @@ function Home({
 
       {/* Chat */}
 
-      {chatAberto && <Chat onFechar={fecharChat} itensEmCasa={lista.filter((i) => i.comprado)} />}
+      {chatAberto && <Suspense fallback={null}><Chat onFechar={fecharChat} itensEmCasa={itensEmCasa} /></Suspense>}
 
       {/* Navegação inferior */}
       <div
