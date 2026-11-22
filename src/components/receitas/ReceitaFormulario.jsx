@@ -526,7 +526,7 @@ export function ReceitaFormulario({
               placeholder="Buscar ingrediente ou grupo..."
               style={inputStyle}
             />
-            {mostrarDropdown && (
+            {editandoIdx === null && mostrarDropdown && (
               <div style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
                 background: 'var(--card)', borderRadius: RAIO.md,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { corDaCategoria } from "../utils/categorias";
 import ProdutoItem from "./ProdutoItem";
@@ -24,14 +24,14 @@ function CategoriaGrupo({
 }) {
   const [aberto, setAberto] = useState(!collapsed);
 
-  useEffect(() => {
-    if (busca && busca.length > 0) setAberto(true);
-  }, [busca]);
+  // Ajusta o estado durante o render quando busca/forcarAberto mudam (sem useEffect)
+  const [anterior, setAnterior] = useState({ busca: undefined, forcarAberto: undefined });
+  if (anterior.busca !== busca || anterior.forcarAberto !== forcarAberto) {
+    setAnterior({ busca, forcarAberto });
+    if (busca && busca.length > 0 && anterior.busca !== busca) setAberto(true);
+    if (forcarAberto !== undefined && anterior.forcarAberto !== forcarAberto) setAberto(forcarAberto);
+  }
 
-  useEffect(() => {
-    if (forcarAberto !== undefined) setAberto(forcarAberto);
-  }, [forcarAberto]);
-  
   const cor = corOverride || corDaCategoria(categoria);
 
   const renderizarItem = (p) => (

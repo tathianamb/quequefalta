@@ -41,12 +41,12 @@ const RE = {
 
   porcoes: /(?:(\d+)\s*(?:por[çc][õo]es?|pessoas?|fatias?)|(?:serve[m]?|rende[m]?|d[áa]\s+para)\s+(\d+)|rendimento:?\s*(\d+))/i,
 
-  cabecalho: /^(modo de (?:preparo|fazer)|ingredientes?|preparos?|instru[çc][õo]es|instru[çc][ãa]o|receita|como fazer|utens[íi]lios|passo\s*a\s*passo|passos)(\s*[\(:,].*)?$/i,
+  cabecalho: /^(modo de (?:preparo|fazer)|ingredientes?|preparos?|instru[çc][õo]es|instru[çc][ãa]o|receita|como fazer|utens[íi]lios|passo\s*a\s*passo|passos)(\s*[(:,].*)?$/i,
   subCabecalho: /^para\s+(o|a|os|as)\s+\w+/i,
 
   separador: /^[-=*_]{3,}\s*$/,
-  numeracaoPasso: /^\s*(?:passo|step|etapa)\s+\d+\s*[:\-.)]\s*/i,
-  numeracaoSimples: /^\s*\d+\s*[:.)\-]\s*/,
+  numeracaoPasso: /^\s*(?:passo|step|etapa)\s+\d+\s*[:.)-]\s*/i,
+  numeracaoSimples: /^\s*\d+\s*[:.)-]\s*/,
 
   aGostoSufixo: /\s+a\s+gosto\s*$/i,
   paraUsoSufixo: /\s+(para\s+\S+(?:\s+\S+)?)\s*$/i,
