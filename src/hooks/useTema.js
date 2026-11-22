@@ -1,49 +1,73 @@
 import { useState, useEffect } from "react";
 
-export function useTema() {
-  const sistemaEscuro = window.matchMedia(
-    "(prefers-color-scheme: dark)",
-  ).matches;
+// As paletas ficam em index.css (:root, :root[data-tema="escuro"] e o @media
+// prefers-color-scheme para o modo Auto). Aqui só se escolhe o atributo.
+// A preferência guardada no aparelho é "claro" | "escuro"; sem valor = "auto".
+const CHAVE = "tema";
+const COR_BARRA = { claro: "#FFFFFF", escuro: "#1A1B1E" };
+const CONSULTA_ESCURO = "(prefers-color-scheme: dark)";
 
-  const [escuro, setEscuro] = useState(() => {
-    const salvo = localStorage.getItem("tema");
-    if (salvo === "escuro") return true;
-    if (salvo === "claro") return false;
-    return sistemaEscuro;
-  });
+export function lerPreferenciaTema() {
+  try {
+    const salvo = localStorage.getItem(CHAVE);
+    return salvo === "escuro" || salvo === "claro" ? salvo : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+function sistemaEstaEscuro() {
+  return !!window.matchMedia && window.matchMedia(CONSULTA_ESCURO).matches;
+}
+
+// Aplica a preferência no <html> (e na cor da barra do navegador). Em "auto"
+// o atributo sai e quem decide é o @media do CSS. Usada também em main.jsx,
+// antes do primeiro quadro, para não piscar claro.
+export function aplicarTema(preferencia) {
+  const root = document.documentElement;
+  if (preferencia === "claro" || preferencia === "escuro") {
+    root.dataset.tema = preferencia;
+  } else {
+    delete root.dataset.tema;
+  }
+  const escuro =
+    preferencia === "escuro" || (preferencia === "auto" && sistemaEstaEscuro());
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", escuro ? COR_BARRA.escuro : COR_BARRA.claro);
+}
+
+export function useTema() {
+  const [preferencia, setPreferencia] = useState(lerPreferenciaTema);
+  const [sistemaEscuro, setSistemaEscuro] = useState(sistemaEstaEscuro);
+
+  // Acompanha a troca de tema do sistema (relevante no modo Auto).
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const consulta = window.matchMedia(CONSULTA_ESCURO);
+    const aoMudar = (e) => setSistemaEscuro(e.matches);
+    consulta.addEventListener("change", aoMudar);
+    return () => consulta.removeEventListener("change", aoMudar);
+  }, []);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (escuro) {
-      root.style.setProperty("--bg", "#1A1B1E");
-      root.style.setProperty("--card", "#25262B");
-      root.style.setProperty("--text", "#F8F9FA");
-      root.style.setProperty("--shadow", "0 2px 12px rgba(0,0,0,0.3)");
-      root.style.setProperty("--amarelo-validacao", "#fec601");
-      root.style.setProperty("--verde-bg", "#1A2E1A");
-      root.style.setProperty("--verde-borda", "#2F9E44");
-    } else {
-      root.style.setProperty("--bg", "#F8F9FA");
-      root.style.setProperty("--card", "#FFFFFF");
-      root.style.setProperty("--text", "#212529");
-      root.style.setProperty("--shadow", "0 2px 12px rgba(0,0,0,0.08)");
-      root.style.setProperty("--amarelo-validacao", "#b07d00");
-      root.style.setProperty("--verde-bg", "#EBFBEE");
-      root.style.setProperty("--verde-borda", "#69DB7C");
+    aplicarTema(preferencia);
+  }, [preferencia, sistemaEscuro]);
+
+  const escuro =
+    preferencia === "escuro" || (preferencia === "auto" && sistemaEscuro);
+
+  const definirTema = (nova) => {
+    try {
+      if (nova === "auto") localStorage.removeItem(CHAVE);
+      else localStorage.setItem(CHAVE, nova);
+    } catch {
+      /* sem storage: vale só nesta sessão */
     }
-  }, [escuro]);
-
-  const toggleTema = () => {
-    setEscuro((e) => {
-      localStorage.setItem("tema", !e ? "escuro" : "claro");
-      return !e;
-    });
+    setPreferencia(nova);
   };
 
-  const seguirSistema = () => {
-    localStorage.removeItem("tema");
-    setEscuro(sistemaEscuro);
-  };
+  const toggleTema = () => definirTema(escuro ? "claro" : "escuro");
+  const seguirSistema = () => definirTema("auto");
 
-  return { escuro, toggleTema, seguirSistema };
+  return { escuro, preferencia, definirTema, toggleTema, seguirSistema };
 }

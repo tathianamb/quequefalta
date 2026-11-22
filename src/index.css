@@ -13,11 +13,69 @@
   --verde: #577454;
   --verde-sage: #b4bea3;
 
+  /* Tons translúcidos da marca (mesmos hex com alfa de antes) */
+  --laranja-suave: #fe5f0122;
+  --laranja-sombra: #fe5f0133;
+  --amarelo-suave: #fec60122;
+  --amarelo-borda: #fec60155;
+  --amarelo-validacao: #b07d00;
+  --amarelo-validacao-bg: rgba(176, 125, 0, 0.08);
+
+  /* Paleta clara (padrão) */
   --bg: #f8f9fa;
   --card: #ffffff;
   --text: #212529;
   --text-soft: #868e96;
   --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --borda: #dee2e6;
+  --borda-suave: #dee2e655;
+  --divisoria: #f1f3f5;
+  --erro-bg: #ffe3e3;
+  --sucesso-bg: #ebfbee;
+  --sucesso-borda: #69db7c;
+  --verde-bg: #ebfbee;
+  --verde-borda: #69db7c;
+}
+
+/* Paleta escura: escolhida no Menu (data-tema="escuro") ou, no modo Auto
+   (sem data-tema), quando o sistema está no escuro. O atributo é aplicado em
+   main.jsx antes do primeiro quadro; useTema só o alterna depois. */
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --bg: #1a1b1e;
+  --card: #25262b;
+  --text: #f8f9fa;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --borda: #373a40;
+  --borda-suave: rgba(55, 58, 64, 0.6);
+  --divisoria: #2c2e33;
+  --erro-bg: #3a1f22;
+  --sucesso-bg: #1a2e1a;
+  --sucesso-borda: #2f9e44;
+  --verde-bg: #1a2e1a;
+  --verde-borda: #2f9e44;
+  --amarelo-validacao: #fec601;
+  --amarelo-validacao-bg: rgba(254, 198, 1, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    color-scheme: dark;
+    --bg: #1a1b1e;
+    --card: #25262b;
+    --text: #f8f9fa;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    --borda: #373a40;
+    --borda-suave: rgba(55, 58, 64, 0.6);
+    --divisoria: #2c2e33;
+    --erro-bg: #3a1f22;
+    --sucesso-bg: #1a2e1a;
+    --sucesso-borda: #2f9e44;
+    --verde-bg: #1a2e1a;
+    --verde-borda: #2f9e44;
+    --amarelo-validacao: #fec601;
+    --amarelo-validacao-bg: rgba(254, 198, 1, 0.08);
+  }
 }
 
 body {

@@ -24,19 +24,25 @@ export const RAIO = {
 }
 
 export const COR = {
-  borda: '#DEE2E6',
-  divisoria: '#F1F3F5',
+  // Tokens que mudam com o tema: definidos em index.css. Não concatene alfa
+  // neles (borda + "55" quebra): use var(--borda-suave).
+  borda: 'var(--borda)',
+  divisoria: 'var(--divisoria)',
+  // neutro, erro, sucesso e as cores de categoria seguem em hex: são usados em cor + "22".
   neutro: '#ADB5BD',
 
   erro: '#FA5252',
-  erroBg: '#FFE3E3',
+  erroBg: 'var(--erro-bg)',
 
   sucesso: '#2F9E44',
-  sucessoBg: '#EBFBEE',
-  sucessoBorda: '#69DB7C',
+  sucessoBg: 'var(--sucesso-bg)',
+  sucessoBorda: 'var(--sucesso-borda)',
 }
 
 export const BORDA = `1.5px solid ${COR.borda}`
+
+// Sombra laranja dos botões de destaque (cor em index.css: --laranja-sombra).
+export const SOMBRA_LARANJA = '0 4px 12px var(--laranja-sombra)'
 
 export const TIPOGRAFIA = {
   display: { fontSize: '32px', fontWeight: 900, letterSpacing: '-0.5px' },

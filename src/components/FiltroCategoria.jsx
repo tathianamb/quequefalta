@@ -192,8 +192,8 @@ function FiltroCategoria({
                     onClick={() => toggleCategoria(cat)}
                     style={{
                       padding: "8px 10px",
-                      border: `1.5px solid ${selecionado ? "#FEC60155" : COR.borda + "55"}`,
-                      background: selecionado ? "#FEC60122" : "var(--card)",
+                      border: `1.5px solid ${selecionado ? "var(--amarelo-borda)" : "var(--borda-suave)"}`,
+                      background: selecionado ? "var(--amarelo-suave)" : "var(--card)",
                       color: selecionado ? "var(--text)" : "var(--text-soft)",
                       borderRadius: RAIO.pill,
                       fontFamily: "Nunito, sans-serif",

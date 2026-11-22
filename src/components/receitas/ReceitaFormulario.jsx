@@ -509,7 +509,7 @@ export function ReceitaFormulario({
           <div style={{
             ...TIPOGRAFIA.subcategoria,
             color: 'var(--amarelo-validacao)',
-            background: 'rgba(var(--amarelo-rgb, 255,193,7),0.08)',
+            background: 'var(--amarelo-validacao-bg)',
             border: '1px solid var(--amarelo-validacao)',
             borderRadius: RAIO.md,
             padding: '8px 12px',

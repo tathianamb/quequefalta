@@ -90,7 +90,7 @@ function ProdutoItem({
           alignItems: "center",
           gap: "12px",
           padding: "14px 16px",
-          background: feedback ? "var(--laranja)11" : "var(--card)",
+          background: feedback ? "color-mix(in srgb, var(--laranja) 8%, var(--card))" : "var(--card)",
           borderRadius: RAIO.md,
           boxShadow: "var(--shadow)",
           borderLeft: `4px solid ${feedback ? "var(--laranja)" : comprado ? "var(--laranja)" : cor}`,
@@ -109,9 +109,9 @@ function ProdutoItem({
             background: comprado
               ? "var(--laranja)"
               : naLista
-                ? "#FE5F0122"
+                ? "var(--laranja-suave)"
                 : feedback
-                  ? "#FE5F0122"
+                  ? "var(--laranja-suave)"
                   : "transparent",
             display: "flex",
             alignItems: "center",

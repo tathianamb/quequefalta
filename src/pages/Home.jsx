@@ -63,6 +63,7 @@ import {
   BOTAO_PRIMARIO,
   BOTAO_SECUNDARIO,
   COR,
+  SOMBRA_LARANJA,
 } from "../utils/estilos";
 
 function Home({
@@ -82,7 +83,7 @@ function Home({
     toggleComprado,
     removerItem,
   } = useLista(listaAtiva, catalogo);
-  const { escuro, toggleTema, seguirSistema } = useTema();
+  const { escuro, preferencia: temaPreferencia, toggleTema, seguirSistema } = useTema();
   const [aba, setAba] = useState("lista");
   const [agrupamentoLista, setAgrupamentoLista] = useState(lerAgrupamentoSalvo);
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
@@ -531,7 +532,7 @@ function Home({
                     ...BOTAO_PRIMARIO,
                     borderRadius: RAIO.md,
                     color: "white",
-                    boxShadow: "0 4px 12px #FE5F0133",
+                    boxShadow: SOMBRA_LARANJA,
                   }}
                 >
                   🛍️ Buscar no Catálogo
@@ -907,7 +908,7 @@ function Home({
                   ...BOTAO_PRIMARIO,
                   borderRadius: RAIO.md,
                   color: "white",
-                  boxShadow: "0 4px 12px #FE5F0133",
+                  boxShadow: SOMBRA_LARANJA,
                 }}
               >
                 💡 Sugerir produto
@@ -1230,6 +1231,7 @@ function Home({
             setTelaMenu("menu");
           }}
           escuro={escuro}
+          temaPreferencia={temaPreferencia}
           toggleTema={toggleTema}
           seguirSistema={seguirSistema}
           listaAtiva={listaAtiva}
@@ -1360,7 +1362,7 @@ function Home({
                   style={{
                     display: "flex", alignItems: "center", gap: "12px",
                     padding: "14px 16px", borderRadius: RAIO.md,
-                    background: ordenacaoReceitas === op.id ? "var(--amarelo)11" : "var(--bg)",
+                    background: ordenacaoReceitas === op.id ? "var(--amarelo-suave)" : "var(--bg)",
                     border: `1.5px solid ${ordenacaoReceitas === op.id ? "var(--amarelo)" : "transparent"}`,
                     cursor: "pointer",
                   }}

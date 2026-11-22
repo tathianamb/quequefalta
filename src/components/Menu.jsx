@@ -49,6 +49,7 @@ const mesmasCategorias = (a, b) => a.length === b.length && a.every((c) => b.inc
 function Menu({
   onFechar,
   escuro,
+  temaPreferencia,
   toggleTema,
   seguirSistema,
   listaAtiva,
@@ -287,11 +288,7 @@ function Menu({
                       { id: "escuro", label: "🌙 Escuro" },
                       { id: "auto", label: "⚙️ Auto" },
                     ].map(({ id, label }) => {
-                      const temaAtual = localStorage.getItem("tema");
-                      const ativo =
-                        (id === "auto" && !temaAtual) ||
-                        (id === "escuro" && temaAtual === "escuro") ||
-                        (id === "claro" && temaAtual === "claro");
+                      const ativo = temaPreferencia === id;
                       return (
                         <button
                           key={id}
@@ -305,7 +302,7 @@ function Menu({
                             ...BOTAO_SECUNDARIO,
                             borderRadius: RAIO.sm,
                             border: `1.5px solid ${ativo ? "var(--laranja)" : COR.borda}`,
-                            background: ativo ? "var(--laranja)11" : "var(--card)",
+                            background: ativo ? "var(--laranja-suave)" : "var(--card)",
                             color: ativo ? "var(--laranja)" : "var(--text-soft)",
                             transition: "all 0.2s",
                           }}
@@ -346,7 +343,7 @@ function Menu({
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "14px 16px",
-                        background: ativa ? "#FEC60122" : "var(--bg)",
+                        background: ativa ? "var(--amarelo-suave)" : "var(--bg)",
                         borderRadius: RAIO.md,
                         border: `1.5px solid ${ativa ? "var(--amarelo)" : "transparent"}`,
                         cursor: ativa ? "default" : "pointer",
@@ -1035,8 +1032,8 @@ function Menu({
                           style={{
                             flex: 1,
                             padding: "10px",
-                            border: `1.5px solid ${ativo ? "var(--laranja)" : COR.borda + "55"}`,
-                            background: ativo ? "#FEC60122" : "var(--bg)",
+                            border: `1.5px solid ${ativo ? "var(--laranja)" : "var(--borda-suave)"}`,
+                            background: ativo ? "var(--amarelo-suave)" : "var(--bg)",
                             color: "var(--text)",
                             borderRadius: RAIO.md,
                             fontFamily: "Nunito, sans-serif",
@@ -1066,8 +1063,8 @@ function Menu({
                         onClick={() => toggleCategoriaExportar(cat)}
                         style={{
                           padding: "8px 10px",
-                          border: `1.5px solid ${selecionado ? "#FEC60155" : COR.borda + "55"}`,
-                          background: selecionado ? "#FEC60122" : "var(--card)",
+                          border: `1.5px solid ${selecionado ? "var(--amarelo-borda)" : "var(--borda-suave)"}`,
+                          background: selecionado ? "var(--amarelo-suave)" : "var(--card)",
                           color: selecionado ? "var(--text)" : "var(--text-soft)",
                           borderRadius: RAIO.pill,
                           fontFamily: "Nunito, sans-serif",
