@@ -77,6 +77,8 @@ function Home({
   const {
     lista,
     carregando: carregandoLista,
+    erro: erroLista,
+    avisoGravacao,
     adicionarItem,
     adicionarItemComprado,
     alternarEmCasa,
@@ -485,10 +487,38 @@ function Home({
         )}
       </div>
 
+      {avisoGravacao && (
+        <div
+          role="alert"
+          style={{
+            position: "fixed",
+            left: "16px",
+            right: "16px",
+            bottom: "90px",
+            maxWidth: "448px",
+            margin: "0 auto",
+            padding: "12px 16px",
+            background: "var(--text)",
+            color: "var(--bg)",
+            borderRadius: RAIO.md,
+            boxShadow: "var(--shadow)",
+            textAlign: "center",
+            zIndex: 300,
+          }}
+        >
+          {avisoGravacao}
+        </div>
+      )}
+
       {/* Aba Lista */}
       {aba === "lista" && (
         <div style={{ padding: "20px 16px" }}>
-          {carregando && (
+          {erroLista && (
+            <p style={{ textAlign: "center", color: "var(--text-soft)" }}>
+              Não foi possível carregar a lista. Confira sua conexão ou troque de grupo no menu.
+            </p>
+          )}
+          {!erroLista && carregando && (
             <p style={{ textAlign: "center", color: "var(--text-soft)" }}>
               Carregando...
             </p>
@@ -1066,17 +1096,27 @@ function Home({
                   await adicionarItemComprado(produto);
                 }
               }}
-              onAdicionarFaltantes={async (faltantes) => {
+              onAdicionarFaltantes={(faltantes) => {
                 // Genérico ("Óleo") não vai para a lista: entra a variante que a
                 // casa costuma comprar; sem pista, abre o catálogo no grupo dele
                 // para o usuário escolher (ver escolherVariante).
+                // Sem await: a gravação segue em segundo plano (não trava sem
+                // sinal) e o hook também barra duplicatas; o Set evita pedir duas
+                // vezes o mesmo produto (ex.: ovo na massa e na cobertura, ou dois
+                // genéricos que resolvem para a mesma variante).
                 let grupoParaEscolher = null;
+                const jaPedidos = new Set();
+                const pedir = (p) => {
+                  if (jaPedidos.has(p.id)) return;
+                  jaPedidos.add(p.id);
+                  adicionarItem(p);
+                };
                 for (const ing of faltantes) {
                   const produto = catalogo.find(p => p.id === ing.produtoId);
                   if (!produto) continue;
-                  if (!produto.generico) { await adicionarItem(produto); continue; }
+                  if (!produto.generico) { pedir(produto); continue; }
                   const { variante, jaNaLista } = escolherVariante(produto, catalogo, lista, listaAtiva);
-                  if (variante) await adicionarItem(variante);
+                  if (variante) pedir(variante);
                   else if (!jaNaLista) grupoParaEscolher ??= produto.grupoSubstituicao?.[0] ?? null;
                 }
                 setReceitaSelecionada(null);

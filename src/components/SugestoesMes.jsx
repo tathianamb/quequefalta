@@ -18,7 +18,6 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
     () => new Set(recorrentes.filter((s) => !s.emCasa).map((s) => s.produto.id)),
   );
   const [avulsosAbertos, setAvulsosAbertos] = useState(false);
-  const [gravando, setGravando] = useState(false);
 
   const alternar = (id) =>
     setSelecao((atual) => {
@@ -28,20 +27,17 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
       return nova;
     });
 
-  const adicionar = async () => {
-    if (gravando) return;
-    setGravando(true);
-    try {
-      for (const s of [...recorrentes, ...avulsos]) {
-        if (!selecao.has(s.produto.id)) continue;
-        // Em casa = item já existe na lista como comprado: volta a "comprar".
-        if (s.itemLista?.comprado) await toggleComprado(s.itemLista);
-        else await adicionarItem(s.produto);
-      }
-      onFechar();
-    } finally {
-      setGravando(false);
+  // As escritas do useLista são síncronas para quem chama (a gravação segue em
+  // segundo plano, e o erro é avisado pelo próprio hook), então o laço não trava
+  // sem sinal e a folha fecha na hora. A checagem de duplicata é do hook.
+  const adicionar = () => {
+    for (const s of [...recorrentes, ...avulsos]) {
+      if (!selecao.has(s.produto.id)) continue;
+      // Em casa = item já existe na lista como comprado: volta a "comprar".
+      if (s.itemLista?.comprado) toggleComprado(s.itemLista);
+      else adicionarItem(s.produto);
     }
+    onFechar();
   };
 
   const descrever = (s) => {
@@ -195,15 +191,15 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
           </button>
           <button
             onClick={adicionar}
-            disabled={!selecao.size || gravando}
+            disabled={!selecao.size}
             style={{
               flex: 2,
               padding: "14px",
               ...BOTAO_PRIMARIO,
-              opacity: !selecao.size || gravando ? 0.5 : 1,
+              opacity: !selecao.size ? 0.5 : 1,
             }}
           >
-            {gravando ? "Adicionando..." : `Adicionar ${selecao.size} à lista`}
+            {`Adicionar ${selecao.size} à lista`}
           </button>
         </div>
       </div>

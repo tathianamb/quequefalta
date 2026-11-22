@@ -44,27 +44,40 @@ function ProdutoItem({
     };
   }, [menuAberto]);
 
+  // Os timers ficam em ref para serem limpos antes de agendar outro e ao desmontar.
+  const feedbackTimerRef = useRef(null);
+  const gravandoTimerRef = useRef(null);
+  useEffect(
+    () => () => {
+      clearTimeout(feedbackTimerRef.current);
+      clearTimeout(gravandoTimerRef.current);
+    },
+    [],
+  );
+
   const mostrarFeedback = (tipo) => {
     setFeedback(tipo);
-    setTimeout(() => setFeedback(false), 1500);
+    clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => setFeedback(false), 1500);
   };
 
-  const handleEmCasa = async (e) => {
+  // As escritas do useLista são síncronas para quem chama (a gravação segue em
+  // segundo plano), então o feedback aparece na hora, mesmo sem sinal.
+  const handleEmCasa = (e) => {
     e.stopPropagation();
     if (gravandoRef.current) return;
     gravandoRef.current = true;
-    try {
-      const ficouEmCasa = await onEmCasa(produto);
-      mostrarFeedback(ficouEmCasa ? "casa" : "tirado");
-    } finally {
-      gravandoRef.current = false;
-    }
+    // Trava curta: dá tempo de o snapshot local refletir a troca antes de aceitar
+    // outro toque (que inverteria de novo).
+    gravandoTimerRef.current = setTimeout(() => { gravandoRef.current = false; }, 600);
+    const ficouEmCasa = onEmCasa(produto);
+    mostrarFeedback(ficouEmCasa ? "casa" : "tirado");
   };
 
-  const handleToggle = async () => {
+  const handleToggle = () => {
     if (!onToggle) return;
     if (contexto === "lista") {
-      await onToggle(produto);
+      onToggle(produto);
       return;
     }
 
@@ -73,7 +86,7 @@ function ProdutoItem({
       return;
     }
 
-    const adicionado = await onToggle(produto);
+    const adicionado = onToggle(produto);
     if (adicionado !== false) mostrarFeedback("lista");
   };
 
