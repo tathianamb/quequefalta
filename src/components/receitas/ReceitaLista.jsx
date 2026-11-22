@@ -68,12 +68,18 @@ function CardReceita({ receita, temEmCasa, onClick }) {
   )
 }
 
-export function ReceitaLista({ receitas, itensEmCasa, catalogo, onVerReceita }) {
+export function ReceitaLista({ receitas, itensEmCasa, catalogo, onVerReceita, carregando = false, erro = false }) {
   const temEmCasa = criarVerificadorEmCasa(itensEmCasa, catalogo)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Lista de cards */}
-      {receitas.length === 0 ? (
+      {carregando ? (
+        <p style={{ textAlign: 'center', color: 'var(--text-soft)' }}>Carregando...</p>
+      ) : receitas.length === 0 && erro ? (
+        <p style={{ ...TIPOGRAFIA.corpo, textAlign: 'center', color: 'var(--text-soft)', padding: '40px 0' }}>
+          Não foi possível carregar as receitas. Tente de novo mais tarde.
+        </p>
+      ) : receitas.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <p style={{ fontSize: '40px' }}>🍽️</p>
           <p style={{ ...TIPOGRAFIA.corpo, color: 'var(--text-soft)', marginTop: '12px' }}>

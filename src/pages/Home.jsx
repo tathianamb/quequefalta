@@ -1,6 +1,8 @@
 ﻿import { useState } from "react";
 import { db } from "../config/firebase";
-import { addDoc, collection, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
+import { deleteDoc, doc } from "firebase/firestore";
+import { useEffect, useRef } from "react";
+import { sugerirProduto } from "../config/sugestoes";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { criarVerificadorEmCasa, ingredientesFaltantes, escolherVariante } from "../utils/ingredientesEmCasa";
 import { useLista } from "../hooks/useLista";
@@ -73,7 +75,7 @@ function Home({
   setListaAtiva,
   setTodasListas,
 }) {
-  const { catalogo, carregando: carregandoCatalogo } = useCatalogo();
+  const { catalogo, carregando: carregandoCatalogo, erro: erroCatalogo } = useCatalogo();
   const {
     lista,
     carregando: carregandoLista,
@@ -104,6 +106,8 @@ function Home({
   const {
     aprovadas: receitasAprovadas,
     pendentes: receitasPendentes,
+    carregando: carregandoReceitas,
+    erro: erroReceitas,
     sugerir: sugerirReceita,
     aprovar: aprovarReceita,
     rejeitar: rejeitarReceita,
@@ -136,6 +140,36 @@ function Home({
   const { pushBack } = useBackStack();
 
   const termoBusca = normalizar(busca);
+
+  // Aviso de gravação que falhou. As gravações não esperam o servidor (com
+  // sinal fraco a promise demora); o erro, quando vem, aparece aqui.
+  const [avisoErro, setAvisoErro] = useState(null);
+  const timerAvisoRef = useRef(null);
+  useEffect(() => () => clearTimeout(timerAvisoRef.current), []);
+  const avisarErro = (mensagem, e) => {
+    console.error(mensagem, e);
+    setAvisoErro(mensagem);
+    clearTimeout(timerAvisoRef.current);
+    timerAvisoRef.current = setTimeout(() => setAvisoErro(null), 5000);
+  };
+
+  // Ações dos botões de aprovar/rejeitar: uma por item por vez. O ref barra o
+  // toque duplo no mesmo instante; o estado desabilita os botões do item.
+  const emAndamentoRef = useRef(new Set());
+  const [emAndamento, setEmAndamento] = useState([]);
+  const rodarUmaVez = (id, acao, mensagemErro) => {
+    if (emAndamentoRef.current.has(id)) return;
+    emAndamentoRef.current.add(id);
+    setEmAndamento([...emAndamentoRef.current]);
+    Promise.resolve()
+      .then(acao)
+      .catch((e) => avisarErro(mensagemErro, e))
+      .finally(() => {
+        emAndamentoRef.current.delete(id);
+        setEmAndamento([...emAndamentoRef.current]);
+      });
+  };
+
   const filtrar = (arr) =>
     arr.filter((p) => {
       const buscaOk = normalizar(p.nome).includes(termoBusca);
@@ -252,12 +286,18 @@ function Home({
     if (item) removerItem(item);
   };
 
-  const deletarProdutoCatalogo = async (produto) => {
+  const deletarProdutoCatalogo = (produto) => {
     // Remove também da lista ativa, para não deixar item órfão apontando
     // para um produto que não existe mais.
     const item = lista.find((i) => i.produtoId === produto.id);
-    if (item) await removerItem(item);
-    await deleteDoc(doc(db, "catalogo", produto.id));
+    if (item) {
+      Promise.resolve(removerItem(item)).catch((e) =>
+        avisarErro("Não foi possível remover o produto da lista.", e),
+      );
+    }
+    deleteDoc(doc(db, "catalogo", produto.id)).catch((e) =>
+      avisarErro("Não foi possível excluir o produto do catálogo.", e),
+    );
     setProdutoSelecionado(null);
   };
 
@@ -487,29 +527,6 @@ function Home({
         )}
       </div>
 
-      {avisoGravacao && (
-        <div
-          role="alert"
-          style={{
-            position: "fixed",
-            left: "16px",
-            right: "16px",
-            bottom: "90px",
-            maxWidth: "448px",
-            margin: "0 auto",
-            padding: "12px 16px",
-            background: "var(--text)",
-            color: "var(--bg)",
-            borderRadius: RAIO.md,
-            boxShadow: "var(--shadow)",
-            textAlign: "center",
-            zIndex: 300,
-          }}
-        >
-          {avisoGravacao}
-        </div>
-      )}
-
       {/* Aba Lista */}
       {aba === "lista" && (
         <div style={{ padding: "20px 16px" }}>
@@ -521,6 +538,11 @@ function Home({
           {!erroLista && carregando && (
             <p style={{ textAlign: "center", color: "var(--text-soft)" }}>
               Carregando...
+            </p>
+          )}
+          {erroCatalogo && (
+            <p style={{ textAlign: "center", color: COR.erro }}>
+              Não foi possível carregar o catálogo. Verifique a conexão.
             </p>
           )}
           {!carregando &&
@@ -684,6 +706,7 @@ function Home({
               </p>
               {sugestoesPendentes.map((s) => {
                 const editando = sugestaoEditando?.id === s.id;
+                const ocupado = emAndamento.includes(s.id);
                 return (
                   <div
                     key={s.id}
@@ -818,12 +841,12 @@ function Home({
                               Cancelar
                             </button>
                             <button
-                              onClick={async () => {
-                                await atualizar(s, {
+                              onClick={() => {
+                                atualizar(s, {
                                   nome: sugestaoEditando.nome.trim(),
                                   categoria: sugestaoEditando.categoria,
                                   subcategoria: sugestaoEditando.subcategoria,
-                                });
+                                }).catch((e) => avisarErro("Não foi possível salvar a sugestão.", e));
                                 setSugestaoEditando(null);
                               }}
                               disabled={!sugestaoEditando.nome.trim() || !sugestaoEditando.categoria || !sugestaoEditando.subcategoria}
@@ -860,26 +883,29 @@ function Home({
                               Editar
                             </button>
                             <button
-                              onClick={() => s.categoria && aprovar(s)}
-                              disabled={!s.categoria}
+                              onClick={() => s.categoria && rodarUmaVez(s.id, () => aprovar(s), "Não foi possível aprovar a sugestão.")}
+                              disabled={!s.categoria || ocupado}
                               style={{
                                 padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
                                 background: !s.categoria ? COR.borda : COR.sucessoBg,
                                 color: !s.categoria ? COR.neutro : COR.sucesso,
                                 fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
-                                fontWeight: FONTE.bold, cursor: !s.categoria ? "default" : "pointer",
+                                fontWeight: FONTE.bold, cursor: !s.categoria || ocupado ? "default" : "pointer",
+                                opacity: ocupado ? 0.6 : 1,
                               }}
                               title={!s.categoria ? "Defina uma categoria antes de aprovar" : undefined}
                             >
                               Aprovar
                             </button>
                             <button
-                              onClick={() => rejeitar(s)}
+                              onClick={() => rodarUmaVez(s.id, () => rejeitar(s), "Não foi possível rejeitar a sugestão.")}
+                              disabled={ocupado}
                               style={{
                                 padding: "6px 12px", borderRadius: RAIO.sm, border: "none",
                                 background: COR.erroBg, color: COR.erro,
                                 fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
-                                fontWeight: FONTE.bold, cursor: "pointer",
+                                fontWeight: FONTE.bold, cursor: ocupado ? "default" : "pointer",
+                                opacity: ocupado ? 0.6 : 1,
                               }}
                             >
                               Rejeitar
@@ -896,6 +922,11 @@ function Home({
           {carregando && (
             <p style={{ textAlign: "center", color: "var(--text-soft)" }}>
               Carregando...
+            </p>
+          )}
+          {erroCatalogo && (
+            <p style={{ textAlign: "center", color: COR.erro }}>
+              Não foi possível carregar o catálogo. Verifique a conexão.
             </p>
           )}
           {!carregando && catalogoFiltrado.length === 0 && (
@@ -974,6 +1005,7 @@ function Home({
               </p>
               {receitasPendentes.map((r) => {
                 const temIngredienteTemp = r.ingredientes?.some((ing) => ing.nomeTemp);
+                const ocupado = emAndamento.includes(r.id);
                 return (
                   <div
                     key={r.id}
@@ -1024,8 +1056,8 @@ function Home({
                           Editar
                         </button>
                         <button
-                          onClick={() => !temIngredienteTemp && aprovarReceita(r)}
-                          disabled={temIngredienteTemp}
+                          onClick={() => !temIngredienteTemp && rodarUmaVez(r.id, () => aprovarReceita(r), "Não foi possível aprovar a receita.")}
+                          disabled={temIngredienteTemp || ocupado}
                           style={{
                             padding: "6px 12px",
                             borderRadius: RAIO.sm,
@@ -1035,14 +1067,15 @@ function Home({
                             fontFamily: "Nunito, sans-serif",
                             fontSize: FONTE.sm,
                             fontWeight: FONTE.bold,
-                            cursor: temIngredienteTemp ? "not-allowed" : "pointer",
-                            opacity: temIngredienteTemp ? 0.6 : 1,
+                            cursor: temIngredienteTemp ? "not-allowed" : ocupado ? "default" : "pointer",
+                            opacity: temIngredienteTemp || ocupado ? 0.6 : 1,
                           }}
                         >
                           Aprovar
                         </button>
                         <button
-                          onClick={() => rejeitarReceita(r)}
+                          onClick={() => rodarUmaVez(r.id, () => rejeitarReceita(r), "Não foi possível rejeitar a receita.")}
+                          disabled={ocupado}
                           style={{
                             padding: "6px 12px",
                             borderRadius: RAIO.sm,
@@ -1052,7 +1085,8 @@ function Home({
                             fontFamily: "Nunito, sans-serif",
                             fontSize: FONTE.sm,
                             fontWeight: FONTE.bold,
-                            cursor: "pointer",
+                            cursor: ocupado ? "default" : "pointer",
+                            opacity: ocupado ? 0.6 : 1,
                           }}
                         >
                           Rejeitar
@@ -1067,6 +1101,8 @@ function Home({
           {telaReceita === "lista" && (
             <ReceitaLista
               receitas={receitasFiltradas}
+              carregando={carregandoReceitas}
+              erro={erroReceitas}
               itensEmCasa={lista.filter(i => i.comprado)}
               catalogo={catalogo}
               onVerReceita={(r) => { setReceitaSelecionada(r); setTelaReceita("detalhe"); pushBack(() => { setReceitaSelecionada(null); setTelaReceita("lista"); }); }}
@@ -1169,15 +1205,10 @@ function Home({
                 }
               }}
               onSugerirIngrediente={async (nome) => {
-                await addDoc(collection(db, "sugestoes"), {
-                  nome,
-                  categoria: "",
-                  subcategoria: "",
-                  sugeridoPor: usuario.email,
-                  listaAtiva,
-                  criadoEm: serverTimestamp(),
-                  status: "pendente",
-                });
+                // O formulário só chama isto ao enviar/salvar rascunho, e o
+                // erro (se houver) precisa chegar a ele: espera a gravação.
+                const { gravacao } = await sugerirProduto({ nome, usuario, listaAtiva });
+                await gravacao;
               }}
             />
           )}
@@ -1288,7 +1319,33 @@ function Home({
         />
       )}
 
+      {/* Aviso de gravação que falhou: da lista (useLista) ou das ações da Home */}
+      {(avisoErro || avisoGravacao) && (
+        <div
+          role="alert"
+          style={{
+            position: "fixed",
+            bottom: "80px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 32px)",
+            maxWidth: "448px",
+            padding: "10px 14px",
+            borderRadius: RAIO.md,
+            background: COR.erroBg,
+            color: COR.erro,
+            boxShadow: "var(--shadow)",
+            ...TIPOGRAFIA.subcategoria,
+            textAlign: "center",
+            zIndex: 300,
+          }}
+        >
+          {avisoErro || avisoGravacao}
+        </div>
+      )}
+
       {/* Chat */}
+
       {chatAberto && <Chat onFechar={() => setChatAberto(false)} itensEmCasa={lista.filter((i) => i.comprado)} />}
 
       {/* Navegação inferior */}

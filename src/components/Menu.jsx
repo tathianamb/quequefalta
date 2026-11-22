@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { baixarCsv } from "../utils/csv";
 import {
   Moon,
@@ -12,12 +12,11 @@ import {
   Check,
   Home as HomeIcon,
 } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS, CATEGORIAS_NAO_ALIMENTARES } from "../utils/categorias";
 import { signOut } from "firebase/auth";
 import { auth } from "../config/firebase";
 import { alternarLista, sairDaLista } from "../config/lista";
+import { sugerirProduto } from "../config/sugestoes";
 import { useTelegramVinculo } from "../hooks/useTelegramVinculo";
 import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BORDA, COR } from "../utils/estilos";
 
@@ -70,6 +69,9 @@ function Menu({
   const [subcategoria, setSubcategoria] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [erroSugestao, setErroSugestao] = useState(false);
+  const [erroTelegram, setErroTelegram] = useState(false);
+  const timerSugestaoRef = useRef(null);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [codigoVinculo, setCodigoVinculo] = useState(null);
   const [gerandoCodigo, setGerandoCodigo] = useState(false);
@@ -77,14 +79,29 @@ function Menu({
 
   const { vinculado, gerarCodigo, desvincular } = useTelegramVinculo(usuario);
 
+  // Não deixa o timer do "Sugestão enviada" disparar depois que o menu fechou.
+  useEffect(() => () => clearTimeout(timerSugestaoRef.current), []);
+
   const handleGerarCodigo = async () => {
     setGerandoCodigo(true);
+    setErroTelegram(false);
     try {
       const { codigo } = await gerarCodigo();
       setCodigoVinculo({ codigo });
+    } catch (e) {
+      console.error("Erro ao gerar código de vínculo:", e);
+      setErroTelegram(true);
     } finally {
       setGerandoCodigo(false);
     }
+  };
+
+  const handleDesvincular = () => {
+    setErroTelegram(false);
+    desvincular().catch((e) => {
+      console.error("Erro ao desvincular o Telegram:", e);
+      setErroTelegram(true);
+    });
   };
 
   const exportarCatalogo = () => {
@@ -137,26 +154,31 @@ function Menu({
   };
 
   const handleSugestao = async () => {
-    if (!nome || !categoria) return;
+    if (!nome || !categoria || enviando) return;
     setEnviando(true);
+    setErroSugestao(false);
     try {
-      await addDoc(collection(db, "sugestoes"), {
-        nome,
-        categoria,
-        subcategoria,
-        sugeridoPor: usuario.email,
-        listaAtiva,
-        criadoEm: serverTimestamp(),
-        status: "pendente",
+      // Só a checagem de duplicada espera o servidor; a gravação vale na hora
+      // (local) e o erro, se vier, aparece no formulário.
+      const { gravacao } = await sugerirProduto({ nome, categoria, subcategoria, usuario, listaAtiva });
+      gravacao.catch((e) => {
+        console.error("Erro ao enviar sugestão:", e);
+        setSucesso(false);
+        setErroSugestao(true);
       });
       setSucesso(true);
       setNome("");
       setCategoria("");
       setSubcategoria("");
-      setTimeout(() => {
+      clearTimeout(timerSugestaoRef.current);
+      timerSugestaoRef.current = setTimeout(() => {
         setSucesso(false);
-        setTela("menu");
+        // Só volta ao menu se a pessoa ainda estiver nesta tela.
+        setTela((atual) => (atual === "sugestao" ? "menu" : atual));
       }, 2000);
+    } catch (e) {
+      console.error("Erro ao enviar sugestão:", e);
+      setErroSugestao(true);
     } finally {
       setEnviando(false);
     }
@@ -832,6 +854,11 @@ function Menu({
                   ? "Enviando..."
                   : "Enviar sugestão"}
             </button>
+            {erroSugestao && (
+              <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: 0 }}>
+                Não foi possível enviar a sugestão. Tente de novo.
+              </p>
+            )}
           </div>
         )}
 
@@ -858,6 +885,7 @@ function Menu({
                 onClick={() => {
                   setTela("menu");
                   setCodigoVinculo(null);
+                  setErroTelegram(false);
                 }}
               />
             </div>
@@ -875,7 +903,7 @@ function Menu({
                   para registrar os preços automaticamente.
                 </p>
                 <button
-                  onClick={desvincular}
+                  onClick={handleDesvincular}
                   style={{
                     padding: "14px",
                     ...BOTAO_SECUNDARIO,
@@ -960,6 +988,11 @@ function Menu({
                   {gerandoCodigo ? "Gerando..." : "Gerar código"}
                 </button>
               </>
+            )}
+            {erroTelegram && (
+              <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: 0 }}>
+                Não foi possível concluir. Verifique a conexão e tente de novo.
+              </p>
             )}
           </div>
         )}

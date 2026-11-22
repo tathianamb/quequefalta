@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
@@ -19,9 +19,21 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   const [preco, setPreco] = useState("");
   const [data, setData] = useState(hojeISO());
   const [observacao, setObservacao] = useState("");
-  const [salvando, setSalvando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erroDuplicado, setErroDuplicado] = useState(false);
+  const [erroGravacao, setErroGravacao] = useState(null);
+  const timerSucessoRef = useRef(null);
+
+  // Não deixa o timer do "Registrado!" disparar depois que o modal fechou.
+  useEffect(() => () => clearTimeout(timerSucessoRef.current), []);
+
+  // As gravações abaixo não esperam o servidor (com sinal fraco a promise
+  // demora): a escrita local já vale e atualiza a tela. O erro, se vier, é
+  // avisado aqui.
+  const avisarErroGravacao = (mensagem) => (e) => {
+    console.error(mensagem, e);
+    setErroGravacao(mensagem);
+  };
 
   const [editandoAdmin, setEditandoAdmin] = useState(false);
   const [adminNome, setAdminNome] = useState(produto.nome || "");
@@ -30,22 +42,17 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   const [adminGrupoSubstituicao, setAdminGrupoSubstituicao] = useState(produto.grupoSubstituicao || []);
   const [adminNovoGrupoSubstituicao, setAdminNovoGrupoSubstituicao] = useState("");
   const [adminGenerico, setAdminGenerico] = useState(!!produto.generico);
-  const [salvandoAdmin, setSalvandoAdmin] = useState(false);
 
-  const handleSalvarAdmin = async () => {
-    setSalvandoAdmin(true);
-    try {
-      await updateDoc(doc(db, "catalogo", produto.id), {
-        nome: adminNome.trim(),
-        categoria: adminCategoria,
-        subcategoria: adminSubcategoria.trim(),
-        grupoSubstituicao: adminGrupoSubstituicao,
-        generico: adminGenerico,
-      });
-      setEditandoAdmin(false);
-    } finally {
-      setSalvandoAdmin(false);
-    }
+  const handleSalvarAdmin = () => {
+    setErroGravacao(null);
+    updateDoc(doc(db, "catalogo", produto.id), {
+      nome: adminNome.trim(),
+      categoria: adminCategoria,
+      subcategoria: adminSubcategoria.trim(),
+      grupoSubstituicao: adminGrupoSubstituicao,
+      generico: adminGenerico,
+    }).catch(avisarErroGravacao("Não foi possível salvar as alterações do produto."));
+    setEditandoAdmin(false);
   };
 
   const adicionarGrupoSubstituicao = () => {
@@ -101,9 +108,10 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
     return { mercado: melhor[0], preco: melhor[1] };
   };
 
-  const handleRegistrar = async () => {
+  const handleRegistrar = () => {
     if (!mercado.trim() || !preco) return;
     setErroDuplicado(false);
+    setErroGravacao(null);
 
     const mercadoTrim = mercado.trim();
     const jaExiste = historico.some((h) => {
@@ -115,39 +123,43 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
       return;
     }
 
-    setSalvando(true);
-    try {
-      const dataRegistro = data
-        ? new Date(`${data}T12:00:00`)
-        : new Date();
-      const ref = doc(db, "catalogo", produto.id);
-      await updateDoc(ref, {
-        historico: arrayUnion({
-          mercado: mercado.trim(),
-          preco: parseFloat(preco.replace(",", ".")),
-          data: dataRegistro,
-          observacao: observacao.trim() || null,
-          listaAtiva: listaAtiva,
-        }),
-      });
-      setSucesso(true);
-      setMercado("");
-      setPreco("");
-      setData(hojeISO());
-      setObservacao("");
-      setTimeout(() => setSucesso(false), 2000);
-    } finally {
-      setSalvando(false);
-    }
+    const dataRegistro = data
+      ? new Date(`${data}T12:00:00`)
+      : new Date();
+    const ref = doc(db, "catalogo", produto.id);
+    // Sem await: o registro já aparece no histórico (escrita local), então a
+    // checagem de duplicata acima vale para um novo toque mesmo antes de o
+    // servidor confirmar.
+    updateDoc(ref, {
+      historico: arrayUnion({
+        mercado: mercado.trim(),
+        preco: parseFloat(preco.replace(",", ".")),
+        data: dataRegistro,
+        observacao: observacao.trim() || null,
+        listaAtiva: listaAtiva,
+      }),
+    }).catch((e) => {
+      setSucesso(false);
+      avisarErroGravacao("Não foi possível registrar o preço. Tente de novo.")(e);
+    });
+    setSucesso(true);
+    setMercado("");
+    setPreco("");
+    setData(hojeISO());
+    setObservacao("");
+    clearTimeout(timerSucessoRef.current);
+    timerSucessoRef.current = setTimeout(() => setSucesso(false), 2000);
   };
 
   // arrayRemove compara o objeto inteiro — `h` vem direto do snapshot (mesmos
   // campos e Timestamp), então remove exatamente esse registro e nenhum outro.
-  const handleApagarRegistro = async (h) => {
+  const handleApagarRegistro = (h) => {
     const dia = h.data?.toDate ? h.data.toDate().toLocaleDateString("pt-BR") : "";
     const precoTexto = `R$ ${h.preco.toFixed(2).replace(".", ",")}`;
     if (!window.confirm(`Apagar o registro de ${precoTexto} no ${h.mercado} (${dia})?`)) return;
-    await updateDoc(doc(db, "catalogo", produto.id), { historico: arrayRemove(h) });
+    setErroGravacao(null);
+    updateDoc(doc(db, "catalogo", produto.id), { historico: arrayRemove(h) })
+      .catch(avisarErroGravacao("Não foi possível apagar o registro."));
   };
 
   const melhor = melhorPreco();
@@ -175,6 +187,25 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
           overflowY: "auto",
         }}
       >
+        {erroGravacao && (
+          <p
+            role="alert"
+            style={{
+              ...TIPOGRAFIA.subcategoria,
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              color: COR.erro,
+              background: COR.erroBg,
+              padding: "8px 12px",
+              borderRadius: RAIO.sm,
+              margin: "0 0 12px",
+            }}
+          >
+            {erroGravacao}
+          </p>
+        )}
+
         {/* Header */}
         <div
           style={{
@@ -258,10 +289,9 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                 <button
                   onClick={handleSalvarAdmin}
-                  disabled={salvandoAdmin}
                   style={{ flex: 1, padding: "10px", borderRadius: RAIO.sm, border: "none", background: COR.sucesso, color: "white", fontFamily: "Nunito, sans-serif", fontWeight: FONTE.bold, cursor: "pointer" }}
                 >
-                  {salvandoAdmin ? "Salvando..." : "Salvar"}
+                  Salvar
                 </button>
                 <button
                   onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminGrupoSubstituicao(produto.grupoSubstituicao || []); setAdminGenerico(!!produto.generico); }}
@@ -547,7 +577,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
 
           <button
             onClick={handleRegistrar}
-            disabled={!mercado.trim() || !preco || salvando}
+            disabled={!mercado.trim() || !preco}
             style={{
               width: "100%",
               padding: "14px",
@@ -567,7 +597,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
             }}
           >
             <Plus size={18} />
-            {sucesso ? "✓ Registrado!" : salvando ? "Salvando..." : "Registrar"}
+            {sucesso ? "✓ Registrado!" : "Registrar"}
           </button>
         </div>}
 
@@ -579,7 +609,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
             </p>
             {historico.map((h, i) => (
               <div
-                key={i}
+                key={`${h.mercado}-${h.data?.seconds}-${h.preco}`}
                 style={{
                   display: "flex",
                   alignItems: "center",

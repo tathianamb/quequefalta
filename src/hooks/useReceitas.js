@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
-  collection, onSnapshot, doc,
+  collection, onSnapshot, query, where, doc,
   addDoc, updateDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
+import { isAdmin } from '../config/admins'
 
 // Firestore recusa campos undefined, e o formulário usa undefined para limpar
 // produtoId/grupo quando o nome de um ingrediente é editado.
@@ -19,14 +20,26 @@ function limparIngredientes(ingredientes) {
 
 export function useReceitas(usuario) {
   const [receitas, setReceitas] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState(false)
+  const admin = isAdmin(usuario?.email)
 
   useEffect(() => {
-    const ref = collection(db, 'receitas')
+    // Rejeitadas ninguém lê; pendentes só o admin revisa.
+    const status = admin ? ['aprovada', 'pendente'] : ['aprovada']
+    const ref = query(collection(db, 'receitas'), where('status', 'in', status))
     const unsub = onSnapshot(ref, (snap) => {
+      setErro(false)
       setReceitas(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setCarregando(false)
+    }, (e) => {
+      // Sem isso, um erro deixava a aba sem receitas e sem aviso.
+      console.error('Erro ao carregar receitas:', e)
+      setErro(true)
+      setCarregando(false)
     })
     return () => unsub()
-  }, [])
+  }, [admin])
 
   const aprovadas = receitas.filter(r => r.status === 'aprovada')
   const pendentes = receitas.filter(r => r.status === 'pendente')
@@ -67,5 +80,5 @@ export function useReceitas(usuario) {
     })
   }
 
-  return { aprovadas, pendentes, sugerir, aprovar, rejeitar, atualizar }
+  return { aprovadas, pendentes, carregando, erro, sugerir, aprovar, rejeitar, atualizar }
 }

@@ -1,19 +1,32 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  collection, onSnapshot, query, where, doc,
+  updateDoc, writeBatch, serverTimestamp,
+} from 'firebase/firestore'
 import { db } from '../config/firebase'
+import { isAdmin } from '../config/admins'
 
 export function useSugestoes(usuario) {
-  const [sugestoes, setSugestoes] = useState([])
+  // Só admin revisa sugestões; os demais nem assinam a coleção.
+  const admin = isAdmin(usuario?.email)
+  const [pendentes, setPendentes] = useState([])
+  const [carregando, setCarregando] = useState(admin)
+  const [erro, setErro] = useState(false)
 
   useEffect(() => {
-    const ref = collection(db, 'sugestoes')
+    if (!admin) return
+    const ref = query(collection(db, 'sugestoes'), where('status', '==', 'pendente'))
     const unsub = onSnapshot(ref, (snap) => {
-      setSugestoes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setErro(false)
+      setPendentes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setCarregando(false)
+    }, (e) => {
+      console.error('Erro ao carregar sugestões:', e)
+      setErro(true)
+      setCarregando(false)
     })
     return () => unsub()
-  }, [])
-
-  const pendentes = sugestoes.filter(s => s.status === 'pendente')
+  }, [admin])
 
   const aprovar = async (sugestao) => {
     const historico = sugestao.precoSugerido != null
@@ -26,7 +39,10 @@ export function useSugestoes(usuario) {
         }]
       : []
 
-    await addDoc(collection(db, 'catalogo'), {
+    // Um lote só: ou cria o produto e marca a sugestão, ou não faz nenhum dos dois.
+    const batch = writeBatch(db)
+    const novoRef = doc(collection(db, 'catalogo'))
+    batch.set(novoRef, {
       nome: sugestao.nome,
       categoria: sugestao.categoria,
       subcategoria: sugestao.subcategoria || '',
@@ -35,11 +51,12 @@ export function useSugestoes(usuario) {
       receitas: [],
       criadoEm: serverTimestamp(),
     })
-    await updateDoc(doc(db, 'sugestoes', sugestao.id), {
+    batch.update(doc(db, 'sugestoes', sugestao.id), {
       status: 'aprovado',
       aprovadores: [usuario.uid],
       aprovadoEm: serverTimestamp(),
     })
+    await batch.commit()
   }
 
   const rejeitar = async (sugestao) => {
@@ -54,5 +71,5 @@ export function useSugestoes(usuario) {
     await updateDoc(doc(db, 'sugestoes', sugestao.id), dados)
   }
 
-  return { pendentes, aprovar, rejeitar, atualizar }
+  return { pendentes, carregando, erro, aprovar, rejeitar, atualizar }
 }

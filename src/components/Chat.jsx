@@ -82,6 +82,17 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
   const [copiada, setCopiada] = useState(null) // índice da mensagem recém-copiada
   const [avisoClaude, setAvisoClaude] = useState(false)
   const fimRef = useRef(null)
+  const timersRef = useRef({ aviso: null, copiada: null })
+
+  // Os avisos temporários não podem disparar depois que o chat fechou, nem
+  // acumular quando o botão é tocado várias vezes.
+  useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      clearTimeout(timers.aviso)
+      clearTimeout(timers.copiada)
+    }
+  }, [])
 
   // Copia (garantia, caso o preenchimento automático não funcione) e abre o
   // claude.ai com o texto no campo de mensagem.
@@ -90,13 +101,15 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
     copiarTexto(textoFinal)
     window.open(`https://claude.ai/new?q=${encodeURIComponent(textoFinal)}`, '_blank', 'noopener')
     setAvisoClaude(true)
-    setTimeout(() => setAvisoClaude(false), 6000)
+    clearTimeout(timersRef.current.aviso)
+    timersRef.current.aviso = setTimeout(() => setAvisoClaude(false), 6000)
   }
 
   const copiar = async (indice, conteudo) => {
     if (!(await copiarTexto(conteudo))) return
     setCopiada(indice)
-    setTimeout(() => setCopiada((atual) => (atual === indice ? null : atual)), 1800)
+    clearTimeout(timersRef.current.copiada)
+    timersRef.current.copiada = setTimeout(() => setCopiada((atual) => (atual === indice ? null : atual)), 1800)
   }
 
   useEffect(() => {
