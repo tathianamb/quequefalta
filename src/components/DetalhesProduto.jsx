@@ -221,12 +221,12 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                 value={adminNome}
                 onChange={(e) => setAdminNome(e.target.value)}
                 placeholder="Nome"
-                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo, color: "var(--text)" }}
               />
               <select
                 value={adminCategoria}
                 onChange={(e) => { setAdminCategoria(e.target.value); setAdminSubcategoria(""); }}
-                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo, color: "var(--text)" }}
               >
                 {[...ORDEM_CATEGORIAS].sort((a, b) => a.localeCompare(b, "pt-BR")).map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -235,7 +235,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               <select
                 value={adminSubcategoria}
                 onChange={(e) => setAdminSubcategoria(e.target.value)}
-                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: adminSubcategoria ? "var(--text)" : "var(--text-soft)", outline: "none" }}
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo, color: adminSubcategoria ? "var(--text)" : "var(--text-soft)" }}
               >
                 <option value="">Subcategoria</option>
                 {adminSubcategoria && !subcategoriasDaCategoria.includes(adminSubcategoria) && (
@@ -264,7 +264,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                     onChange={(e) => setAdminNovoGrupoSubstituicao(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && adicionarGrupoSubstituicao()}
                     placeholder="Novo grupo"
-                    style={{ flex: 1, padding: "8px 10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.md, color: "var(--text)", outline: "none" }}
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo, color: "var(--text)" }}
                   />
                   <button
                     onClick={adicionarGrupoSubstituicao}
@@ -418,10 +418,11 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
           </p>
 
           {/* Mercado (digitável com sugestões) */}
-          <label style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+          <label htmlFor="preco-mercado" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
             Mercado
           </label>
           <input
+            id="preco-mercado"
             type="text"
             list="mercados-catalogo"
             placeholder="Digite ou escolha um mercado"
@@ -436,9 +437,8 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               border: BORDA,
               padding: "10px 14px",
               margin: "6px 0 12px",
-              outline: "none",
               fontFamily: "Nunito, sans-serif",
-              fontSize: FONTE.lg,
+              fontSize: FONTE.campo,
               fontWeight: FONTE.bold,
               color: "var(--text)",
             }}
@@ -482,7 +482,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
           )}
 
           {/* Preço */}
-          <label style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+          <label htmlFor="preco-registro" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
             Preço
           </label>
           <div
@@ -501,6 +501,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               R$
             </span>
             <input
+              id="preco-registro"
               type="number"
               inputMode="decimal"
               placeholder="0,00"
@@ -508,9 +509,8 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               onChange={(e) => setPreco(e.target.value)}
               style={{
                 border: "none",
-                outline: "none",
                 fontFamily: "Nunito, sans-serif",
-                fontSize: FONTE.lg,
+                fontSize: FONTE.campo,
                 fontWeight: FONTE.bold,
                 flex: 1,
                 color: "var(--text)",
@@ -520,10 +520,11 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
           </div>
 
           {/* Data (editável, pré-preenchida com hoje) */}
-          <label style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+          <label htmlFor="preco-data" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
             Data
           </label>
           <input
+            id="preco-data"
             type="date"
             value={data}
             onChange={(e) => { setData(e.target.value); setErroDuplicado(false); }}
@@ -535,19 +536,19 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               border: BORDA,
               padding: "10px 14px",
               margin: "6px 0 12px",
-              outline: "none",
               fontFamily: "Nunito, sans-serif",
-              fontSize: FONTE.lg,
+              fontSize: FONTE.campo,
               fontWeight: FONTE.bold,
               color: "var(--text)",
             }}
           />
 
           {/* Observação (texto livre) */}
-          <label style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+          <label htmlFor="preco-observacao" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
             Observação
           </label>
           <textarea
+            id="preco-observacao"
             placeholder="Ex.: promoção, marca, embalagem..."
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}
@@ -560,10 +561,9 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               border: BORDA,
               padding: "10px 14px",
               margin: "6px 0 16px",
-              outline: "none",
               resize: "vertical",
               fontFamily: "Nunito, sans-serif",
-              fontSize: FONTE.md,
+              fontSize: FONTE.campo,
               fontWeight: FONTE.medio,
               color: "var(--text)",
             }}

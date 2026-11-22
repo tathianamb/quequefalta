@@ -81,9 +81,8 @@ const inputStyle = {
   background: 'var(--bg)',
   color: 'var(--text)',
   fontFamily: 'Nunito, sans-serif',
-  fontSize: '14px',
+  fontSize: '16px',
   boxSizing: 'border-box',
-  outline: 'none',
 }
 
 const labelStyle = {
@@ -336,8 +335,9 @@ export function ReceitaFormulario({
 
       {/* Nome */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={{ ...labelStyle, fontSize: '16px' }}>Nome da receita *</label>
+        <label htmlFor="receita-nome" style={{ ...labelStyle, fontSize: '16px' }}>Nome da receita *</label>
         <input
+          id="receita-nome"
           value={nome}
           onChange={e => setNome(e.target.value)}
           placeholder="Ex: Macarrão ao molho vermelho"
@@ -347,7 +347,7 @@ export function ReceitaFormulario({
 
       {/* Ingredientes */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={labelStyle}>Ingredientes *</label>
+        <label htmlFor="receita-busca-ingrediente" style={labelStyle}>Ingredientes *</label>
 
         {/* Tabela de ingredientes */}
         {ingredientes.length > 0 && (
@@ -401,7 +401,7 @@ export function ReceitaFormulario({
                           placeholder="Qtd"
                           title="Use número, fração (1/2) ou misto (1 1/2)"
                           style={{
-                            ...inputStyle, width: '100%', padding: '6px 4px', fontSize: '13px',
+                            ...inputStyle, width: '100%', padding: '6px 4px', fontSize: '16px',
                             borderColor: ing._qtdErro ? 'var(--amarelo-validacao)' : 'var(--borda, #DEE2E6)',
                           }}
                         />
@@ -416,7 +416,7 @@ export function ReceitaFormulario({
                             setEditandoQtdIdx(null)
                           }}
                           onBlur={() => setTimeout(() => setEditandoQtdIdx(null), 150)}
-                          style={{ ...inputStyle, width: '100%', padding: '6px 2px', fontSize: '13px', cursor: 'pointer' }}
+                          style={{ ...inputStyle, width: '100%', padding: '6px 2px', fontSize: '16px', cursor: 'pointer' }}
                         >
                           {UNIDADES.map(u => <option key={u.valor} value={u.valor}>{u.label}</option>)}
                         </select>
@@ -453,7 +453,7 @@ export function ReceitaFormulario({
                       onChange={e => setIngredientes(prev => prev.map((item, i) =>
                         i === idx ? { ...item, nome: e.target.value, produtoId: undefined, nomeTemp: e.target.value } : item
                       ))}
-                      style={{ ...inputStyle, width: '100%', padding: '6px 8px', fontSize: '13px', borderColor: ing.nomeTemp ? 'var(--amarelo-validacao)' : editandoIdx === idx ? 'var(--laranja)' : 'var(--borda, #DEE2E6)' }}
+                      style={{ ...inputStyle, width: '100%', padding: '6px 8px', fontSize: '16px', borderColor: ing.nomeTemp ? 'var(--amarelo-validacao)' : editandoIdx === idx ? 'var(--laranja)' : 'var(--borda, #DEE2E6)' }}
                     />
                     {editandoIdx === idx && mostrarDropdown && (
                       <div style={{
@@ -488,7 +488,7 @@ export function ReceitaFormulario({
                         i === idx ? { ...item, observacao: e.target.value || null } : item
                       ))}
                       placeholder="picado, cozido..."
-                      style={{ ...inputStyle, width: '100%', padding: '6px 6px', fontSize: '12px', color: ing.observacao ? 'var(--text)' : 'var(--text-soft)' }}
+                      style={{ ...inputStyle, width: '100%', padding: '6px 6px', fontSize: '16px', color: ing.observacao ? 'var(--text)' : 'var(--text-soft)' }}
                     />
                   </td>
                   {/* Remover */}
@@ -524,6 +524,7 @@ export function ReceitaFormulario({
         {/* Busca */}
         <div style={{ position: 'relative' }}>
             <input
+              id="receita-busca-ingrediente"
               value={buscaIngrediente}
               onChange={e => setBuscaIngrediente(e.target.value)}
               placeholder="Buscar ingrediente ou grupo..."
@@ -575,8 +576,9 @@ export function ReceitaFormulario({
 
       {/* Modo de preparo */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={labelStyle}>Modo de preparo</label>
+        <label htmlFor="receita-modo-preparo" style={labelStyle}>Modo de preparo</label>
         <textarea
+          id="receita-modo-preparo"
           value={modoPreparo}
           onChange={e => setModoPreparo(e.target.value)}
           placeholder={'1. Tempere a carne com sal e alho.\n2. Refogue a cebola em azeite.\n3. ...'}
@@ -591,8 +593,9 @@ export function ReceitaFormulario({
       {/* Opcionais */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Tempo (min)</label>
+          <label htmlFor="receita-tempo" style={labelStyle}>Tempo (min)</label>
           <input
+            id="receita-tempo"
             type="number"
             value={tempoPreparo}
             onChange={e => setTempoPreparo(e.target.value)}
@@ -601,8 +604,9 @@ export function ReceitaFormulario({
           />
         </div>
         <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Porções</label>
+          <label htmlFor="receita-porcoes" style={labelStyle}>Porções</label>
           <input
+            id="receita-porcoes"
             type="number"
             value={porcoes}
             onChange={e => setPorcoes(e.target.value)}
@@ -614,8 +618,9 @@ export function ReceitaFormulario({
 
       {/* Foto (opcional) */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={labelStyle}>Foto (URL, opcional)</label>
+        <label htmlFor="receita-foto" style={labelStyle}>Foto (URL, opcional)</label>
         <input
+          id="receita-foto"
           value={foto}
           onChange={e => setFoto(e.target.value)}
           placeholder="https://..."

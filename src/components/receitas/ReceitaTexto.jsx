@@ -11,7 +11,7 @@ const inputStyle = {
   background: 'var(--bg)',
   color: 'var(--text)',
   fontFamily: 'Nunito, sans-serif',
-  fontSize: '14px',
+  fontSize: '16px',
   boxSizing: 'border-box',
   resize: 'vertical',
   lineHeight: 1.6,

@@ -10,6 +10,8 @@ export const FONTE = {
   md: '14px',
   base: '15px',
   lg: '16px',
+  // Campos de texto: abaixo de 16px o iPhone dá zoom ao focar.
+  campo: '16px',
   xl: '18px',
   xxl: '20px',
 }

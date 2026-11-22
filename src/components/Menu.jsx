@@ -798,8 +798,8 @@ function Menu({
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
+                fontSize: FONTE.campo,
                 color: "var(--text)",
-                outline: "none",
               }}
             />
 
@@ -813,8 +813,8 @@ function Menu({
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
+                fontSize: FONTE.campo,
                 color: categoria ? "var(--text)" : "var(--text-soft)",
-                outline: "none",
               }}
             >
               <option value="">Categoria *</option>
@@ -839,8 +839,8 @@ function Menu({
                 background: "var(--bg)",
                 fontFamily: "Nunito, sans-serif",
                 ...TIPOGRAFIA.corpo,
+                fontSize: FONTE.campo,
                 color: subcategoria ? "var(--text)" : "var(--text-soft)",
-                outline: "none",
                 opacity: !categoria ? 0.5 : 1,
               }}
             >

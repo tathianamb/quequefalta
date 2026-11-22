@@ -317,7 +317,6 @@ export default function Chat({ onFechar, itensEmCasa = [] }) {
               padding: '10px 14px',
               borderRadius: RAIO.pill,
               border: 'none',
-              outline: 'none',
               background: 'var(--bg)',
               color: 'var(--text)',
               fontFamily: 'Nunito, sans-serif',

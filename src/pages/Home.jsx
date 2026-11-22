@@ -480,6 +480,8 @@ function Home({
           >
             <Search size={18} color="var(--text-soft)" />
             <input
+              type="search"
+              aria-label="Buscar"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={
@@ -488,9 +490,8 @@ function Home({
               style={{
                 border: "none",
                 background: "transparent",
-                outline: "none",
                 fontFamily: "Nunito, sans-serif",
-                fontSize: FONTE.base,
+                fontSize: FONTE.campo,
                 flex: 1,
                 color: "var(--text)",
               }}
@@ -818,8 +819,8 @@ function Home({
                                     padding: "8px 12px", borderRadius: RAIO.sm,
                                     border: "1.5px solid var(--borda, #DEE2E6)",
                                     background: "var(--bg)", color: "var(--text)",
-                                    fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
-                                    outline: "none", width: "100%", boxSizing: "border-box",
+                                    fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo,
+                                    width: "100%", boxSizing: "border-box",
                                   }}
                                 />
                                 {mostrarDropdown && (
@@ -863,8 +864,8 @@ function Home({
                               padding: "8px 12px", borderRadius: RAIO.sm,
                               border: "1.5px solid var(--borda, #DEE2E6)",
                               background: "var(--bg)", color: sugestaoEditando.categoria ? "var(--text)" : "var(--text-soft)",
-                              fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
-                              outline: "none", width: "100%", boxSizing: "border-box",
+                              fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo,
+                              width: "100%", boxSizing: "border-box",
                             }}
                           >
                             <option value="">Categoria *</option>
@@ -887,8 +888,8 @@ function Home({
                                   padding: "8px 12px", borderRadius: RAIO.sm,
                                   border: "1.5px solid var(--borda, #DEE2E6)",
                                   background: "var(--bg)", color: sugestaoEditando.subcategoria ? "var(--text)" : "var(--text-soft)",
-                                  fontFamily: "Nunito, sans-serif", fontSize: FONTE.sm,
-                                  outline: "none", width: "100%", boxSizing: "border-box",
+                                  fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo,
+                                  width: "100%", boxSizing: "border-box",
                                   opacity: !sugestaoEditando.categoria ? 0.5 : 1,
                                 }}
                               >
@@ -1454,6 +1455,7 @@ function Home({
         ].map(({ id, label, icon: Icon, badge }) => (
           <button
             key={id}
+            aria-current={aba === id ? "page" : undefined}
             onClick={() => {
               if (id !== aba) {
                 const abaAtual = aba;

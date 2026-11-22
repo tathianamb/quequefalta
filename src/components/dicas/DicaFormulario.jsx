@@ -11,9 +11,8 @@ const inputStyle = {
   background: 'var(--bg)',
   color: 'var(--text)',
   fontFamily: 'Nunito, sans-serif',
-  fontSize: '14px',
+  fontSize: '16px',
   boxSizing: 'border-box',
-  outline: 'none',
 }
 
 const PLACEHOLDER = `Escreva a dica aqui. Dá pra formatar assim:
