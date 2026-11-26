@@ -1,1 +1,0 @@
-function e(e){return String(e??``).toLowerCase().normalize(`NFD`).replace(/[̀-ͯ]/g,``).trim()}export{e as t};
