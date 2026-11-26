@@ -80,8 +80,11 @@ export function ordenarReceitas(receitas, termoBusca, itensEmCasa, catalogo, ord
   let ordenadas;
   if (ordenacao === "az") ordenadas = [...base].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   else if (ordenacao === "za") ordenadas = [...base].sort((a, b) => b.nome.localeCompare(a.nome, "pt-BR"));
-  // relevancia: receitas com todos os ingredientes em casa primeiro
-  else ordenadas = [...base].sort((a, b) => faltamPorReceita.get(a.id) - faltamPorReceita.get(b.id));
+  // relevancia: receitas com todos os ingredientes em casa primeiro; empatadas,
+  // as que a casa mais comeu (comidaEm, anotado pelo nutreai) sobem.
+  else ordenadas = [...base].sort((a, b) =>
+    faltamPorReceita.get(a.id) - faltamPorReceita.get(b.id) ||
+    (b.comidaEm?.length ?? 0) - (a.comidaEm?.length ?? 0));
   return { receitasFiltradas: ordenadas, faltam: faltamPorReceita };
 }
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **QueQueFalta** is a shared grocery list PWA for home use, built with React 19 + Vite and Firebase (Firestore + Google Auth). It is hosted on GitHub Pages under the path `/quequefalta/`. Mobile-first (max-width 480px). The frontend has no automated tests; `functions/` has a few (`node --test`).
 
-A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app, plus `perguntarChat`, the backend of the in-app chat, and `pedirNaLista`, used by the nutreai. `functions/src/precos/variacao.js` is also imported by the app (no dependencies allowed there).
+A second, separate codebase lives in `functions/`: Firebase Cloud Functions (Node 22, ESM; the runtime is set in both `firebase.json` and `functions/package.json` `engines`) implementing a Telegram bot that lets a user paste a grocery receipt (as pasted table text) and register prices into the same Firestore catalog without opening the app, plus `perguntarChat`, the backend of the in-app chat, and `pedirNaLista` and `registrarComida`, used by the nutreai. `functions/src/precos/variacao.js` is also imported by the app (no dependencies allowed there).
 
 ## Commands
 
@@ -22,13 +22,13 @@ npm run lint                         # ESLint
 
 ### Cloud Functions (`functions/`)
 
-No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (test files: `src/gemini/prompt.test.js`, `src/parser/nota.test.js`, `src/parser/marcaTamanho.test.js`, `src/precos/variacao.test.js`):
+No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (test files: `src/gemini/prompt.test.js`, `src/parser/*.test.js`, `src/precos/variacao.test.js`, `src/lista/decidir.test.js`, `src/receitas/montar.test.js`):
 
 ```bash
 cd functions
 node --check src/path/to/file.js                                       # syntax check a changed file
 node -e "import('./index.js').then(()=>console.log('OK'))"              # verify the module graph loads
-node --test src/gemini/prompt.test.js src/parser/*.test.js src/precos/*.test.js   # run the tests
+node --test src/gemini/*.test.js src/parser/*.test.js src/precos/*.test.js src/lista/*.test.js src/receitas/*.test.js   # run the tests
 firebase deploy --only functions:telegramWebhook                        # deploy one function (see functions/index.js for all exports)
 ```
 
@@ -112,6 +112,8 @@ receitas/{receitaId}
   ├── ingredientes[]      # each: produtoId OR nomeTemp, + nome, quantidade, unidade, observacao (_qtdErro in drafts)
   ├── passos[]
   ├── status: 'pendente' | 'aprovada' | 'rejeitada'
+  ├── comidaEm[]          # 'aaaa-mm-dd' days the house ate it (registrarComida); shown on the card, used by "relevância"
+  ├── origem, fonte, mensagemId   # origem 'nutreai' = assembled by registrarComida (Gemini); fonte { titulo, url } when the web search ran
   └── criadaPor/criadaEm, aprovadoPor/aprovadoEm, rejeitadoPor/rejeitadoEm  # single admin uid, not an array
 
 dicas/{dicaId}
@@ -176,7 +178,7 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper) and mirrore
 
 ## Architecture — Telegram bot (`functions/`)
 
-`functions/index.js` exports three functions: `telegramWebhook` (the bot, prices only, no Gemini), `perguntarChat` (the app chat, see "Chat do app") and `pedirNaLista` (the nutreai writing to the house list, see the nutreai section). `telegramWebhook` (`functions/src/telegramWebhook.js`, region `southamerica-east1`) receives Telegram updates via webhook, validates the `X-Telegram-Bot-Api-Secret-Token` header, and **always** responds `200 ok` at the end regardless of outcome — a past bug had an early `return` inside the handler's `try/catch` skip that response and hang the connection until Cloud Run's 60s timeout, so any change to the routing logic must preserve that invariant (business logic lives in a separate `processarUpdate()` so no code path can bypass the final `res.send`).
+`functions/index.js` exports four functions: `telegramWebhook` (the bot, prices only, no Gemini), `perguntarChat` (the app chat, see "Chat do app"), and `pedirNaLista` and `registrarComida` (the nutreai writing to the house list and asking for recipes, see the nutreai section). `telegramWebhook` (`functions/src/telegramWebhook.js`, region `southamerica-east1`) receives Telegram updates via webhook, validates the `X-Telegram-Bot-Api-Secret-Token` header, and **always** responds `200 ok` at the end regardless of outcome — a past bug had an early `return` inside the handler's `try/catch` skip that response and hang the connection until Cloud Run's 60s timeout, so any change to the routing logic must preserve that invariant (business logic lives in a separate `processarUpdate()` so no code path can bypass the final `res.send`).
 
 ### Directory layout
 
@@ -247,3 +249,5 @@ Telegram limits inline-button `callback_data` to 64 bytes. Action names are kept
 A coleta do nutreai (GitHub Actions, disparada pela rotina das 17h30; o agendamento das 17h fica de reserva) lê o Firestore pela API REST com a conta de serviço `cardapio-leitor@quequefalta.iam.gserviceaccount.com` (papel `roles/datastore.viewer`, só leitura; não depende de faturamento). Ela exporta o que tem em casa, a lista de compras, as receitas aprovadas e o catálogo inteiro (`dados/catalogo.json`, com ids, `grupoSubstituicao`, `generico` e `marcaPreferida`). Ela lê `usuarios/{uid}.listaAtiva`, `listas/{id}/lista`, `catalogo` e `receitas`: ao mudar o nome ou o formato desses campos, ajuste também `coleta/exportar.mjs` lá. Dados da casa nunca entram neste repositório, que é público. Ela substitui a antiga API `despensaJornal` (Cloud Function), removida em 19/11/2026.
 
 O nutreai também **grava** na lista da casa, só pela function `pedirNaLista` (`functions/src/listaNutreai.js`, regras em `functions/src/lista/decidir.js`): quando alguém diz ao bot dele que algo acabou, o `lista/aplicar.mjs` de lá chama a função, que cria `{ produtoId, comprado: false }` ou passa `comprado` de `true` para `false`. Ela nunca apaga e não mexe em outra coleção, e produto genérico vira uma variante do grupo. A autenticação é um segredo compartilhado (`NUTREAI_LISTA_SEGREDO` aqui, `QQF_LISTA_SEGREDO` no nutreai, com a URL em `QQF_LISTA_URL`), e a casa vem do secret `NUTREAI_CASA_UID`, nunca da requisição. Ao mudar o formato dos itens da lista ou o contrato da função (corpo `{ itens: [{ produtoId, nome }] }`, resposta `{ resultados: [{ produtoId, aplicadoEm, nome, status }] }`), ajuste também `lista/aplicar.mjs` lá.
+
+Quando ela diz ao bot do nutreai "comi X" (só pratos com preparo), o `comida.yml` de lá chama `registrarComida` (`functions/src/receitaNutreai.js`, regras em `functions/src/receitas/montar.js`; URL em `QQF_RECEITA_URL`, mesmo segredo e autenticação de `functions/src/nutreai/autenticacao.js`). Corpo `{ prato | nome, data?, receitaId?, mensagemId? }`; resposta `{ status: ja_existe | criada | rejeitada | nao_e_receita, receitaId, nome, statusReceita, ingredientesSemCadastro }`, 502 quando o Gemini falha. A receita já existente (por id, nome sem acento/caixa ou reconhecida pelo Gemini) só ganha a data em `comidaEm`; uma rejeitada não é recriada. Senão, o Gemini monta uma receita real (com a busca do Google quando a cota permite, senão do próprio conhecimento; modelo reserva quando o principal está sobrecarregado), casada com o catálogo (`nomeTemp` no que não casar), e ela entra **pendente**: só aparece para os admins até ser aprovada. O texto que ela escreveu não é guardado, e o prompt proíbe pessoa e dado de saúde, porque receitas são legíveis por todas as contas. As unidades e apelidos de `montar.js` copiam os de `ReceitaFormulario.jsx`: mude os dois juntos. Ao mudar o contrato, ajuste também o `comida.yml` lá.

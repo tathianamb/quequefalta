@@ -9,25 +9,12 @@
 //   status: comprar | ja_na_lista | nao_existe | generico_sem_variante | invalido | erro
 //   aplicadoEm: o produtoId gravado (outro quando o pedido era um genérico), ou null.
 //
-// A casa não vem na requisição: é a lista ativa de NUTREAI_CASA_UID (secret,
-// para o uid não ficar neste repositório público). Assim o segredo só serve
-// para a lista dessa casa. Regras da decisão em lista/decidir.js.
-import { createHash, timingSafeEqual } from "node:crypto";
+// A casa é a lista ativa de NUTREAI_CASA_UID (nutreai/autenticacao.js).
+// Regras da decisão em lista/decidir.js.
 import { onRequest } from "firebase-functions/v2/https";
-import { defineSecret } from "firebase-functions/params";
 import { getFirestore } from "firebase-admin/firestore";
-import { limpar } from "./segredos.js";
+import { NUTREAI_LISTA_SEGREDO, NUTREAI_CASA_UID, autorizar, casaUid } from "./nutreai/autenticacao.js";
 import { decidirPedido, lerCorpo, ID_VALIDO } from "./lista/decidir.js";
-
-const NUTREAI_LISTA_SEGREDO = defineSecret("NUTREAI_LISTA_SEGREDO");
-const NUTREAI_CASA_UID = defineSecret("NUTREAI_CASA_UID");
-
-// Comparação em tempo constante (os resumos têm sempre o mesmo tamanho).
-function mesmoSegredo(recebido, esperado) {
-  const a = createHash("sha256").update(recebido).digest();
-  const b = createHash("sha256").update(esperado).digest();
-  return esperado.length > 0 && timingSafeEqual(a, b);
-}
 
 async function aplicarPedidos(pedidos, uid) {
   const db = getFirestore();
@@ -77,22 +64,14 @@ export const pedirNaLista = onRequest(
     maxInstances: 1,
   },
   async (req, res) => {
-    if (req.method !== "POST") {
-      res.status(405).json({ erro: "use POST" });
-      return;
-    }
-    const recebido = String(req.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-    if (!mesmoSegredo(recebido, limpar(NUTREAI_LISTA_SEGREDO.value()))) {
-      res.status(401).json({ erro: "não autorizado" });
-      return;
-    }
+    if (!autorizar(req, res)) return;
     const pedidos = lerCorpo(req.body);
     if (!pedidos) {
       res.status(400).json({ erro: 'corpo esperado: { "itens": [ { "produtoId": "..." } ] }, de 1 a 20 itens' });
       return;
     }
     try {
-      res.status(200).json({ resultados: await aplicarPedidos(pedidos, limpar(NUTREAI_CASA_UID.value())) });
+      res.status(200).json({ resultados: await aplicarPedidos(pedidos, casaUid()) });
     } catch (e) {
       console.error("pedirNaLista:", e);
       res.status(500).json({ erro: "falha ao ler a lista da casa" });

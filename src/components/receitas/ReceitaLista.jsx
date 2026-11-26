@@ -1,6 +1,14 @@
 import { ChefHat, Clock, Users } from 'lucide-react'
 import { TIPOGRAFIA, RAIO, COR } from '../../utils/estilos'
 
+// comidaEm: datas "aaaa-mm-dd" em que a casa comeu (anotadas pelo nutreai).
+function textoComidas(comidaEm) {
+  if (!comidaEm?.length) return null
+  const ultima = [...comidaEm].sort().at(-1)
+  const [, mes, dia] = ultima.split('-')
+  return `comeram ${comidaEm.length}× · última ${dia}/${mes}`
+}
+
 function CardReceita({ receita, faltam, onClick }) {
   const total = receita.ingredientes.length
   const temTudo = faltam === 0
@@ -38,6 +46,11 @@ function CardReceita({ receita, faltam, onClick }) {
         <p style={{ ...TIPOGRAFIA.nomeProduto, color: 'var(--text)', lineHeight: 1.3 }}>
           {receita.nome}
         </p>
+        {textoComidas(receita.comidaEm) && (
+          <p style={{ ...TIPOGRAFIA.subcategoria, color: 'var(--text-soft)', marginTop: '4px' }}>
+            🍽️ {textoComidas(receita.comidaEm)}
+          </p>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
           {receita.tempoPreparo && (

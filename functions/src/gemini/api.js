@@ -6,12 +6,19 @@ const BACKOFF_MS = 5000;
 
 const aguardar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export function criarClienteGemini(apiKey) {
-  async function chamarUmaVez(prompt) {
-    const resposta = await fetch(`${GEMINI_API_BASE}/${MODELO}:generateContent?key=${apiKey}`, {
+// modeloReserva (opcional): modelo usado por `pesquisar` quando o principal
+// continua sobrecarregado depois das novas tentativas (o "flash" às vezes
+// passa horas respondendo 503; o "flash-lite" costuma estar livre).
+export function criarClienteGemini(apiKey, { modeloReserva = null } = {}) {
+  // pesquisar: liga a busca do Google (grounding) — a resposta vem baseada em
+  // páginas reais, listadas em `fontes`.
+  async function chamarUmaVez(prompt, { pesquisar = false, modelo = MODELO } = {}) {
+    const corpo = { contents: [{ parts: [{ text: prompt }] }] };
+    if (pesquisar) corpo.tools = [{ google_search: {} }];
+    const resposta = await fetch(`${GEMINI_API_BASE}/${modelo}:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify(corpo),
     });
 
     const dados = await resposta.json();
@@ -28,19 +35,25 @@ export function criarClienteGemini(apiKey) {
       throw erro;
     }
 
-    const texto = dados.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    // Com a busca ligada a resposta pode vir em várias partes.
+    const candidato = dados.candidates?.[0];
+    const texto = (candidato?.content?.parts || []).map((p) => p.text || "").join("").trim();
     if (!texto) {
       const erro = new Error("Gemini API não retornou texto na resposta");
       erro.transitorio = true;
       throw erro;
     }
-    return texto;
+    const fontes = (candidato?.groundingMetadata?.groundingChunks || [])
+      .map((c) => c.web)
+      .filter((w) => w?.uri)
+      .map((w) => ({ titulo: w.title || null, url: w.uri }));
+    return { texto, fontes };
   }
 
-  async function chamar(prompt) {
+  async function chamar(prompt, opcoes) {
     for (let tentativa = 1; tentativa <= TENTATIVAS_MAXIMAS; tentativa++) {
       try {
-        return await chamarUmaVez(prompt);
+        return await chamarUmaVez(prompt, opcoes);
       } catch (erro) {
         const éÚltimaTentativa = tentativa === TENTATIVAS_MAXIMAS;
         const podeTentarDeNovo = erro.transitorio || erro.name === "TypeError"; // TypeError = falha de rede do fetch
@@ -51,8 +64,27 @@ export function criarClienteGemini(apiKey) {
   }
 
   return {
-    gerarTexto(prompt) {
-      return chamar(prompt);
+    async gerarTexto(prompt) {
+      return (await chamar(prompt)).texto;
+    },
+    // Resposta baseada numa busca do Google: { texto, fontes: [{ titulo, url }] }.
+    // Em degraus, cada um só se o anterior falhar por cota ou sobrecarga:
+    // com busca → sem busca (a busca tem cota própria, que no plano gratuito
+    // pode ser zero; aí vale o conhecimento do modelo, sem fontes) → modelo reserva.
+    async pesquisar(prompt) {
+      const degraus = [{ pesquisar: true }, {}, ...(modeloReserva ? [{ modelo: modeloReserva }] : [])];
+      let ultimoErro;
+      for (const opcoes of degraus) {
+        try {
+          return await chamar(prompt, opcoes);
+        } catch (erro) {
+          const passageiro = erro.message === "gemini_quota_excedida" || erro.transitorio || erro.name === "TypeError";
+          if (!passageiro) throw erro;
+          console.warn(`Gemini (${opcoes.modelo || MODELO}${opcoes.pesquisar ? ", com busca" : ""}): ${erro.message}`);
+          ultimoErro = erro;
+        }
+      }
+      throw ultimoErro;
     },
   };
 }

@@ -43,6 +43,19 @@ export default function ReceitasPendentesAdmin({
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ ...TIPOGRAFIA.nomeProduto, color: "var(--text)" }}>{r.nome}</p>
+                {r.origem === "nutreai" && (
+                  <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px", overflowWrap: "anywhere" }}>
+                    Montada pelo Gemini a partir de "comi…" no nutreai
+                    {r.fonte?.url && (
+                      <>
+                        {" · "}
+                        <a href={r.fonte.url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>
+                          fonte{r.fonte.titulo ? ` (${r.fonte.titulo})` : ""}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
                 {temIngredienteTemp && (
                   <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--laranja)", marginTop: "2px" }}>
                     ⚠ Ingredientes não catalogados
