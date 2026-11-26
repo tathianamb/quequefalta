@@ -10,7 +10,7 @@ const TEXTO_HELP = [
   "/cancelar — cancela o lote de nota fiscal em aberto.",
   "/help — mostra esta lista de comandos.",
   "",
-  "Modelo do /nota (campos dos itens separados por ; ou tab; desc e pago podem ficar vazios):",
+  "Modelo do /nota (campos dos itens separados por ; ou tab; desc e pago podem ficar vazios; marca e tam são opcionais, marca - = sem marca):",
   "",
   TEMPLATE_CURTO,
 ].join("\n");

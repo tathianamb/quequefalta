@@ -5,6 +5,7 @@ import {
   marcarLoteCancelado,
   atualizarItemDoLote,
   definirEtapaDoLote,
+  definirPerguntaMarcas,
 } from "../firestore/lotes.js";
 import { registrarPreco, obterListaAtivaDoUsuario, produtoJaTemRegistro } from "../firestore/historico.js";
 import {
@@ -24,6 +25,20 @@ import { registrarIda } from "../firestore/idas.js";
 import { mostrarProximoDaMesmaLista, mostrarItemDaFilaPorId } from "./revisar.js";
 import { linhaDesfazerFila } from "../telegram/teclados.js";
 import { mostrarEtapa } from "./etapasLote.js";
+import { textoPerguntaMarcas } from "./resumoLote.js";
+import { apagarSeExistir } from "../telegram/enviarOuEditar.js";
+
+// Marca e tamanho de um item (do lote ou da fila), no formato que
+// registrarPreco, produtoJaTemRegistro e aprenderApelido recebem.
+function variacaoDoItem(item) {
+  return {
+    marca: item.marca ?? null,
+    semMarca: Boolean(item.semMarca),
+    tamanho: item.tamanho ?? null,
+    medida: item.medida ?? null,
+    unidade: item.unidade ?? null,
+  };
+}
 
 export async function tratarCallback(telegram, callbackQuery) {
   const chatId = callbackQuery.message.chat.id;
@@ -45,6 +60,8 @@ export async function tratarCallback(telegram, callbackQuery) {
     await removerMatch(telegram, chatId, params[0], Number(params[1]), messageId);
   } else if (acao === "lote_canc") {
     await cancelarLote(telegram, chatId, params[0]);
+  } else if (acao === "lote_mar") {
+    await perguntarMarcas(telegram, chatId, params[0], messageId);
   } else if (acao === "rv_res") {
     await resolverRevisao(telegram, chatId, params, messageId);
   } else if (acao === "rv_cor") {
@@ -78,7 +95,10 @@ async function resolverContextoRevisao(params) {
       async resolver(produtoId, messageId, { aceitarDuplicata = false } = {}) {
         const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
         const nomeProduto = produtoDoc.data()?.nome;
-        if (!aceitarDuplicata && await produtoJaTemRegistro({ produtoId, mercado: item.mercado, data: item.dataDaNota })) {
+        const variacao = variacaoDoItem(item);
+        if (!aceitarDuplicata && await produtoJaTemRegistro({
+          produtoId, mercado: item.mercado, data: item.dataDaNota, preco: item.precoExtraido, ...variacao,
+        })) {
           await marcarAguardandoConfirmacaoDuplicata(itemId, produtoId, messageId);
           return { nomeProduto, jaRegistrado: true };
         }
@@ -91,10 +111,10 @@ async function resolverContextoRevisao(params) {
             preco: item.precoExtraido,
             data: item.dataDaNota,
             listaAtiva,
-            nomeNota: item.nomeExtraido,
+            nomeNota: nomeOriginalDoItem(item),
             quantidade: item.quantidade,
-            unidade: item.unidade,
             precoPago: item.precoPago,
+            ...variacao,
           });
         }
         const emCasa = notaRecente(item.dataDaNota)
@@ -106,7 +126,7 @@ async function resolverContextoRevisao(params) {
           statusAnterior: item.status,
           emCasa: efeitoEmCasa ? { listaAtiva, ...efeitoEmCasa } : null,
         });
-        await aprenderSemFalhar(nomeOriginalDoItem(item), produtoId);
+        await aprenderSemFalhar(nomeOriginalDoItem(item), produtoId, variacao);
         return { nomeProduto };
       },
       async desfazer() {
@@ -135,6 +155,10 @@ async function resolverContextoRevisao(params) {
           preco: item.precoExtraido,
           mercado: item.mercado,
           data: item.dataDaNota,
+          nomeNota: nomeOriginalDoItem(item),
+          quantidade: item.quantidade ?? null,
+          precoPago: item.precoPago ?? null,
+          ...variacaoDoItem(item),
         });
         await marcarItemComoSugerido(itemId);
         return { jaExistia };
@@ -156,7 +180,9 @@ async function resolverContextoRevisao(params) {
     async resolver(produtoId, messageId, { aceitarDuplicata = false } = {}) {
       const produtoDoc = await getFirestore().collection("catalogo").doc(produtoId).get();
       const nomeProduto = produtoDoc.data()?.nome;
-      if (!aceitarDuplicata && await produtoJaTemRegistro({ produtoId, mercado: lote.mercado, data: lote.dataDaNota })) {
+      if (!aceitarDuplicata && await produtoJaTemRegistro({
+        produtoId, mercado: lote.mercado, data: lote.dataDaNota, preco: item.precoExtraido, ...variacaoDoItem(item),
+      })) {
         await atualizarItemDoLote(loteId, indice, {
           revisao: { status: null, produtoIdResolvido: null, aguardandoNomeNovo: false, duplicataCandidata: { produtoIdCandidato: produtoId, messageIdOriginal: messageId } },
         });
@@ -356,7 +382,30 @@ async function cancelarLote(telegram, chatId, loteId) {
     return;
   }
   await marcarLoteCancelado(loteId);
+  await apagarSeExistir(telegram, chatId, lote.aguardandoMarcas?.messageIdPergunta);
   await telegram.enviarMensagem(chatId, "Lote cancelado. Nada foi gravado. Pode mandar uma nova tabela.");
+}
+
+// "🏷️ Marca e tamanho" (etapas 1 e 4): manda a lista numerada dos itens e
+// espera a resposta em texto livre (telegramWebhook.js), que corrige marca e
+// tamanho no lote e volta para esta mesma tela. Como no "✏️ Corrigir nome",
+// a pergunta e a resposta são apagadas depois.
+async function perguntarMarcas(telegram, chatId, loteId, messageId) {
+  const lote = await buscarLotePorId(loteId);
+  if (!lote || lote.status !== "aguardando_confirmacao") {
+    await telegram.enviarMensagem(chatId, "Esse lote já não está mais pendente.");
+    return;
+  }
+  await apagarSeExistir(telegram, chatId, lote.aguardandoMarcas?.messageIdPergunta);
+  const pergunta = await telegram.enviarMensagem(chatId, textoPerguntaMarcas(lote));
+  await definirPerguntaMarcas(loteId, { messageIdOriginal: messageId, messageIdPergunta: pergunta.message_id });
+}
+
+// Sair da tela (outra etapa, finalizar) fecha a pergunta de marca em aberto.
+async function fecharPerguntaMarcas(telegram, chatId, lote) {
+  if (!lote.aguardandoMarcas) return;
+  await definirPerguntaMarcas(lote.id, null);
+  await apagarSeExistir(telegram, chatId, lote.aguardandoMarcas.messageIdPergunta);
 }
 
 async function navegarEtapa(telegram, chatId, loteId, direcao, messageId) {
@@ -365,6 +414,8 @@ async function navegarEtapa(telegram, chatId, loteId, direcao, messageId) {
     await telegram.enviarMensagem(chatId, "Esse lote já não está mais pendente.");
     return;
   }
+
+  await fecharPerguntaMarcas(telegram, chatId, lote);
 
   // Sair da etapa 2 pra frente sem remover (❌) um item jaRegistrado é a
   // confirmação implícita de que o match está certo e é mesmo duplicata —
@@ -415,9 +466,9 @@ async function removerMatch(telegram, chatId, loteId, indice, messageId) {
 // Aprender é um extra: se falhar, o preço já gravado e o fluxo do lote não
 // podem ser afetados (um throw no meio de finalizarLote deixaria o lote
 // meio gravado e ainda "aguardando_confirmacao").
-async function aprenderSemFalhar(nomeNota, produtoId) {
+async function aprenderSemFalhar(nomeNota, produtoId, variacao) {
   try {
-    await aprenderApelido(nomeNota, produtoId);
+    await aprenderApelido(nomeNota, produtoId, variacao);
   } catch (e) {
     console.error("Falha ao aprender apelido:", e);
   }
@@ -441,6 +492,7 @@ async function finalizarLote(telegram, chatId, loteId) {
     return;
   }
 
+  await fecharPerguntaMarcas(telegram, chatId, lote);
   const listaAtiva = await obterListaAtivaDoUsuario(lote.uid);
 
   let gravados = 0;
@@ -459,8 +511,9 @@ async function finalizarLote(telegram, chatId, loteId) {
       item.statusMatch === "match" || item.statusMatch === "descartado"
         ? item.produtoIdCasado
         : item.revisao?.status === "resolvido" ? item.revisao.produtoIdResolvido : null;
+    const variacao = variacaoDoItem(item);
     if (produtoFinal) {
-      await aprenderSemFalhar(nomeOriginalDoItem(item), produtoFinal);
+      await aprenderSemFalhar(nomeOriginalDoItem(item), produtoFinal, variacao);
       comprados.push(produtoFinal);
       ligados++;
       if (item.statusMatch === "descartado" || item.revisao?.duplicataAceita) ligadosDuplicados++;
@@ -485,10 +538,10 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         data: lote.dataDaNota,
         listaAtiva,
-        nomeNota: item.nomeExtraido,
+        nomeNota: nomeOriginalDoItem(item),
         quantidade: item.quantidade,
-        unidade: item.unidade,
         precoPago: item.precoPago,
+        ...variacao,
       });
       gravados++;
     } else if (item.revisao?.sugestaoPendente) {
@@ -501,6 +554,10 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         mercado: lote.mercado,
         data: lote.dataDaNota,
+        nomeNota: nomeOriginalDoItem(item),
+        quantidade: item.quantidade ?? null,
+        precoPago: item.precoPago ?? null,
+        ...variacao,
       });
       sugeridos++;
     } else if (item.revisao?.status === "resolvido" && item.revisao.produtoIdResolvido) {
@@ -510,10 +567,10 @@ async function finalizarLote(telegram, chatId, loteId) {
         preco: item.precoExtraido,
         data: lote.dataDaNota,
         listaAtiva,
-        nomeNota: item.nomeExtraido,
+        nomeNota: nomeOriginalDoItem(item),
         quantidade: item.quantidade,
-        unidade: item.unidade,
         precoPago: item.precoPago,
+        ...variacao,
       });
       gravados++;
     } else {
@@ -528,6 +585,10 @@ async function finalizarLote(telegram, chatId, loteId) {
         quantidade: item.quantidade ?? null,
         total: item.total ?? null,
         precoPago: item.precoPago ?? null,
+        marca: variacao.marca,
+        semMarca: variacao.semMarca,
+        tamanho: variacao.tamanho,
+        medida: variacao.medida,
         mercado: lote.mercado,
         dataDaNota: lote.dataDaNota,
         status: item.revisao?.status === "ignorado" ? "ignorado" : "pendente",

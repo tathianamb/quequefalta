@@ -3,6 +3,13 @@ import { buscarProximoComStatus, contarComStatus, buscarItemRevisaoPorId } from 
 import { encontrarMatch } from "../matching/fuzzyMatch.js";
 import { tecladoRevisaoItem, tecladoEtapa3 } from "../telegram/teclados.js";
 import { enviarOuEditar } from "../telegram/enviarOuEditar.js";
+import { descreverVariacao } from "../precos/variacao.js";
+
+// "R$ 5,99 · Baly · 473 ml": preço e, quando se sabe, marca e tamanho.
+function precoDoItem(item) {
+  const variacao = descreverVariacao(item);
+  return `R$ ${item.precoExtraido.toFixed(2).replace(".", ",")}${variacao ? ` · ${variacao}` : ""}`;
+}
 
 // Fonte "fila global" — usada por /revisar e /adiados, opera sobre a coleção
 // filaRevisaoNotas filtrada por uid+status. Cada item precisa de um `ref`
@@ -25,7 +32,7 @@ async function renderizarItemDaFila(telegram, chatId, item, rotulo, restantes, m
   const catalogo = await carregarCatalogoParaMatch();
   const { sugestoes } = encontrarMatch({ nome: item.nomeExtraido }, catalogo);
 
-  const preco = `R$ ${item.precoExtraido.toFixed(2).replace(".", ",")}`;
+  const preco = precoDoItem(item);
   const textoSugestoes = sugestoes.length
     ? "Escolha o produto certo, ou:"
     : "Não achei sugestões parecidas. Você pode:";
@@ -132,7 +139,7 @@ export async function mostrarEtapa3(telegram, chatId, lote, messageId, prefixo =
   const catalogo = await carregarCatalogoParaMatch();
   const { sugestoes } = encontrarMatch({ nome: item.nomeExtraido }, catalogo);
 
-  const preco = `R$ ${item.precoExtraido.toFixed(2).replace(".", ",")}`;
+  const preco = precoDoItem(item);
   const textoSugestoes = sugestoes.length
     ? "Escolha o produto certo, ou:"
     : "Não achei sugestões parecidas. Você pode:";

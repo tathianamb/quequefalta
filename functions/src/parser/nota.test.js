@@ -21,6 +21,7 @@ test("formato novo: cabeçalho, títulos, desconto e pago", () => {
   assert.equal(r.itens.length, 3);
   assert.deepEqual(r.itens[1], {
     nome: "ENERG BALY 473ML", quantidade: 2, unidade: "un", preco: 5.99, desconto: 1.2, total: 10.78, precoPago: 5.39,
+    marca: null, semMarca: false, tamanho: null, medida: null,
   });
   assert.equal(r.itens[2].unidade, "kg");
   assert.equal(r.itens[2].quantidade, 1.946);
@@ -41,6 +42,7 @@ test("cabeçalho em qualquer ordem e caixa, tab, sem títulos, pago e desc vazio
   assert.equal(r.totalNota, null);
   assert.deepEqual(r.itens[0], {
     nome: "AGUA 1,5L", quantidade: 6, unidade: "un", preco: 2.49, desconto: 0, total: 14.94, precoPago: null,
+    marca: null, semMarca: false, tamanho: null, medida: null,
   });
 });
 
@@ -72,6 +74,22 @@ test("formato antigo continua aceito", () => {
   assert.equal(r.itens.length, 2);
   assert.equal(r.itens[1].quantidade, 0.522);
   assert.equal(r.somaItens, 58.26);
+});
+
+test("colunas opcionais de marca e tamanho", () => {
+  const r = interpretarNota(
+    "Mercado: X\nData: 21/11/2026\nitem; qtd; un; unit; desc; pago; marca; tam\n" +
+    "ENERG BALY 473ML; 2; un; 5,99; ; ; BALY; 473 ml\nBANANA KG; 0,8; kg; 5,99; ; ; -;\nX; 1; un; 1; ; ; Ninho; meio quilo",
+  );
+  assert.deepEqual(r.linhasIgnoradas, []);
+  assert.deepEqual(
+    r.itens.map(({ marca, semMarca, tamanho, medida }) => ({ marca, semMarca, tamanho, medida })),
+    [
+      { marca: "Baly", semMarca: false, tamanho: 473, medida: "ml" },
+      { marca: null, semMarca: true, tamanho: null, medida: null },
+      { marca: "Ninho", semMarca: false, tamanho: null, medida: null }, // tam ilegível: fica vazio
+    ],
+  );
 });
 
 test("números", () => {

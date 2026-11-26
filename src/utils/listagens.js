@@ -9,10 +9,19 @@ import { COR } from "./estilos";
 // Cores dos grupos "por mercado" (sem relação com as cores de categoria).
 const CORES_MERCADO = ["#4C6EF5", "#12B886", "#F59F00", "#E64980", "#7950F2", "#15AABF"];
 
+// A busca acha o produto pelo nome, pela marca preferida e pelas marcas dos
+// preços ("jasmine" acha "Biscoito doce"). Itens da lista não trazem o
+// histórico, só a marca preferida.
+function casaBusca(p, termoBusca) {
+  if (!termoBusca || normalizar(p.nome).includes(termoBusca)) return true;
+  if (p.marcaPreferida && normalizar(p.marcaPreferida).includes(termoBusca)) return true;
+  return (p.historico ?? []).some((h) => h.marca && normalizar(h.marca).includes(termoBusca));
+}
+
 // termoBusca já vem normalizado; grupoFiltro casa com grupoSubstituicao ou subcategoria.
 export function filtrarProdutos(arr, termoBusca, grupoFiltro) {
   return arr.filter((p) => {
-    const buscaOk = normalizar(p.nome).includes(termoBusca);
+    const buscaOk = casaBusca(p, termoBusca);
     const grupoOk =
       grupoFiltro.length === 0 ||
       grupoFiltro.some(

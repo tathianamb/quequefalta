@@ -41,18 +41,30 @@ export function apelidoDoNome(apelidos, nome) {
   return chave ? apelidos.get(chave) || null : null;
 }
 
+// Marca e tamanho daquele texto de nota, para a próxima nota já vir com eles
+// (parser/marcaTamanho.js). Só o que se sabe: um campo desconhecido não apaga
+// o que a memória já tinha.
+function variacaoParaLembrar({ marca, semMarca, tamanho, medida, unidade } = {}) {
+  const campos = {};
+  if (marca) Object.assign(campos, { marca, semMarca: false });
+  else if (semMarca) Object.assign(campos, { marca: null, semMarca: true });
+  if (unidade !== "kg" && tamanho > 0 && medida) Object.assign(campos, { tamanho, medida });
+  return campos;
+}
+
 // Mesma escolha de novo: reforça (usos+1). Escolha diferente: a decisão mais
 // recente vence — quem corrigiu por último sabe melhor o que é aquele texto.
-export async function aprenderApelido(nomeNota, produtoId) {
+export async function aprenderApelido(nomeNota, produtoId, variacao = {}) {
   const chave = chaveDoNome(nomeNota);
   if (!chave || !produtoId) return;
   const db = getFirestore();
   const ref = db.collection(COLECAO).doc(chave);
+  const lembrar = variacaoParaLembrar(variacao);
   await db.runTransaction(async (tx) => {
     const doc = await tx.get(ref);
     const atual = doc.exists ? doc.data() : null;
     if (atual?.produtoId === produtoId) {
-      tx.update(ref, { usos: FieldValue.increment(1), nomeNota, atualizadoEm: FieldValue.serverTimestamp() });
+      tx.update(ref, { usos: FieldValue.increment(1), nomeNota, ...lembrar, atualizadoEm: FieldValue.serverTimestamp() });
       return;
     }
     tx.set(ref, {
@@ -60,6 +72,9 @@ export async function aprenderApelido(nomeNota, produtoId) {
       produtoId,
       usos: 1,
       produtoIdAnterior: atual?.produtoId || null,
+      // Outro produto, mesmo texto: a marca e o tamanho do texto continuam valendo.
+      ...variacaoParaLembrar(atual || {}),
+      ...lembrar,
       criadoEm: atual?.criadoEm || FieldValue.serverTimestamp(),
       atualizadoEm: FieldValue.serverTimestamp(),
     });

@@ -22,13 +22,13 @@ npm run lint                         # ESLint
 
 ### Cloud Functions (`functions/`)
 
-No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (test files: `src/gemini/prompt.test.js`, `src/parser/nota.test.js`):
+No `lint`/`test`/`build` scripts exist in `functions/package.json`. Validate changes before deploying (test files: `src/gemini/prompt.test.js`, `src/parser/nota.test.js`, `src/parser/marcaTamanho.test.js`, `src/precos/variacao.test.js`):
 
 ```bash
 cd functions
 node --check src/path/to/file.js                                       # syntax check a changed file
 node -e "import('./index.js').then(()=>console.log('OK'))"              # verify the module graph loads
-node --test src/gemini/prompt.test.js src/parser/nota.test.js          # run the tests
+node --test src/gemini/prompt.test.js src/parser/*.test.js src/precos/*.test.js   # run the tests
 firebase deploy --only functions:telegramWebhook                        # deploy one function (see functions/index.js for all exports)
 ```
 
@@ -84,7 +84,8 @@ catalogo/{produtoId}
   ├── nome, categoria, subcategoria, receitas[]
   ├── grupoSubstituicao[] # tags (strings) of interchangeable products, e.g. "Carne moída"
   ├── generico            # true = só ingrediente de receita ("Óleo"): fora do catálogo do app (exceto modo admin) e do match do bot
-  └── historico[]         # price records: mercado, preco (list unit price), data, observacao, listaAtiva (+ quantidade, unidade 'un'|'kg', precoPago when discounted — from bot notes)
+  ├── marcaPreferida      # optional; shown next to the name, searchable, and "onde comprar" only uses its prices when it has any
+  └── historico[]         # price records: mercado, preco (list unit price), data, observacao, listaAtiva (+ quantidade, unidade 'un'|'kg', precoPago when discounted — from bot notes; + marca, tamanho, medida 'g'|'ml'|'un'|'m' when known — see "Marca e tamanho")
 
 listas/{listaId}          # listaId == uid of the list owner
   ├── criadaPor, participantes[]
@@ -101,6 +102,8 @@ usuarios/{uid}
 sugestoes/{sugestaoId}
   ├── nome, categoria, subcategoria, sugeridoPor, listaAtiva
   ├── precoSugerido, mercadoSugerido, dataSugerida   # set by the bot; the price is recorded on approval
+  ├── nomeNota, quantidadeSugerida, unidadeSugerida, precoPagoSugerido, marcaSugerida, tamanhoSugerido, medidaSugerida  # also from the bot
+  ├── produtoId, apelidoPendente   # set on approval; the bot then learns nomeNota → produtoId (aprenderSugestoesAprovadas)
   ├── status: 'pendente' → 'aprovado' | 'rejeitado'
   └── aprovadores[]       # uid of the admin who approved
 
@@ -118,9 +121,9 @@ dicas/{dicaId}
 codigosVinculo/{codigo}   # 6-digit code generated in-app to link a Telegram chat, 10-min expiry
 telegramVinculos/{chatId} # ativo boolean, set by desvincularTelegram
 
-lotesNotaFiscal/{loteId}       # in-progress receipt batch: mercado, dataDaNota, totalNota, somaItens, linhasIgnoradas, itens[] (bot-only, see Telegram bot section)
+lotesNotaFiscal/{loteId}       # in-progress receipt batch: mercado, dataDaNota, totalNota, somaItens, linhasIgnoradas, itens[] (with marca, semMarca, tamanho, medida), aguardandoMarcas (bot-only, see Telegram bot section)
 filaRevisaoNotas/{itemId}      # global queue of unmatched receipt items awaiting review (bot-only)
-apelidosNota/{nomeNormalizado} # learned "receipt text → produtoId" memory: produtoId, usos, nomeNota (bot-only)
+apelidosNota/{nomeNormalizado} # learned "receipt text → produtoId" memory: produtoId, usos, nomeNota, + marca/semMarca/tamanho/medida of that text (bot-only)
 idasMercado/{loteId}           # planned vs. bought per trip: planejados, compradosDaLista[], extras[], esquecidos[], valorTotal (sum of lines), totalNota, valorExtras (bot-only)
 travasGemini/{uid}             # per-user wait between Gemini calls of the app chat (server-only)
 ```
@@ -166,7 +169,8 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper) and mirrore
 - **Grupo familiar** (antes "lista compartilhada"): `?lista=<id>` adds that list to the user's `listas[]` right away (the in-app modal only asks whether to switch to it), and quem entra passa a fazer parte da casa do dono. A casa é a lista ativa: o chat lê os itens em casa dela, e trocar a lista ativa troca de casa.
 - **Ingrediente "em casa" nas receitas**: regra única em `src/utils/ingredientesEmCasa.js`, usada pelo detalhe, pelo cartão ("faltam N de M") e pela ordenação por relevância. Um ingrediente-produto conta como em casa se o próprio produto estiver em casa **ou qualquer item em casa compartilhar um `grupoSubstituicao` com ele** (nomes comparados sem acento/caixa). Os grupos são substituição por uso: nas proteínas são usos do corte ("Bife", "Carne moída"…, mistura de animais é aceita); nos demais, variantes intercambiáveis ("Óleo", "Vinagre", "Leite"…). Integral/baixo índice glicêmico nunca entra no mesmo grupo do refinado. Produto `generico` (Óleo, Sal, Leite) não entra na lista de compras: "Adicionar faltantes" troca pela variante do grupo que a casa mais registrou preço (`escolherVariante`) ou, sem pista, abre o catálogo filtrado pelo grupo. O bot carrega o catálogo sem genéricos via `carregarCatalogoParaMatch` (`functions/src/firestore/catalogo.js`).
 - **Chat do app** (`src/components/Chat.jsx`, `src/hooks/useChat.js`): o Gemini é chamado pela function `perguntarChat` (`functions/src/chatApp.js`, com a trava por usuário de `travaGemini.js`). O único contexto da casa são os itens em casa: `obterItensComprados` (`functions/src/firestore/itensEmCasa.js`) devolve só `{ nome, categoria }` (alimentos) e `functions/src/gemini/prompt.js` lista os nomes numa linha. Não há pessoas, restrições nem observações. O botão do Claude monta o mesmo contexto no próprio app (`montarContextoLocal`, sem servidor) e abre o claude.ai com ele.
-- **Onde comprar / Sugestões do mês** (aba Lista): um seletor "Categoria | Mercado" agrupa os itens a comprar pelo mercado com o menor preço *atual* (o registro mais recente de cada mercado, ignorando mercados sem preço há mais de 120 dias se houver algum mais novo; `ondeComprar` em `src/utils/precos.js`); a escolha fica no `localStorage` do aparelho. "Sugestões do mês" (`src/components/SugestoesMes.jsx`, regra em `src/utils/sugestoesMes.js`) lê o `historico` dos últimos 60 dias com o `listaAtiva` da casa, agrupa em idas (mercado + dia) e sugere marcados os recorrentes (2+ idas, ou presentes numa ida com 8+ produtos); os comprados uma vez numa ida pequena vão para "Avulsos", desmarcados. A lista não tem quantidade, então nada disso estima total.
+- **Marca e tamanho** (`functions/src/precos/variacao.js`, importado também pelo app via `src/utils/precos.js`, então tem de seguir sem dependências): o nome do produto é só o produto ("Biscoito doce"); marca e tamanho da embalagem ficam em cada registro do `historico`. O mesmo arquivo define os mercados equivalentes (`mercadoCanonico`: "Max Muffato"/"Max atacadista" → "Max", "Casa Avenida" → "Avenida"), o preço por kg/L/un (`precoPorMedida`; `unidade: 'kg'` = a peso) e o preço repetido (`jaRegistrado`: mesmo mercado e dia, e nada que diferencie — marca e tamanho iguais quando os dois lados sabem; sem eles, no bot o preço decide e no app o registro é barrado).
+- **Onde comprar / Sugestões do mês** (aba Lista): um seletor "Categoria | Mercado" agrupa os itens a comprar pelo mercado com o menor preço *atual* (`precosAtuais`: o registro mais recente de cada mercado e variação — um registro substitui os mais velhos que ele não contradiz; ignora preços com mais de 120 dias se houver algum mais novo; com `marcaPreferida`, só os preços dela; compara por kg/L quando todos os candidatos têm tamanho na mesma medida, senão pelo preço; `ondeComprar` em `src/utils/precos.js`); a escolha fica no `localStorage` do aparelho. "Sugestões do mês" (`src/components/SugestoesMes.jsx`, regra em `src/utils/sugestoesMes.js`) lê o `historico` dos últimos 60 dias com o `listaAtiva` da casa, agrupa em idas (mercado + dia) e sugere marcados os recorrentes (2+ idas, ou presentes numa ida com 8+ produtos); os comprados uma vez numa ida pequena vão para "Avulsos", desmarcados. A lista não tem quantidade, então nada disso estima total.
 - **Offline**: Firestore uses the default in-memory cache (no persistent cache — opening the app with no network is not supported, by choice); the Service Worker (via `vite-plugin-pwa`, `registerType: 'autoUpdate'`) caches assets. Writes made while the app is open without signal are queued and synced on reconnect, which is why the UI never awaits write promises.
 - **Base path**: `vite.config.js` sets `base: '/quequefalta/'` — required for GitHub Pages and the PWA manifest's `start_url`.
 
@@ -178,7 +182,8 @@ Defined by email in `src/config/admins.js` (`isAdmin(email)` helper) and mirrore
 
 - `comandos/` — Telegram command handlers: `callback.js` (inline-button callback router, largest file), `vincular.js` (`/vincular <code>`), `tabela.js` (handles a pasted price table), `revisar.js` (item-by-item review mechanic, shared by the global queue and the batch flow), `etapasLote.js` (renders the 4 fixed steps of a batch), `resumoLote.js` (line/button text formatting shared across steps), `help.js`.
 - `firestore/` — data-access helpers: `vinculos.js` (chatId↔uid links), `lotes.js` (`lotesNotaFiscal` CRUD), `revisao.js` (`filaRevisaoNotas` CRUD), `historico.js` (`registrarPreco`, `produtoJaTemRegistro` duplicate check), `sugestoes.js` (`criarSugestaoDeProduto`, dedupes against pending suggestions by normalized name), `itensEmCasa.js` (food items at home, for the app chat), `catalogo.js` (catalog for matching, without generics), `travaGemini.js` (per-user Gemini lock for the app chat), `apelidos.js` (learned receipt-name memory, see below), `emCasa.js` (marks bought products as "tem em casa", see below), `idas.js` (planned vs. bought per trip, see below).- `matching/fuzzyMatch.js` — fuzzy-matches a parsed item name against the catalog (token-based scoring, excludes function words like "de/do/da", weighted substring matching). Two thresholds: auto-match vs. suggestion.
-- `parser/nota.js` — parses the `/nota` text (format documented in `docs/template-nota.md`, which is also the user-facing reference — keep both in sync, plus `TEMPLATE_CURTO` shown by `/help`). The header has `Mercado:`, `Data:` and an optional `Total:`. Each item line is `item; qtd; un; unit; desc; pago`, separated by `;` or tab; empty `desc` means 0 and empty `pago` means qtd × unit − desc. It returns `{ formato, mercado, data, totalNota, somaItens, linhasIgnoradas[], itens[] }`, and `avisoDeTotal` flags a sum that differs from the total by more than R$ 0,05; step 1 shows that warning and the unread lines. Text without a `Chave:` header falls back to `parser/tabela.js`, the old undocumented format (mercado+date first line, space/tab rows).
+- `parser/nota.js` — parses the `/nota` text (format documented in `docs/template-nota.md`, which is also the user-facing reference — keep both in sync, plus `TEMPLATE_CURTO` shown by `/help`). The header has `Mercado:`, `Data:` and an optional `Total:`. Each item line is `item; qtd; un; unit; desc; pago; marca; tam`, separated by `;` or tab; empty `desc` means 0 and empty `pago` means qtd × unit − desc; `marca` and `tam` are optional (`-` = sem marca).
+- `parser/marcaTamanho.js` — fills brand and package size per item: note columns > the `apelidosNota` memory of that text > the name (size like "473ML", or a brand already seen in the catalog). Also parses the reply to the "🏷️ Marca e tamanho" button (steps 1 and 4): one line per item, `número; marca; tamanho`. Like "✏️ Corrigir nome", the question and the reply are deleted and the original screen is edited (`lote.aguardandoMarcas`). It returns `{ formato, mercado, data, totalNota, somaItens, linhasIgnoradas[], itens[] }`, and `avisoDeTotal` flags a sum that differs from the total by more than R$ 0,05; step 1 shows that warning and the unread lines. Text without a `Chave:` header falls back to `parser/tabela.js`, the old undocumented format (mercado+date first line, space/tab rows).
 - `telegram/` — Bot API client layer: `api.js` (`criarClienteTelegram`: sendMessage/editMessageText/answerCallbackQuery/deleteMessage), `enviarOuEditar.js` (send-or-edit helper — pass a `messageId` to edit an existing message instead of sending a new one), `teclados.js` (inline keyboard builders; `callback_data` values are kept short — see below).
 
 ### Batch confirmation flow (4 fixed steps)
@@ -194,11 +199,11 @@ All button-driven navigation **edits the existing message** (via `enviarOuEditar
 
 ### Duplicate-price protection
 
-Before a batch is created, each matched item is checked against the target product's `historico` for an existing entry with the same `mercado`+`data` (`produtoJaTemRegistro`, `firestore/historico.js`); matches are flagged `jaRegistrado` and shown with a ⚠️ instead of ✅. Advancing past step 2 without manually removing (❌) a flagged item auto-discards it (`statusMatch: "descartado"`) so it's silently skipped at finalize — that's the implicit "yes, this is really a duplicate" confirmation. Clicking ❌ on a flagged item instead routes it into normal step-3 review (it may be a false positive: same mercado/data, different product).
+Before a batch is created, each matched item is checked against the target product's `historico` for an existing entry with the same `mercado`+`data` and nothing that tells them apart (brand, size or, when either side doesn't know those, the price — `jaRegistrado` in `precos/variacao.js`, via `produtoJaTemRegistro`); matches are flagged `jaRegistrado` and shown with a ⚠️ instead of ✅. Advancing past step 2 without manually removing (❌) a flagged item auto-discards it (`statusMatch: "descartado"`) so it's silently skipped at finalize — that's the implicit "yes, this is really a duplicate" confirmation. Clicking ❌ on a flagged item instead routes it into normal step-3 review (it may be a false positive: same mercado/data, different product).
 
 The same check runs again when a product is chosen manually in step 3 or via `/revisar`/`/adiados`; if it would duplicate, the bot offers an explicit "✅ Aceitar (não gravar de novo)" button rather than silently registering — accepting marks the item resolved without writing a new `historico` entry (`revisao.duplicataAceita: true`), which `finalizarLote` and the step-4 preview count both special-case to exclude from "will be recorded."
 
-Every `registrarPreco()` call also takes an optional `nomeNota`, written into the `historico` entry's `observacao` (e.g. `Registrado via Telegram — nota: "Queijo Prato Lanche Frimesa"`) — the catalog product name is often more generic than what's printed on the receipt, so this preserves the exact wording/brand from the note.
+Every `registrarPreco()` call also takes an optional `nomeNota`, written into the `historico` entry's `observacao` (e.g. `Registrado via Telegram — nota: "Queijo Prato Lanche Frimesa"`) — the catalog product name is often more generic than what's printed on the receipt, so this preserves the exact wording/brand from the note. It is always the original receipt text (`nomeOriginalDoItem`), never the "✏️ Corrigir nome" one. `registrarPreco` also writes `marca`/`tamanho`/`medida` when known and stores the canonical market name.
 
 ### Global review queue (`/revisar`, `/adiados`)
 

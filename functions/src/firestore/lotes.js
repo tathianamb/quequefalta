@@ -49,6 +49,12 @@ export async function criarLote({
       desconto: item.desconto ?? null,
       total: item.total ?? null,
       precoPago: item.precoPago ?? null,
+      // Marca e tamanho da embalagem (parser/marcaTamanho.js); a resposta ao
+      // "🏷️ Marca e tamanho" da etapa 4 corrige (aplicarMarcasNoLote).
+      marca: item.marca ?? null,
+      semMarca: Boolean(item.semMarca),
+      tamanho: item.tamanho ?? null,
+      medida: item.medida ?? null,
       produtoIdCasado: item.match.melhorMatch?.id || null,
       nomeProdutoCasado: item.match.melhorMatch?.nome || null,
       sugestoes: item.match.sugestoes,
@@ -83,6 +89,34 @@ export async function atualizarItemDoLote(loteId, indice, dadosItem) {
       item.indice === indice ? { ...item, ...dadosItem } : item
     );
     tx.update(ref, { itens, atualizadoEm: FieldValue.serverTimestamp() });
+  });
+}
+
+// Pergunta "🏷️ Marca e tamanho" aberta ({ messageIdOriginal, messageIdPergunta })
+// ou fechada (null). A resposta em texto livre (telegramWebhook.js) apaga a
+// pergunta e a resposta e edita a tela original. Ao abrir, nenhum item fica
+// esperando nome corrigido: a próxima mensagem de texto é a resposta daqui.
+export async function definirPerguntaMarcas(loteId, pergunta) {
+  const db = getFirestore();
+  const ref = db.collection("lotesNotaFiscal").doc(loteId);
+  await db.runTransaction(async (tx) => {
+    const lote = (await tx.get(ref)).data();
+    const itens = pergunta
+      ? lote.itens.map((i) => (i.revisao?.aguardandoNomeNovo ? { ...i, revisao: null } : i))
+      : lote.itens;
+    tx.update(ref, { itens, aguardandoMarcas: pergunta, atualizadoEm: FieldValue.serverTimestamp() });
+  });
+}
+
+// Aplica a resposta lida por lerRespostaMarcas e fecha a pergunta.
+export async function aplicarMarcasNoLote(loteId, mudancas) {
+  const db = getFirestore();
+  const ref = db.collection("lotesNotaFiscal").doc(loteId);
+  await db.runTransaction(async (tx) => {
+    const lote = (await tx.get(ref)).data();
+    const porIndice = new Map(mudancas.map(({ indice, ...campos }) => [indice, campos]));
+    const itens = lote.itens.map((i) => (porIndice.has(i.indice) ? { ...i, ...porIndice.get(i.indice) } : i));
+    tx.update(ref, { itens, aguardandoMarcas: null, atualizadoEm: FieldValue.serverTimestamp() });
   });
 }
 

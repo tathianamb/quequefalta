@@ -3,7 +3,7 @@ import { Download, Sparkles } from "lucide-react";
 import CategoriaGrupo from "../CategoriaGrupo";
 import EstadoVazio from "./EstadoVazio";
 import { filtrarProdutos, agruparPorCategoria, agruparPorMercado } from "../../utils/listagens";
-import { formatarPreco } from "../../utils/precos";
+import { descreverPreco } from "../../utils/precos";
 import {
   FONTE,
   RAIO,
@@ -63,7 +63,7 @@ export default function AbaLista({
     const onde = ondeDoItem.get(item.id);
     if (!onde) return null;
     const data = onde.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-    return `${formatarPreco(onde.preco)} · preço de ${data}`;
+    return `${descreverPreco(onde)} · preço de ${data}`;
   };
   // incluirOutras: o "Tem em casa" mostra a contagem total no cabeçalho, então
   // nenhum item pode sumir dos subgrupos por não ter categoria conhecida.

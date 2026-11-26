@@ -2,6 +2,21 @@ import { useState } from "react";
 import { ORDEM_CATEGORIAS } from "../../utils/categorias";
 import { normalizar } from "../../utils/texto";
 import { TIPOGRAFIA, FONTE, RAIO, COR } from "../../utils/estilos";
+import { descreverPreco, formatarPreco } from "../../utils/precos";
+
+// Sugestão do bot: o texto da nota e o preço que vieram junto (ajuda a decidir
+// o nome do produto, que não deve levar a marca).
+function origemDaSugestao(s) {
+  if (s.precoSugerido == null) return null;
+  const preco = descreverPreco({
+    preco: s.precoSugerido,
+    marca: s.marcaSugerida,
+    tamanho: s.tamanhoSugerido,
+    medida: s.medidaSugerida,
+    unidade: s.unidadeSugerida,
+  }) || formatarPreco(s.precoSugerido);
+  return [s.nomeNota ? `Nota: "${s.nomeNota}"` : null, preco, s.mercadoSugerido].filter(Boolean).join(" · ");
+}
 
 /**
  * Fila de sugestões de produto pendentes (aba Catálogo, modo admin): editar
@@ -191,6 +206,11 @@ export default function SugestoesPendentesAdmin({
                     <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px" }}>
                       {s.categoria}{s.subcategoria ? ` · ${s.subcategoria}` : ""}
                     </p>
+                    {origemDaSugestao(s) && (
+                      <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "2px", overflowWrap: "anywhere" }}>
+                        {origemDaSugestao(s)}
+                      </p>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                     <button

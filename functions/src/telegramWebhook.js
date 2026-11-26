@@ -10,7 +10,8 @@ import { tratarCallback } from "./comandos/callback.js";
 import { mostrarProximaRevisao, mostrarProximoAdiado, mostrarItemDaFilaPorId } from "./comandos/revisar.js";
 import { mostrarEtapa } from "./comandos/etapasLote.js";
 import { resolverUidPorChatId } from "./firestore/vinculos.js";
-import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote } from "./firestore/lotes.js";
+import { buscarLoteEmAberto, marcarLoteCancelado, atualizarItemDoLote, aplicarMarcasNoLote } from "./firestore/lotes.js";
+import { lerRespostaMarcas } from "./parser/marcaTamanho.js";
 import { buscarItemAguardandoNome, atualizarNomeItemRevisao } from "./firestore/revisao.js";
 import { tecladoLotePendente } from "./telegram/teclados.js";
 import { apagarSeExistir } from "./telegram/enviarOuEditar.js";
@@ -62,6 +63,7 @@ async function processarUpdate(telegram, update) {
       return;
     }
     await marcarLoteCancelado(loteEmAberto.id);
+    await apagarSeExistir(telegram, chatId, loteEmAberto.aguardandoMarcas?.messageIdPergunta);
     await telegram.enviarMensagem(chatId, "Lote cancelado. Nada foi gravado. Pode mandar /nota com uma nova tabela.");
     return;
   }
@@ -97,6 +99,23 @@ async function processarUpdate(telegram, update) {
       return;
     }
     await tratarTabela(telegram, chatId, uid, textoTabela);
+    return;
+  }
+
+  // Resposta ao "🏷️ Marca e tamanho": corrige o lote, apaga a pergunta e a
+  // resposta, e volta para a tela de onde veio (mesmo padrão do nome).
+  if (loteEmAberto?.aguardandoMarcas) {
+    const { messageIdOriginal, messageIdPergunta } = loteEmAberto.aguardandoMarcas;
+    const { mudancas, naoEntendidas } = lerRespostaMarcas(texto, loteEmAberto.itens.length);
+    await aplicarMarcasNoLote(loteEmAberto.id, mudancas);
+    await apagarSeExistir(telegram, chatId, messageIdPergunta);
+    await apagarSeExistir(telegram, chatId, update.message.message_id);
+    const n = mudancas.length;
+    const prefixo = [
+      n ? `🏷️ ${n} ite${n > 1 ? "ns" : "m"} atualizado${n > 1 ? "s" : ""}.` : "🏷️ Nada mudou.",
+      naoEntendidas.length ? `⚠️ Não entendi: ${naoEntendidas.join(" | ")}` : null,
+    ].filter(Boolean).join("\n");
+    await mostrarEtapa(telegram, chatId, await buscarLoteEmAberto(chatId), messageIdOriginal, `${prefixo}\n\n`);
     return;
   }
 

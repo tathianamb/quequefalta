@@ -3,17 +3,20 @@
 //   Mercado: Max
 //   Data: 21/11/2026
 //   Total: 189,47
-//   item; qtd; un; unit; desc; pago
-//   ENERG BALY 473ML; 2; un; 5,99; 1,20; 10,78
+//   item; qtd; un; unit; desc; pago; marca; tam
+//   ENERG BALY 473ML; 2; un; 5,99; 1,20; 10,78; Baly; 473 ml
 //
 // Cabeçalho "Chave: valor" em qualquer ordem (Mercado e Data obrigatórios,
 // Total opcional). Itens com campos separados por ";" ou tab (colar do
 // Sheets). A linha de títulos é opcional. desc vazio = 0; pago vazio =
-// qtd × unit − desc; unit vazio = (pago + desc) ÷ qtd.
+// qtd × unit − desc; unit vazio = (pago + desc) ÷ qtd. marca e tam são
+// opcionais (marca "-" = sem marca); o que faltar o bot completa pela
+// memória e pelo nome (parser/marcaTamanho.js).
 //
 // Mensagem sem cabeçalho "Chave:" cai no formato antigo (parser/tabela.js),
 // que continua aceito mas não é mais documentado.
 import { interpretarTabela } from "./tabela.js";
+import { lerTamanho, limparMarca, ehSemMarca } from "../precos/variacao.js";
 
 export const TOLERANCIA_TOTAL = 0.05;
 
@@ -22,9 +25,9 @@ export const TEMPLATE_CURTO = [
   "Mercado: Max",
   "Data: 21/11/2026",
   "Total: 43,77",
-  "item; qtd; un; unit; desc; pago",
-  "ENERG BALY 473ML; 2; un; 5,99; 1,20; 10,78",
-  "FILEZINHO AURORA KG; 1,652; kg; 19,97; ; 32,99",
+  "item; qtd; un; unit; desc; pago; marca; tam",
+  "ENERG BALY 473ML; 2; un; 5,99; 1,20; 10,78; Baly; 473 ml",
+  "FILEZINHO AURORA KG; 1,652; kg; 19,97; ; 32,99; Aurora;",
 ].join("\n");
 
 const REGEX_CABECALHO = /^(mercado|loja|data|total)\s*:\s*(.*)$/i;
@@ -64,7 +67,7 @@ function erroComTemplate(motivo) {
 function lerItem(linha) {
   const campos = linha.split(/\t|;/).map((c) => c.trim());
   if (campos.length < 4) return null;
-  const [nome, qtdTexto, unTexto, unitTexto, descTexto = "", pagoTexto = ""] = campos;
+  const [nome, qtdTexto, unTexto, unitTexto, descTexto = "", pagoTexto = "", marcaTexto = "", tamTexto = ""] = campos;
   if (!nome) return null;
 
   const quantidade = lerNumero(qtdTexto);
@@ -78,6 +81,8 @@ function lerItem(linha) {
   if (preco == null) preco = centavos((total + desconto) / quantidade);
   if (total == null) total = centavos(quantidade * preco - desconto);
 
+  // tam ilegível fica vazio: o bot ainda tenta tirar o tamanho do nome.
+  const tamanho = lerTamanho(tamTexto);
   return {
     nome,
     quantidade: milesimos(quantidade),
@@ -86,6 +91,10 @@ function lerItem(linha) {
     preco: centavos(preco),
     desconto: centavos(desconto),
     total: centavos(total),
+    marca: limparMarca(marcaTexto),
+    semMarca: ehSemMarca(marcaTexto),
+    tamanho: tamanho?.tamanho ?? null,
+    medida: tamanho?.medida ?? null,
   };
 }
 
@@ -99,7 +108,8 @@ function comPrecoPago(item) {
  * @param {string} texto  o que veio depois de "/nota"
  * @returns {{ formato: "novo"|"antigo", mercado: string, data: string, totalNota: number|null,
  *   somaItens: number|null, linhasIgnoradas: string[],
- *   itens: Array<{ nome, quantidade, unidade, preco, desconto, total, precoPago }> } | { erro: string }}
+ *   itens: Array<{ nome, quantidade, unidade, preco, desconto, total, precoPago,
+ *     marca, semMarca, tamanho, medida }> } | { erro: string }}
  */
 export function interpretarNota(texto) {
   const linhas = String(texto || "")
@@ -120,7 +130,7 @@ export function interpretarNota(texto) {
       totalNota: null,
       somaItens,
       linhasIgnoradas: [],
-      itens: antigo.itens.map((i) => ({ ...i, desconto: null, precoPago: null })),
+      itens: antigo.itens.map((i) => ({ ...i, desconto: null, precoPago: null, marca: null, semMarca: false, tamanho: null, medida: null })),
     };
   }
 
@@ -171,7 +181,7 @@ export function interpretarNota(texto) {
 
   const itens = [...itensPorNome.values()].map(comPrecoPago);
   if (!itens.length) {
-    return erroComTemplate("Não encontrei nenhum item. Cada item vai numa linha: nome; qtd; un; unit; desc; pago.");
+    return erroComTemplate("Não encontrei nenhum item. Cada item vai numa linha: nome; qtd; un; unit; desc; pago; marca; tam.");
   }
 
   return {

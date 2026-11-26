@@ -33,6 +33,7 @@ function objetoDaLista(item, prod) {
       subcategoria: prod.subcategoria,
       grupoSubstituicao: prod.grupoSubstituicao ?? [],
       receitas: prod.receitas ?? [],
+      marcaPreferida: prod.marcaPreferida ?? null,
     };
     porProduto.set(prod, objeto);
   }

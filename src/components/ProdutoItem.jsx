@@ -155,6 +155,9 @@ function ProdutoItem({
             }}
           >
             {produto.nome}
+            {produto.marcaPreferida && (
+              <span style={{ fontWeight: 400, color: "var(--text-soft)" }}> · {produto.marcaPreferida}</span>
+            )}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
             <span

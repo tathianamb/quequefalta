@@ -3,7 +3,18 @@ import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ORDEM_CATEGORIAS } from "../utils/categorias";
 import { normalizar } from "../utils/texto";
-import { ondeComprar, formatarPreco } from "../utils/precos";
+import {
+  ondeComprar,
+  precosAtuaisOrdenados,
+  formatarPreco,
+  descreverPreco,
+  dataDoRegistro,
+  mercadoCanonico,
+  jaRegistrado,
+  lerTamanho,
+  limparMarca,
+  camposDaVariacao,
+} from "../utils/precos";
 import { X, Plus, Edit2, Trash2 } from "lucide-react";
 import Folha from "./Folha";
 import BotaoIcone from "./BotaoIcone";
@@ -23,6 +34,12 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   const [preco, setPreco] = useState("");
   const [data, setData] = useState(hojeISO());
   const [observacao, setObservacao] = useState("");
+  // Marca e tamanho da embalagem (opcionais): o "onde comprar" compara por
+  // kg/L quando sabe o tamanho. "A peso" = preço por kg, sem tamanho.
+  const [marca, setMarca] = useState("");
+  const [tamanhoTexto, setTamanhoTexto] = useState("");
+  const [aPeso, setAPeso] = useState(false);
+  const [erroTamanho, setErroTamanho] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erroDuplicado, setErroDuplicado] = useState(false);
   const [erroGravacao, setErroGravacao] = useState(null);
@@ -48,6 +65,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
   const [adminGrupoSubstituicao, setAdminGrupoSubstituicao] = useState(produto.grupoSubstituicao || []);
   const [adminNovoGrupoSubstituicao, setAdminNovoGrupoSubstituicao] = useState("");
   const [adminGenerico, setAdminGenerico] = useState(!!produto.generico);
+  const [adminMarcaPreferida, setAdminMarcaPreferida] = useState(produto.marcaPreferida || "");
 
   const handleSalvarAdmin = () => {
     setErroGravacao(null);
@@ -57,6 +75,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
       subcategoria: adminSubcategoria.trim(),
       grupoSubstituicao: adminGrupoSubstituicao,
       generico: adminGenerico,
+      marcaPreferida: limparMarca(adminMarcaPreferida),
     }).catch(avisarErroGravacao("Não foi possível salvar as alterações do produto."));
     setEditandoAdmin(false);
   };
@@ -84,11 +103,24 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
     const set = new Set(MERCADOS_BASE);
     catalogo.forEach((p) =>
       (p.historico || []).forEach((h) => {
-        if (h.mercado) set.add(h.mercado);
+        if (h.mercado) set.add(mercadoCanonico(h.mercado));
       })
     );
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [catalogo]);
+
+  // Marcas já vistas: as deste produto primeiro, depois as do catálogo todo.
+  const marcasConhecidas = useMemo(() => {
+    const doProduto = new Set((produto.historico || []).map((h) => h.marca).filter(Boolean));
+    if (produto.marcaPreferida) doProduto.add(produto.marcaPreferida);
+    const outras = new Set();
+    catalogo.forEach((p) => {
+      if (p.marcaPreferida) outras.add(p.marcaPreferida);
+      (p.historico || []).forEach((h) => h.marca && outras.add(h.marca));
+    });
+    const ordenar = (s) => [...s].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return [...ordenar(doProduto), ...ordenar(outras).filter((m) => !doProduto.has(m))];
+  }, [produto, catalogo]);
 
   const sugestoesMercado = useMemo(() => {
     const termo = normalizar(mercado);
@@ -100,19 +132,30 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
 
   const historico = (produto.historico || [])
     .slice()
-    .sort((a, b) => b.data?.toDate?.() - a.data?.toDate?.());
+    .sort((a, b) => (dataDoRegistro(b) ?? 0) - (dataDoRegistro(a) ?? 0));
 
   const handleRegistrar = () => {
     if (!mercado.trim() || !preco) return;
     setErroDuplicado(false);
+    setErroTamanho(false);
     setErroGravacao(null);
 
-    const mercadoTrim = mercado.trim();
-    const jaExiste = historico.some((h) => {
-      const diaHistorico = h.data?.toDate?.()?.toISOString().slice(0, 10);
-      return h.mercado === mercadoTrim && diaHistorico === data;
-    });
-    if (jaExiste) {
+    const tamanho = aPeso || !tamanhoTexto.trim() ? null : lerTamanho(tamanhoTexto);
+    if (!aPeso && tamanhoTexto.trim() && !tamanho) {
+      setErroTamanho(true);
+      return;
+    }
+    const mercadoFinal = mercadoCanonico(mercado);
+    const precoNumero = parseFloat(preco.replace(",", "."));
+    const variacao = {
+      marca: limparMarca(marca),
+      tamanho: tamanho?.tamanho ?? null,
+      medida: tamanho?.medida ?? null,
+      unidade: aPeso ? "kg" : null,
+    };
+    // Mesmo mercado e dia, sem marca ou tamanho que diferencie: já existe
+    // (regra em functions/src/precos/variacao.js, a mesma do bot).
+    if (jaRegistrado(historico, { mercado: mercadoFinal, dia: data, preco: precoNumero, ...variacao }, { porPreco: false })) {
       setErroDuplicado(true);
       return;
     }
@@ -126,11 +169,13 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
     // servidor confirmar.
     updateDoc(ref, {
       historico: arrayUnion({
-        mercado: mercado.trim(),
-        preco: parseFloat(preco.replace(",", ".")),
+        mercado: mercadoFinal,
+        preco: precoNumero,
         data: dataRegistro,
         observacao: observacao.trim() || null,
         listaAtiva: listaAtiva,
+        ...(aPeso ? { unidade: "kg" } : {}),
+        ...camposDaVariacao(variacao),
       }),
     }).catch((e) => {
       setSucesso(false);
@@ -141,6 +186,9 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
     setPreco("");
     setData(hojeISO());
     setObservacao("");
+    setMarca("");
+    setTamanhoTexto("");
+    setAPeso(false);
     clearTimeout(timerSucessoRef.current);
     timerSucessoRef.current = setTimeout(() => setSucesso(false), 2000);
   };
@@ -153,8 +201,12 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
       .catch(avisarErroGravacao("Não foi possível apagar o registro."));
   };
 
-  // Mesma regra de "Onde comprar" da lista: preço mais recente por mercado.
+  // Mesma regra de "Onde comprar" da lista: preço mais recente por mercado e
+  // variação (marca + tamanho), comparado por kg/L quando dá.
   const melhor = ondeComprar(produto);
+  const outrosPrecos = precosAtuaisOrdenados(produto).filter(
+    (p) => !(melhor && p.chave === melhor.chave && p.preco === melhor.preco && p.data.getTime() === melhor.data.getTime()),
+  );
 
   const textoConfirmacao = () => {
     if (confirmacao?.tipo === "registro") {
@@ -231,6 +283,14 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   <option key={sc} value={sc}>{sc}</option>
                 ))}
               </select>
+              <input
+                value={adminMarcaPreferida}
+                onChange={(e) => setAdminMarcaPreferida(e.target.value)}
+                list="marcas-conhecidas"
+                placeholder="Marca preferida (opcional)"
+                aria-label="Marca preferida"
+                style={{ padding: "10px", borderRadius: RAIO.sm, border: BORDA, background: "var(--bg)", fontFamily: "Nunito, sans-serif", fontSize: FONTE.campo, color: "var(--text)" }}
+              />
               <div>
                 <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "6px" }}>Grupo de Substituição</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
@@ -288,7 +348,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                   Salvar
                 </button>
                 <button
-                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminGrupoSubstituicao(produto.grupoSubstituicao || []); setAdminGenerico(!!produto.generico); }}
+                  onClick={() => { setEditandoAdmin(false); setAdminNome(produto.nome); setAdminCategoria(produto.categoria); setAdminSubcategoria(produto.subcategoria || ""); setAdminGrupoSubstituicao(produto.grupoSubstituicao || []); setAdminGenerico(!!produto.generico); setAdminMarcaPreferida(produto.marcaPreferida || ""); }}
                   style={{ flex: 1, padding: "10px", borderRadius: RAIO.sm, border: "none", background: "var(--bg)", color: "var(--text-soft)", fontFamily: "Nunito, sans-serif", fontWeight: FONTE.bold, cursor: "pointer" }}
                 >
                   Cancelar
@@ -334,6 +394,11 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
               <h2 style={{ ...TIPOGRAFIA.titulo, lineHeight: 1.2 }}>
                 {produto.nome}
               </h2>
+              {produto.marcaPreferida && (
+                <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)", marginTop: "4px" }}>
+                  Marca preferida: {produto.marcaPreferida}
+                </p>
+              )}
             </div>
           )}
           <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
@@ -405,6 +470,32 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                 preço de {melhor.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
               </p>
             </div>
+          </div>
+        )}
+        {melhor && descreverPreco(melhor) !== formatarPreco(melhor.preco) && (
+          <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.sucesso, margin: "-14px 4px 20px" }}>
+            {descreverPreco(melhor)}
+          </p>
+        )}
+
+        {/* Outros preços atuais (outros mercados, marcas ou tamanhos) */}
+        {melhor && outrosPrecos.length > 0 && (
+          <div style={{ marginBottom: "24px" }}>
+            <p style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)", marginBottom: "6px" }}>
+              Outros preços atuais
+            </p>
+            {outrosPrecos.map((p) => (
+              <div
+                key={`${p.chave}-${p.marca}-${p.tamanho}-${p.data.getTime()}`}
+                style={{ display: "flex", justifyContent: "space-between", gap: "12px", padding: "6px 0", borderBottom: `1px solid ${COR.divisoria}` }}
+              >
+                <span style={{ ...TIPOGRAFIA.corpo, minWidth: 0, overflowWrap: "anywhere" }}>
+                  <strong>{p.mercado}</strong>
+                  <span style={{ color: "var(--text-soft)" }}> · {p.data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</span>
+                </span>
+                <span style={{ ...TIPOGRAFIA.corpo, textAlign: "right", overflowWrap: "anywhere" }}>{descreverPreco(p)}</span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -523,6 +614,79 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
             />
           </div>
 
+          {/* Marca e tamanho (opcionais) */}
+          <label htmlFor="preco-marca" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+            Marca
+          </label>
+          <input
+            id="preco-marca"
+            type="text"
+            list="marcas-conhecidas"
+            placeholder="Opcional"
+            value={marca}
+            onChange={(e) => { setMarca(e.target.value); setErroDuplicado(false); }}
+            autoComplete="off"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              background: "var(--card)",
+              borderRadius: RAIO.sm,
+              border: BORDA,
+              padding: "10px 14px",
+              margin: "6px 0 12px",
+              fontFamily: "Nunito, sans-serif",
+              fontSize: FONTE.campo,
+              fontWeight: FONTE.bold,
+              color: "var(--text)",
+            }}
+          />
+          <datalist id="marcas-conhecidas">
+            {marcasConhecidas.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+
+          <label htmlFor="preco-tamanho" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
+            Tamanho da embalagem
+          </label>
+          <input
+            id="preco-tamanho"
+            type="text"
+            placeholder={aPeso ? "Preço por kg" : "Ex.: 500 g, 1 L, 12 un"}
+            value={aPeso ? "" : tamanhoTexto}
+            disabled={aPeso}
+            onChange={(e) => { setTamanhoTexto(e.target.value); setErroTamanho(false); setErroDuplicado(false); }}
+            autoComplete="off"
+            style={{ ...{
+              width: "100%",
+              boxSizing: "border-box",
+              background: "var(--card)",
+              borderRadius: RAIO.sm,
+              border: BORDA,
+              padding: "10px 14px",
+              margin: "6px 0 12px",
+              fontFamily: "Nunito, sans-serif",
+              fontSize: FONTE.campo,
+              fontWeight: FONTE.bold,
+              color: "var(--text)",
+            }, margin: "6px 0 6px", ...(aPeso ? BOTAO_DESABILITADO : {}) }}
+          />
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", margin: "0 0 12px", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={aPeso}
+              onChange={(e) => { setAPeso(e.target.checked); setErroTamanho(false); setErroDuplicado(false); }}
+            />
+            <span style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text-soft)" }}>
+              Vendido a peso (o preço é por kg)
+            </span>
+          </label>
+          {erroTamanho && (
+            <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: "-6px 0 12px" }}>
+              Não entendi o tamanho. Use, por exemplo, 500 g, 1,5 L ou 12 un.
+            </p>
+          )}
+
           {/* Data (editável, pré-preenchida com hoje) */}
           <label htmlFor="preco-data" style={{ ...TIPOGRAFIA.label, color: "var(--text-soft)" }}>
             Data
@@ -575,7 +739,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
 
           {erroDuplicado && (
             <p style={{ ...TIPOGRAFIA.subcategoria, color: COR.erro, margin: "0 0 10px" }}>
-              ⚠️ Já existe um preço registrado nesse mercado e data.
+              ⚠️ Já existe um preço registrado nesse mercado e data. Se for outra marca ou outro tamanho, preencha esses campos.
             </p>
           )}
 
@@ -614,7 +778,7 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
             </p>
             {historico.map((h, i) => (
               <div
-                key={`${h.mercado}-${h.data?.seconds}-${h.preco}`}
+                key={`${h.mercado}-${h.data?.seconds}-${h.preco}-${h.marca ?? ""}-${h.tamanho ?? ""}`}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -625,17 +789,20 @@ function DetalhesProduto({ produto, onFechar, listaAtiva, catalogo = [], isAdmin
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0, paddingRight: "8px" }}>
-                  <p style={{ ...TIPOGRAFIA.nomeProduto }}>{h.mercado}</p>
+                  <p style={{ ...TIPOGRAFIA.nomeProduto }}>{mercadoCanonico(h.mercado)}</p>
                   <p
                     style={{
                       ...TIPOGRAFIA.subcategoria,
                       color: "var(--text-soft)",
                     }}
                   >
-                    {h.data?.toDate
-                      ? h.data.toDate().toLocaleDateString("pt-BR")
-                      : new Date(h.data).toLocaleDateString("pt-BR")}
+                    {dataDoRegistro(h)?.toLocaleDateString("pt-BR")}
                   </p>
+                  {descreverPreco(h) !== formatarPreco(h.preco) && (
+                    <p style={{ ...TIPOGRAFIA.subcategoria, color: "var(--text)", marginTop: "2px", overflowWrap: "anywhere" }}>
+                      {descreverPreco(h)}
+                    </p>
+                  )}
                   {h.observacao && (
                     <p
                       style={{

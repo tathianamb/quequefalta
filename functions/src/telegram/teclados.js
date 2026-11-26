@@ -14,8 +14,10 @@ function botoesNavegacao(loteId, etapa) {
   return linhas;
 }
 
+const botaoMarcas = (loteId) => [{ text: "🏷️ Marca e tamanho", callback_data: `lote_mar:${loteId}` }];
+
 export function tecladoEtapa1(loteId) {
-  return { inline_keyboard: botoesNavegacao(loteId, 1) };
+  return { inline_keyboard: [botaoMarcas(loteId), ...botoesNavegacao(loteId, 1)] };
 }
 
 export function tecladoEtapa2(loteId, itensComMatch) {
@@ -45,6 +47,7 @@ export function tecladoEtapa4(loteId) {
   return {
     inline_keyboard: [
       [{ text: "⬅️ Anterior", callback_data: `lote_ant:${loteId}` }],
+      botaoMarcas(loteId),
       [{ text: "✅ Finalizar e gravar", callback_data: `lote_fin:${loteId}` }],
       [{ text: "🗑️ Cancelar", callback_data: `lote_canc:${loteId}` }],
     ],

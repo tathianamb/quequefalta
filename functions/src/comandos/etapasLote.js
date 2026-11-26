@@ -1,4 +1,4 @@
-import { formatarLinhaItem } from "./resumoLote.js";
+import { formatarLinhaItem, contarSemMarca } from "./resumoLote.js";
 import { avisoDeTotal } from "../parser/nota.js";
 import { mostrarEtapa3 as mostrarEtapa3Revisao } from "./revisar.js";
 import { tecladoEtapa1, tecladoEtapa2, tecladoEtapa4 } from "../telegram/teclados.js";
@@ -25,9 +25,14 @@ async function mostrarEtapa1(telegram, chatId, lote, messageId, prefixo = "") {
     telegram,
     chatId,
     messageId,
-    `${prefixo}Etapa 1/4 — Resumo\n\n${cabecalho}\n\n${resumo}${textoAvisos}`,
+    `${prefixo}Etapa 1/4 — Resumo\n\n${cabecalho}\n\n${resumo}${textoAvisos}${textoSemMarca(lote)}`,
     { reply_markup: tecladoEtapa1(lote.id) }
   );
+}
+
+function textoSemMarca(lote) {
+  const n = contarSemMarca(lote);
+  return n ? `\n\n🏷️ ${n} ite${n > 1 ? "ns" : "m"} sem marca. Para completar marca e tamanho, toque em 🏷️.` : "";
 }
 
 async function mostrarEtapa2(telegram, chatId, lote, messageId, prefixo = "") {
@@ -77,7 +82,7 @@ async function mostrarEtapa4(telegram, chatId, lote, messageId, prefixo = "") {
     telegram,
     chatId,
     messageId,
-    `${prefixo}Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheSugeridos}${detalheFila}\n\nConfirma?`,
+    `${prefixo}Etapa 4/4 — Finalizar\n\n${fraseGravados}${detalheSugeridos}${detalheFila}${textoSemMarca(lote)}\n\nConfirma?`,
     { reply_markup: tecladoEtapa4(lote.id) }
   );
 }

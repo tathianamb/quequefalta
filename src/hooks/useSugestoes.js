@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { isAdmin } from '../config/admins'
+import { mercadoCanonico, camposDaVariacao } from '../utils/precos'
 
 export function useSugestoes(usuario) {
   // Só admin revisa sugestões; os demais nem assinam a coleção.
@@ -29,13 +30,27 @@ export function useSugestoes(usuario) {
   }, [admin])
 
   const aprovar = async (sugestao) => {
+    // Mesmo registro que o bot grava (functions/src/firestore/historico.js):
+    // nome original da nota, quantidade, desconto, marca e tamanho.
+    const unidade = sugestao.unidadeSugerida || null
     const historico = sugestao.precoSugerido != null
       ? [{
-          mercado: sugestao.mercadoSugerido || '',
+          mercado: mercadoCanonico(sugestao.mercadoSugerido || ''),
           preco: sugestao.precoSugerido,
           data: sugestao.dataSugerida ? new Date(`${sugestao.dataSugerida}T12:00:00`) : new Date(),
-          observacao: `Registrado via Telegram — nota: "${sugestao.nome}"`,
+          observacao: `Registrado via Telegram — nota: "${sugestao.nomeNota || sugestao.nome}"`,
           listaAtiva: sugestao.listaAtiva || null,
+          ...(Number.isFinite(sugestao.quantidadeSugerida) ? { quantidade: sugestao.quantidadeSugerida } : {}),
+          ...(unidade ? { unidade } : {}),
+          ...(Number.isFinite(sugestao.precoPagoSugerido) && sugestao.precoPagoSugerido !== sugestao.precoSugerido
+            ? { precoPago: sugestao.precoPagoSugerido }
+            : {}),
+          ...camposDaVariacao({
+            marca: sugestao.marcaSugerida,
+            tamanho: sugestao.tamanhoSugerido,
+            medida: sugestao.medidaSugerida,
+            unidade,
+          }),
         }]
       : []
 
@@ -55,6 +70,11 @@ export function useSugestoes(usuario) {
       status: 'aprovado',
       aprovadores: [usuario.uid],
       aprovadoEm: serverTimestamp(),
+      // O bot lê estes dois na próxima nota e aprende "texto da nota → produto"
+      // (aprenderSugestoesAprovadas): sem isso, a mesma nota não casava e virava
+      // outra sugestão, ou seja, produto duplicado.
+      produtoId: novoRef.id,
+      apelidoPendente: Boolean(sugestao.nomeNota),
     })
     await batch.commit()
   }

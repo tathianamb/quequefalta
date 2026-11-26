@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import Folha from "./Folha";
 import { montarSugestoesDoMes, JANELA_DIAS, IDA_GRANDE_ITENS } from "../utils/sugestoesMes";
-import { formatarPreco } from "../utils/precos";
+import { descreverPreco } from "../utils/precos";
 import { corDaCategoria } from "../utils/categorias";
 import { TIPOGRAFIA, FONTE, RAIO, BOTAO_PRIMARIO, BOTAO_SECUNDARIO, BOTAO_DESABILITADO } from "../utils/estilos";
 import CaixaMarcacao from "./CaixaMarcacao";
@@ -44,7 +44,7 @@ function SugestoesMes({ catalogo, listaAtiva, lista, adicionarItem, toggleCompra
 
   const descrever = (s) => {
     const partes = [s.idas > 1 ? `${s.idas} idas` : s.idaGrande ? "compra grande" : "1 ida"];
-    if (s.onde) partes.push(`${formatarPreco(s.onde.preco)} no ${s.onde.mercado}`);
+    if (s.onde) partes.push(`${descreverPreco(s.onde)} no ${s.onde.mercado}`);
     if (s.emCasa) partes.push("tem em casa");
     return partes.join(" · ");
   };
